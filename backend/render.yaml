@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: sports-streaming-api
+    runtime: docker
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 8080
+    healthCheckPath: /health

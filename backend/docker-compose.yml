@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  streaming-api:
+    build: .
+    container_name: streaming_api_backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
