@@ -4,8 +4,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import Colors from './src/theme/colors';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { DiscoverScreen } from './src/screens/DiscoverScreen';
 import {
-  DiscoverScreen,
   SavedScreen,
   ProfileScreen,
 } from './src/screens/PlaceholderScreens';

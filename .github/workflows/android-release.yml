@@ -79,11 +79,16 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release_tag != '' && github.event.inputs.release_tag || 'v1.0.0') }}
-          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }} — Native Android Release"
+          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.1.0' }} — Native Android Release"
           body: |
-            ## ⚽ BALLIVE — Native Android Application (Phase 1)
+            ## ⚽ BALLIVE — Native Android Application (Phase 2)
             
-            Installable standalone native Android APK built from the **Stream X** visual blueprint.
+            Installable standalone native Android APK featuring the **Homepage** and **Phase 2 Discover Page**:
+            - 🔍 **Discover Header**: Deep purple header with search and notifications.
+            - 🏆 **Explore Competitions**: Premier League, UCL, LaLiga, Serie A, Bundesliga.
+            - 🌍 **Popular Leagues**: Vertical list with club counts and country indicators.
+            - 🛡️ **Popular Teams**: Official crests for Real Madrid, Barcelona, Man City, Arsenal, Liverpool, Man United.
+            - ⚡ **Upcoming Highlights**: Authentic football matchup cards with live scores, countdowns, and reminders.
             
             ### 📱 Download & Install
             1. Download `BALLIVE.apk` below directly to your Android device.
