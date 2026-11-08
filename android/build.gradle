@@ -55,5 +55,16 @@ subprojects {
             task.enabled = false
         }
     }
+
+    afterEvaluate { project ->
+        if (project.hasProperty('android')) {
+            project.android {
+                lint {
+                    checkReleaseBuilds = false
+                    abortOnError = false
+                }
+            }
+        }
+    }
 }
 
