@@ -50,7 +50,7 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew :app:assembleDebug -x extractDebugAnnotations --no-daemon --stacktrace
 
       - name: 🏷️ Rename APK Artifact to BALLIVE.apk
         run: |
