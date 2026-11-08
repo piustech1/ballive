@@ -5,10 +5,8 @@ import { StatusBar } from 'expo-status-bar';
 import Colors from './src/theme/colors';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { DiscoverScreen } from './src/screens/DiscoverScreen';
-import {
-  SavedScreen,
-  ProfileScreen,
-} from './src/screens/PlaceholderScreens';
+import { ProfileScreen } from './src/screens/ProfileScreen';
+import { SavedScreen } from './src/screens/PlaceholderScreens';
 import {
   BottomNavigation,
   TabDestination,
