@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Optional release tag name (e.g. v1.0.0)'
+        description: 'Release tag name (e.g. v1.0.0)'
         required: false
         default: 'v1.0.0'
   release:
@@ -39,25 +39,26 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 🤖 Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: 📦 Install Project Dependencies
         run: npm install --legacy-peer-deps
 
       - name: 🐘 Setup Gradle Cache
         uses: gradle/actions/setup-gradle@v4
 
-      - name: 🔨 Build Android Debug APK
+      - name: 🔨 Build Standalone Release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleDebug -x extractDebugAnnotations --no-daemon --stacktrace
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
 
       - name: 🏷️ Rename APK Artifact to BALLIVE.apk
         run: |
           mkdir -p release-output
-          cp android/app/build/outputs/apk/debug/app-debug.apk release-output/BALLIVE.apk
+          if [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
+            cp android/app/build/outputs/apk/release/app-release.apk release-output/BALLIVE.apk
+          else
+            cp android/app/build/outputs/apk/debug/app-debug.apk release-output/BALLIVE.apk
+          fi
           ls -la release-output/BALLIVE.apk
 
       - name: 📤 Upload APK Artifact to GitHub Actions Run
@@ -76,10 +77,10 @@ jobs:
           body: |
             ## ⚽ BALLIVE — Native Android Application (Phase 1)
             
-            Installable native Android APK built from the **Stream X** visual blueprint.
+            Installable standalone native Android APK built from the **Stream X** visual blueprint.
             
             ### 📱 Download & Install
-            1. Download `BALLIVE.apk` below directly to your Android device or emulator.
+            1. Download `BALLIVE.apk` below directly to your Android device.
             2. Tap to install (`com.piustech.ballive`).
             
             ### 🔍 Build Information
@@ -88,6 +89,7 @@ jobs:
             - **Target Android Version**: Android 14 (API 34)
             - **Compile SDK**: Android 15 (API 35)
             - **Architecture**: Universal (arm64-v8a, armeabi-v7a, x86, x86_64)
+            - **Mode**: Standalone Offline Release (Hermes bytecode embedded)
           files: release-output/BALLIVE.apk
           draft: false
           prerelease: false

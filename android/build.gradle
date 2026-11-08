@@ -49,5 +49,11 @@ subprojects {
             ]
         }
     }
+
+    tasks.configureEach { task ->
+        if (task.name.startsWith("extract") && task.name.endsWith("Annotations")) {
+            task.enabled = false
+        }
+    }
 }
 
