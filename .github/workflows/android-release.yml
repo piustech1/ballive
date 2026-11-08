@@ -1,0 +1,76 @@
+name: Build & Release BALLIVE Android APK
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Optional tag to attach APK to (if running manually)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    name: Build Native Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: ☕ Setup Java 17 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 🤖 Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 📦 Install Project Dependencies
+        run: npm install --legacy-peer-deps
+
+      - name: ⚙️ Generate Native Android Project (Expo Prebuild)
+        run: npx expo prebuild --platform android --clean --no-install
+
+      - name: 🐘 Setup Gradle Cache
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: 🔨 Build Android Debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: 🏷️ Rename APK Artifact to BALLIVE.apk
+        run: |
+          mkdir -p release-output
+          cp android/app/build/outputs/apk/debug/app-debug.apk release-output/BALLIVE.apk
+          ls -la release-output/BALLIVE.apk
+
+      - name: 📤 Upload APK Artifact to GitHub Actions Run
+        uses: actions/upload-artifact@v4
+        with:
+          name: BALLIVE-apk
+          path: release-output/BALLIVE.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: 🚀 Attach BALLIVE.apk to GitHub Release
+        if: github.event_name == 'release' || github.event.inputs.release_tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release-output/BALLIVE.apk
+          tag_name: ${{ github.event.release.tag_name || github.event.inputs.release_tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

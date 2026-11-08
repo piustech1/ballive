@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background: #0A0D14;
+    color: #FFFFFF;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ─── Scrollbar hide ───────────────────────────────────── */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* ─── Solid Surfaces (NO OUTLINES, NO GRADIENTS) ───────── */
+
+/* Clean solid surface */
+.surface-card {
+  background: #151924;
+}
+
+/* Floating bar solid surface */
+.surface-floating {
+  background: #141824;
+}
+
+/* Tap feedback */
+.tap-scale {
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.tap-scale:active { transform: scale(0.96); opacity: 0.9; }
+
+/* Safe area bottom */
+.pb-safe { padding-bottom: env(safe-area-inset-bottom, 0.75rem); }

@@ -1,8 +1,17 @@
 # Dependencies
-node_modules
-dist
-dist-ssr
+node_modules/
+.expo/
+dist/
+dist-ssr/
 *.local
+
+# Android build outputs & caches
+android/app/build/
+android/.gradle/
+android/build/
+android/app/.cxx/
+*.apk
+*.aab
 
 # Environment variables
 .env
@@ -18,8 +27,8 @@ env/
 
 # Editor & OS
 .DS_Store
-.vscode
-.idea
+.vscode/
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
