@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   TouchableWithoutFeedback,
   Modal,
   Image,
+  RefreshControl,
 } from 'react-native';
 import {
   Tv,
@@ -25,6 +26,7 @@ import { getTeamCrest } from '../utils/teamCrestResolver';
 import { DiscoverMatchup } from '../constants/discoverData';
 import { getAllLiveStreamMatches } from '../navigation/navHelpers';
 import { useAppNavigation } from '../navigation/NavigationContext';
+import { streamingApiService } from '../services/streamingApiService';
 
 type StreamFilter = 'all' | 'live' | 'upcoming' | 'available';
 
@@ -51,8 +53,32 @@ export const AllLiveStreamsScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
   const [selectedFilter, setSelectedFilter] = useState<StreamFilter>('all');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [allStreamMatches, setAllStreamMatches] = useState<DiscoverMatchup[]>(() => getAllLiveStreamMatches());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const allStreamMatches = useMemo(() => getAllLiveStreamMatches(), []);
+  const loadMatches = useCallback(async () => {
+    try {
+      const live = await streamingApiService.getLiveMatches();
+      if (live && live.length > 0) {
+        const converted = live.map(m => streamingApiService.convertLiveMatchToMatchup(m));
+        setAllStreamMatches(converted);
+      }
+    } catch (e) {
+      // fallback to initial state
+    }
+  }, []);
+
+  useEffect(() => {
+    loadMatches();
+    const interval = setInterval(loadMatches, 45000);
+    return () => clearInterval(interval);
+  }, [loadMatches]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadMatches();
+    setIsRefreshing(false);
+  };
 
   const filteredMatches = useMemo(() => {
     switch (selectedFilter) {
@@ -163,6 +189,14 @@ export const AllLiveStreamsScreen: React.FC = () => {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="#7952FC"
+            colors={['#7952FC']}
+          />
+        }
       >
         {filteredMatches.length > 0 ? (
           filteredMatches.map(matchup => {

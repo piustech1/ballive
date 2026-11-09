@@ -5,7 +5,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { CheckCircle2 } from 'lucide-react-native';
+import { Check } from 'lucide-react-native';
 import Colors from '../../theme/colors';
 import { FeaturedCompetition } from '../../constants/mockData';
 import { CompetitionLogo } from '../../components/common/CompetitionLogo';
@@ -42,13 +42,9 @@ export const FeaturedCompetitionCard: React.FC<FeaturedCompetitionCardProps> = (
             {competition.name}
           </Text>
           {competition.verified && (
-            <CheckCircle2
-              size={14}
-              color={Colors.verifiedBlue}
-              fill={Colors.verifiedBlue}
-              strokeWidth={2}
-              style={styles.verifiedIcon}
-            />
+            <View style={styles.verifiedBadge}>
+              <Check size={9} color="#FFFFFF" strokeWidth={3.5} />
+            </View>
           )}
         </View>
 
@@ -94,7 +90,13 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     letterSpacing: -0.2,
   },
-  verifiedIcon: {
+  verifiedBadge: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#38BDF8',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: 4,
     flexShrink: 0,
   },

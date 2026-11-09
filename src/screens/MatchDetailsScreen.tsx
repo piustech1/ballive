@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Share,
+  ActivityIndicator,
 } from 'react-native';
 import {
   Tv,
@@ -33,6 +34,12 @@ import { getPlayerPhoto } from '../utils/playerResolver';
 import { DiscoverMatchup } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
+import {
+  footballApiService,
+  assignPitchCoordinates,
+  TacticalPlayer,
+  MatchIntelResponse,
+} from '../services/footballApiService';
 
 interface MatchDetailsScreenProps {
   matchup: DiscoverMatchup;
@@ -46,6 +53,37 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   const [activeTab, setActiveTab] = useState<TabKey>('summary');
   const [lineupView, setLineupView] = useState<'pitch' | 'list'>('pitch');
   const [pitchTeam, setPitchTeam] = useState<'home' | 'away'>('home');
+
+  const [intel, setIntel] = useState<MatchIntelResponse | null>(null);
+  const [isLoadingIntel, setIsLoadingIntel] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingIntel(true);
+    footballApiService
+      .getMatchIntel(
+        matchup.homeTeam.name,
+        matchup.awayTeam.name,
+        matchup.homeTeam.score ?? 0,
+        matchup.awayTeam.score ?? 0,
+        matchup.minute ?? 0
+      )
+      .then(res => {
+        if (isMounted && res) {
+          setIntel(res);
+        }
+      })
+      .catch(err => {
+        console.warn('Error fetching match intel:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingIntel(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [matchup.homeTeam.name, matchup.awayTeam.name, matchup.homeTeam.score, matchup.awayTeam.score, matchup.minute]);
 
   const isReminderSet = profile.matchReminderIds.includes(matchup.id);
   const isSaved = profile.savedMatchIds.includes(matchup.id);
@@ -62,44 +100,107 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     }
   };
 
-  // Structured Lineups with coordinates for pitch layout
-  const homeStartingXI = [
-    { num: 1, name: 'D. Raya', pos: 'GK', x: '50%', y: '84%' },
-    { num: 4, name: 'B. White', pos: 'RB', x: '82%', y: '64%' },
-    { num: 2, name: 'W. Saliba', pos: 'CB', x: '61%', y: '66%' },
-    { num: 6, name: 'Gabriel M.', pos: 'CB', x: '39%', y: '66%' },
-    { num: 12, name: 'J. Timber', pos: 'LB', x: '18%', y: '64%' },
-    { num: 5, name: 'T. Partey', pos: 'CDM', x: '50%', y: '48%' },
-    { num: 41, name: 'D. Rice', pos: 'CM', x: '28%', y: '42%' },
-    { num: 8, name: 'M. Ødegaard (C)', pos: 'CAM', x: '72%', y: '42%' },
-    { num: 7, name: 'B. Saka', pos: 'RW', x: '80%', y: '18%' },
-    { num: 29, name: 'K. Havertz', pos: 'ST', x: '50%', y: '14%' },
-    { num: 11, name: 'G. Martinelli', pos: 'LW', x: '20%', y: '18%' },
+  // Dynamic Formations
+  const homeFormation = intel?.lineups?.home?.formation || '4-3-3';
+  const awayFormation = intel?.lineups?.away?.formation || '4-3-3';
+
+  // Default fallback lineups
+  const defaultHomeXI: TacticalPlayer[] = [
+    { id: '1', name: 'D. Raya', position: 'GK', number: 1, rating: 7.2 },
+    { id: '4', name: 'B. White', position: 'DF', number: 4, rating: 7.0 },
+    { id: '2', name: 'W. Saliba', position: 'DF', number: 2, rating: 7.5 },
+    { id: '6', name: 'Gabriel M.', position: 'DF', number: 6, rating: 7.4 },
+    { id: '12', name: 'J. Timber', position: 'DF', number: 12, rating: 6.9 },
+    { id: '5', name: 'T. Partey', position: 'MF', number: 5, rating: 7.1 },
+    { id: '41', name: 'D. Rice', position: 'MF', number: 41, rating: 7.6 },
+    { id: '8', name: 'M. Ødegaard (C)', position: 'MF', number: 8, rating: 7.8, isCaptain: true },
+    { id: '7', name: 'B. Saka', position: 'FW', number: 7, rating: 8.1 },
+    { id: '29', name: 'K. Havertz', position: 'FW', number: 29, rating: 7.3 },
+    { id: '11', name: 'G. Martinelli', position: 'FW', number: 11, rating: 7.2 },
   ];
 
-  const awayStartingXI = [
-    { num: 1, name: 'Alisson B.', pos: 'GK', x: '50%', y: '84%' },
-    { num: 66, name: 'T. Alexander-Arnold', pos: 'RB', x: '82%', y: '64%' },
-    { num: 5, name: 'I. Konaté', pos: 'CB', x: '61%', y: '66%' },
-    { num: 4, name: 'V. van Dijk (C)', pos: 'CB', x: '39%', y: '66%' },
-    { num: 26, name: 'A. Robertson', pos: 'LB', x: '18%', y: '64%' },
-    { num: 38, name: 'R. Gravenberch', pos: 'CDM', x: '50%', y: '48%' },
-    { num: 10, name: 'A. Mac Allister', pos: 'CM', x: '28%', y: '42%' },
-    { num: 8, name: 'D. Szoboszlai', pos: 'CAM', x: '72%', y: '42%' },
-    { num: 11, name: 'M. Salah', pos: 'RW', x: '80%', y: '18%' },
-    { num: 9, name: 'D. Núñez', pos: 'ST', x: '50%', y: '14%' },
-    { num: 7, name: 'L. Díaz', pos: 'LW', x: '20%', y: '18%' },
+  const defaultAwayXI: TacticalPlayer[] = [
+    { id: '1', name: 'Alisson B.', position: 'GK', number: 1, rating: 7.4 },
+    { id: '66', name: 'T. Alexander-Arnold', position: 'DF', number: 66, rating: 7.7 },
+    { id: '5', name: 'I. Konaté', position: 'DF', number: 5, rating: 7.3 },
+    { id: '4', name: 'V. van Dijk (C)', position: 'DF', number: 4, rating: 7.9, isCaptain: true },
+    { id: '26', name: 'A. Robertson', position: 'DF', number: 26, rating: 7.1 },
+    { id: '38', name: 'R. Gravenberch', position: 'MF', number: 38, rating: 7.5 },
+    { id: '10', name: 'A. Mac Allister', position: 'MF', number: 10, rating: 7.4 },
+    { id: '8', name: 'D. Szoboszlai', position: 'MF', number: 8, rating: 7.2 },
+    { id: '11', name: 'M. Salah', position: 'FW', number: 11, rating: 8.3 },
+    { id: '9', name: 'D. Núñez', position: 'FW', number: 9, rating: 7.1 },
+    { id: '7', name: 'L. Díaz', position: 'FW', number: 7, rating: 7.5 },
   ];
 
-  // Match Timeline Events
-  const matchEvents = [
-    { min: "9'", team: 'home', type: 'goal', player: 'B. Saka', assist: 'M. Ødegaard' },
-    { min: "18'", team: 'away', type: 'goal', player: 'V. van Dijk', assist: 'T. Alexander-Arnold' },
-    { min: "33'", team: 'home', type: 'yellow', player: 'T. Partey', detail: 'Foul' },
-    { min: "43'", team: 'home', type: 'goal', player: 'M. Merino', assist: 'D. Rice' },
-    { min: "68'", team: 'away', type: 'sub', player: 'C. Gakpo in, L. Díaz out' },
-    { min: "81'", team: 'away', type: 'goal', player: 'M. Salah', assist: 'D. Núñez' },
-  ];
+  // Active Starting XIs with dynamically calculated tactical pitch coordinates
+  const activeHomeXI = useMemo(() => {
+    const rawXI = intel?.lineups?.home?.startingXI && intel.lineups.home.startingXI.length > 0
+      ? intel.lineups.home.startingXI
+      : defaultHomeXI;
+    const positioned = assignPitchCoordinates(rawXI, homeFormation);
+    return positioned.map(p => ({
+      num: p.number,
+      name: p.name,
+      pos: p.position,
+      x: p.x || '50%',
+      y: p.y || '50%',
+      photo: p.photo || getPlayerPhoto(p.name),
+    }));
+  }, [intel, homeFormation]);
+
+  const activeAwayXI = useMemo(() => {
+    const rawXI = intel?.lineups?.away?.startingXI && intel.lineups.away.startingXI.length > 0
+      ? intel.lineups.away.startingXI
+      : defaultAwayXI;
+    const positioned = assignPitchCoordinates(rawXI, awayFormation);
+    return positioned.map(p => ({
+      num: p.number,
+      name: p.name,
+      pos: p.position,
+      x: p.x || '50%',
+      y: p.y || '50%',
+      photo: p.photo || getPlayerPhoto(p.name),
+    }));
+  }, [intel, awayFormation]);
+
+  const activeHomeSubs = useMemo(() => {
+    return intel?.lineups?.home?.substitutes || [];
+  }, [intel]);
+
+  const activeAwaySubs = useMemo(() => {
+    return intel?.lineups?.away?.substitutes || [];
+  }, [intel]);
+
+  // Normalized Match Events
+  const activeEvents = useMemo(() => {
+    if (intel?.events && intel.events.length > 0) {
+      return intel.events.map(e => ({
+        min: `${e.minute}'`,
+        team: (e.teamId === 'home' || e.teamId === 'HOME' || e.teamId === matchup.homeTeam.id) ? ('home' as const) : ('away' as const),
+        type: (e.type === 'goal' || e.type === 'yellow' || e.type === 'red' || e.type === 'sub') ? e.type : ('goal' as const),
+        player: e.player,
+        assist: e.assist,
+        detail: e.detail,
+      }));
+    }
+    return [
+      { min: "9'", team: 'home' as const, type: 'goal' as const, player: 'B. Saka', assist: 'M. Ødegaard' },
+      { min: "18'", team: 'away' as const, type: 'goal' as const, player: 'V. van Dijk', assist: 'T. Alexander-Arnold' },
+      { min: "33'", team: 'home' as const, type: 'yellow' as const, player: 'T. Partey', detail: 'Foul' },
+      { min: "43'", team: 'home' as const, type: 'goal' as const, player: 'M. Merino', assist: 'D. Rice' },
+      { min: "68'", team: 'away' as const, type: 'sub' as const, player: 'C. Gakpo in, L. Díaz out' },
+      { min: "81'", team: 'away' as const, type: 'goal' as const, player: 'M. Salah', assist: 'D. Núñez' },
+    ];
+  }, [intel, matchup.homeTeam.id]);
+
+  // Real Opta Statistics Tuples
+  const statPossession = intel?.stats?.possession || [54, 46];
+  const statShots = intel?.stats?.shotsTotal || [15, 12];
+  const statSOT = intel?.stats?.shotsOnTarget || [6, 5];
+  const statCorners = intel?.stats?.corners || [8, 4];
+  const statFouls = intel?.stats?.fouls || [10, 13];
+  const statYellows = intel?.stats?.yellowCards || [1, 2];
 
   return (
     <View style={styles.root}>
@@ -367,20 +468,39 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             {/* Head-to-Head form preview */}
             <View style={styles.cardContainer}>
               <Text style={styles.cardSectionHeader}>Recent Head-to-Head Form</Text>
-              <View style={styles.h2hRow}>
-                <Text style={styles.h2hClub}>{matchup.homeTeam.name}</Text>
-                <View style={styles.h2hScorePill}>
-                  <Text style={styles.h2hScoreText}>2 - 2</Text>
+              {intel?.headToHead ? (
+                <View style={{ gap: 8 }}>
+                  <View style={styles.h2hRow}>
+                    <Text style={styles.h2hClub}>{matchup.homeTeam.name}</Text>
+                    <View style={styles.h2hScorePill}>
+                      <Text style={styles.h2hScoreText}>
+                        {intel.headToHead.homeWins} - {intel.headToHead.awayWins}
+                      </Text>
+                    </View>
+                    <Text style={styles.h2hClub}>{matchup.awayTeam.name}</Text>
+                  </View>
+                  <Text style={{ color: '#A098B5', fontSize: 12, textAlign: 'center', marginTop: 4 }}>
+                    {intel.headToHead.totalPlayed} Matches • {intel.headToHead.draws} Draws
+                  </Text>
                 </View>
-                <Text style={styles.h2hClub}>{matchup.awayTeam.name}</Text>
-              </View>
-              <View style={styles.h2hRow}>
-                <Text style={styles.h2hClub}>{matchup.homeTeam.name}</Text>
-                <View style={styles.h2hScorePill}>
-                  <Text style={styles.h2hScoreText}>3 - 1</Text>
-                </View>
-                <Text style={styles.h2hClub}>{matchup.awayTeam.name}</Text>
-              </View>
+              ) : (
+                <>
+                  <View style={styles.h2hRow}>
+                    <Text style={styles.h2hClub}>{matchup.homeTeam.name}</Text>
+                    <View style={styles.h2hScorePill}>
+                      <Text style={styles.h2hScoreText}>2 - 2</Text>
+                    </View>
+                    <Text style={styles.h2hClub}>{matchup.awayTeam.name}</Text>
+                  </View>
+                  <View style={styles.h2hRow}>
+                    <Text style={styles.h2hClub}>{matchup.homeTeam.name}</Text>
+                    <View style={styles.h2hScorePill}>
+                      <Text style={styles.h2hScoreText}>3 - 1</Text>
+                    </View>
+                    <Text style={styles.h2hClub}>{matchup.awayTeam.name}</Text>
+                  </View>
+                </>
+              )}
             </View>
           </View>
         )}
@@ -394,80 +514,115 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
               {/* Possession */}
               <View style={styles.statMetric}>
                 <View style={styles.statHeader}>
-                  <Text style={styles.statValHome}>54%</Text>
+                  <Text style={styles.statValHome}>{statPossession[0]}%</Text>
                   <Text style={styles.statName}>Ball Possession</Text>
-                  <Text style={styles.statValAway}>46%</Text>
+                  <Text style={styles.statValAway}>{statPossession[1]}%</Text>
                 </View>
                 <View style={styles.comparisonTrack}>
-                  <View style={[styles.barHome, { width: '54%' }]} />
-                  <View style={[styles.barAway, { width: '46%' }]} />
+                  <View style={[styles.barHome, { width: `${statPossession[0]}%` }]} />
+                  <View style={[styles.barAway, { width: `${statPossession[1]}%` }]} />
                 </View>
               </View>
 
               {/* Total Shots */}
-              <View style={styles.statMetric}>
-                <View style={styles.statHeader}>
-                  <Text style={styles.statValHome}>15</Text>
-                  <Text style={styles.statName}>Total Shots</Text>
-                  <Text style={styles.statValAway}>12</Text>
-                </View>
-                <View style={styles.comparisonTrack}>
-                  <View style={[styles.barHome, { width: '55%' }]} />
-                  <View style={[styles.barAway, { width: '45%' }]} />
-                </View>
-              </View>
+              {(() => {
+                const sTot = Math.max(1, statShots[0] + statShots[1]);
+                const sHomeW = `${Math.round((statShots[0] / sTot) * 100)}%`;
+                const sAwayW = `${Math.round((statShots[1] / sTot) * 100)}%`;
+                return (
+                  <View style={styles.statMetric}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValHome}>{statShots[0]}</Text>
+                      <Text style={styles.statName}>Total Shots</Text>
+                      <Text style={styles.statValAway}>{statShots[1]}</Text>
+                    </View>
+                    <View style={styles.comparisonTrack}>
+                      <View style={[styles.barHome, { width: sHomeW as any }]} />
+                      <View style={[styles.barAway, { width: sAwayW as any }]} />
+                    </View>
+                  </View>
+                );
+              })()}
 
               {/* Shots on Target */}
-              <View style={styles.statMetric}>
-                <View style={styles.statHeader}>
-                  <Text style={styles.statValHome}>6</Text>
-                  <Text style={styles.statName}>Shots on Target</Text>
-                  <Text style={styles.statValAway}>5</Text>
-                </View>
-                <View style={styles.comparisonTrack}>
-                  <View style={[styles.barHome, { width: '54%' }]} />
-                  <View style={[styles.barAway, { width: '46%' }]} />
-                </View>
-              </View>
+              {(() => {
+                const sotTot = Math.max(1, statSOT[0] + statSOT[1]);
+                const sotHW = `${Math.round((statSOT[0] / sotTot) * 100)}%`;
+                const sotAW = `${Math.round((statSOT[1] / sotTot) * 100)}%`;
+                return (
+                  <View style={styles.statMetric}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValHome}>{statSOT[0]}</Text>
+                      <Text style={styles.statName}>Shots on Target</Text>
+                      <Text style={styles.statValAway}>{statSOT[1]}</Text>
+                    </View>
+                    <View style={styles.comparisonTrack}>
+                      <View style={[styles.barHome, { width: sotHW as any }]} />
+                      <View style={[styles.barAway, { width: sotAW as any }]} />
+                    </View>
+                  </View>
+                );
+              })()}
 
               {/* Corner Kicks */}
-              <View style={styles.statMetric}>
-                <View style={styles.statHeader}>
-                  <Text style={styles.statValHome}>8</Text>
-                  <Text style={styles.statName}>Corner Kicks</Text>
-                  <Text style={styles.statValAway}>4</Text>
-                </View>
-                <View style={styles.comparisonTrack}>
-                  <View style={[styles.barHome, { width: '66%' }]} />
-                  <View style={[styles.barAway, { width: '34%' }]} />
-                </View>
-              </View>
+              {(() => {
+                const cTot = Math.max(1, statCorners[0] + statCorners[1]);
+                const cHW = `${Math.round((statCorners[0] / cTot) * 100)}%`;
+                const cAW = `${Math.round((statCorners[1] / cTot) * 100)}%`;
+                return (
+                  <View style={styles.statMetric}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValHome}>{statCorners[0]}</Text>
+                      <Text style={styles.statName}>Corner Kicks</Text>
+                      <Text style={styles.statValAway}>{statCorners[1]}</Text>
+                    </View>
+                    <View style={styles.comparisonTrack}>
+                      <View style={[styles.barHome, { width: cHW as any }]} />
+                      <View style={[styles.barAway, { width: cAW as any }]} />
+                    </View>
+                  </View>
+                );
+              })()}
 
               {/* Fouls */}
-              <View style={styles.statMetric}>
-                <View style={styles.statHeader}>
-                  <Text style={styles.statValHome}>10</Text>
-                  <Text style={styles.statName}>Fouls</Text>
-                  <Text style={styles.statValAway}>13</Text>
-                </View>
-                <View style={styles.comparisonTrack}>
-                  <View style={[styles.barHome, { width: '43%' }]} />
-                  <View style={[styles.barAway, { width: '57%' }]} />
-                </View>
-              </View>
+              {(() => {
+                const fTot = Math.max(1, statFouls[0] + statFouls[1]);
+                const fHW = `${Math.round((statFouls[0] / fTot) * 100)}%`;
+                const fAW = `${Math.round((statFouls[1] / fTot) * 100)}%`;
+                return (
+                  <View style={styles.statMetric}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValHome}>{statFouls[0]}</Text>
+                      <Text style={styles.statName}>Fouls</Text>
+                      <Text style={styles.statValAway}>{statFouls[1]}</Text>
+                    </View>
+                    <View style={styles.comparisonTrack}>
+                      <View style={[styles.barHome, { width: fHW as any }]} />
+                      <View style={[styles.barAway, { width: fAW as any }]} />
+                    </View>
+                  </View>
+                );
+              })()}
 
               {/* Yellow Cards */}
-              <View style={styles.statMetric}>
-                <View style={styles.statHeader}>
-                  <Text style={styles.statValHome}>1</Text>
-                  <Text style={styles.statName}>Yellow Cards</Text>
-                  <Text style={styles.statValAway}>2</Text>
-                </View>
-                <View style={styles.comparisonTrack}>
-                  <View style={[styles.barHome, { width: '33%' }]} />
-                  <View style={[styles.barAway, { width: '67%' }]} />
-                </View>
-              </View>
+              {(() => {
+                const yTot = Math.max(1, statYellows[0] + statYellows[1]);
+                const yHW = `${Math.round((statYellows[0] / yTot) * 100)}%`;
+                const yAW = `${Math.round((statYellows[1] / yTot) * 100)}%`;
+                return (
+                  <View style={styles.statMetric}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValHome}>{statYellows[0]}</Text>
+                      <Text style={styles.statName}>Yellow Cards</Text>
+                      <Text style={styles.statValAway}>{statYellows[1]}</Text>
+                    </View>
+                    <View style={styles.comparisonTrack}>
+                      <View style={[styles.barHome, { width: yHW as any }]} />
+                      <View style={[styles.barAway, { width: yAW as any }]} />
+                    </View>
+                  </View>
+                );
+              })()}
             </View>
           </View>
         )}
@@ -511,7 +666,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                       style={[styles.pitchTeamBtnText, pitchTeam === 'home' && styles.pitchTeamBtnTextActive]}
                       numberOfLines={1}
                     >
-                      {matchup.homeTeam.name} (4-3-3)
+                      {matchup.homeTeam.name} ({homeFormation})
                     </Text>
                   </TouchableOpacity>
 
@@ -527,7 +682,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                       style={[styles.pitchTeamBtnText, pitchTeam === 'away' && styles.pitchTeamBtnTextActive]}
                       numberOfLines={1}
                     >
-                      {matchup.awayTeam.name} (4-3-3)
+                      {matchup.awayTeam.name} ({awayFormation})
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -544,9 +699,9 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   <View style={styles.pitchGoalBoxBottom} />
 
                   {/* 11 Positioned Player Markers */}
-                  {(pitchTeam === 'home' ? homeStartingXI : awayStartingXI).map(p => (
+                  {(pitchTeam === 'home' ? activeHomeXI : activeAwayXI).map(p => (
                     <View
-                      key={p.num}
+                      key={`${p.num}-${p.name}`}
                       style={[
                         styles.pitchPlayerMarker,
                         {
@@ -557,7 +712,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                     >
                       <View style={styles.pitchAvatarContainer}>
                         <Image
-                          source={{ uri: getPlayerPhoto(p.name) }}
+                          source={{ uri: p.photo || getPlayerPhoto(p.name) }}
                           style={styles.pitchPlayerAvatar}
                         />
                         <View style={styles.pitchNumberBadge}>
@@ -582,20 +737,38 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                       source={{ uri: getTeamCrest(matchup.homeTeam.name || matchup.homeTeam.id) }}
                       style={styles.listHeaderCrest}
                     />
-                    <Text style={styles.cardSectionHeader}>{matchup.homeTeam.name} Starting XI (4-3-3)</Text>
+                    <Text style={styles.cardSectionHeader}>{matchup.homeTeam.name} Starting XI ({homeFormation})</Text>
                   </View>
-                  {homeStartingXI.map(p => (
-                    <View key={p.num} style={styles.playerItemRow}>
+                  {activeHomeXI.map(p => (
+                    <View key={`${p.num}-${p.name}`} style={styles.playerItemRow}>
                       <View style={styles.playerNumPill}>
                         <Text style={styles.playerNumText}>{p.num}</Text>
                       </View>
-                      <Image source={{ uri: getPlayerPhoto(p.name) }} style={styles.playerListAvatar} />
+                      <Image source={{ uri: p.photo || getPlayerPhoto(p.name) }} style={styles.playerListAvatar} />
                       <Text style={styles.playerItemName}>{p.name}</Text>
                       <View style={styles.playerPosBadge}>
                         <Text style={styles.playerItemPos}>{p.pos}</Text>
                       </View>
                     </View>
                   ))}
+
+                  {activeHomeSubs.length > 0 && (
+                    <>
+                      <Text style={[styles.cardSectionHeader, { marginTop: 14, fontSize: 13 }]}>Substitutes</Text>
+                      {activeHomeSubs.map(s => (
+                        <View key={`sub-${s.number}-${s.name}`} style={styles.playerItemRow}>
+                          <View style={styles.playerNumPill}>
+                            <Text style={styles.playerNumText}>{s.number}</Text>
+                          </View>
+                          <Image source={{ uri: s.photo || getPlayerPhoto(s.name) }} style={styles.playerListAvatar} />
+                          <Text style={styles.playerItemName}>{s.name}</Text>
+                          <View style={styles.playerPosBadge}>
+                            <Text style={styles.playerItemPos}>{s.position}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </>
+                  )}
                 </View>
 
                 {/* Away Starting XI List */}
@@ -605,20 +778,38 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                       source={{ uri: getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id) }}
                       style={styles.listHeaderCrest}
                     />
-                    <Text style={styles.cardSectionHeader}>{matchup.awayTeam.name} Starting XI (4-3-3)</Text>
+                    <Text style={styles.cardSectionHeader}>{matchup.awayTeam.name} Starting XI ({awayFormation})</Text>
                   </View>
-                  {awayStartingXI.map(p => (
-                    <View key={p.num} style={styles.playerItemRow}>
+                  {activeAwayXI.map(p => (
+                    <View key={`${p.num}-${p.name}`} style={styles.playerItemRow}>
                       <View style={styles.playerNumPill}>
                         <Text style={styles.playerNumText}>{p.num}</Text>
                       </View>
-                      <Image source={{ uri: getPlayerPhoto(p.name) }} style={styles.playerListAvatar} />
+                      <Image source={{ uri: p.photo || getPlayerPhoto(p.name) }} style={styles.playerListAvatar} />
                       <Text style={styles.playerItemName}>{p.name}</Text>
                       <View style={styles.playerPosBadge}>
                         <Text style={styles.playerItemPos}>{p.pos}</Text>
                       </View>
                     </View>
                   ))}
+
+                  {activeAwaySubs.length > 0 && (
+                    <>
+                      <Text style={[styles.cardSectionHeader, { marginTop: 14, fontSize: 13 }]}>Substitutes</Text>
+                      {activeAwaySubs.map(s => (
+                        <View key={`sub-${s.number}-${s.name}`} style={styles.playerItemRow}>
+                          <View style={styles.playerNumPill}>
+                            <Text style={styles.playerNumText}>{s.number}</Text>
+                          </View>
+                          <Image source={{ uri: s.photo || getPlayerPhoto(s.name) }} style={styles.playerListAvatar} />
+                          <Text style={styles.playerItemName}>{s.name}</Text>
+                          <View style={styles.playerPosBadge}>
+                            <Text style={styles.playerItemPos}>{s.position}</Text>
+                          </View>
+                        </View>
+                      ))}
+                    </>
+                  )}
                 </View>
               </View>
             )}
@@ -631,7 +822,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             <View style={styles.cardContainer}>
               <Text style={styles.cardSectionHeader}>Chronological Match Events</Text>
 
-              {matchEvents.map((evt, idx) => {
+              {activeEvents.map((evt, idx) => {
                 const isHome = evt.team === 'home';
                 const teamName = isHome ? matchup.homeTeam.name : matchup.awayTeam.name;
 

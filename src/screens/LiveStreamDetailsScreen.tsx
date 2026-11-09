@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,14 @@ import {
   Image,
   Dimensions,
   Share,
+  Modal,
+  StatusBar,
 } from 'react-native';
 import {
   Play,
   Pause,
   Maximize2,
+  Minimize2,
   Volume2,
   VolumeX,
   Radio,
@@ -27,6 +30,7 @@ import {
   Clock,
   Sparkles,
   ShieldAlert,
+  ArrowLeft,
 } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
@@ -36,6 +40,8 @@ import { DiscoverMatchup } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
 import { getAllLiveStreamMatches } from '../navigation/navHelpers';
 import { useAppNavigation } from '../navigation/NavigationContext';
+import { LiveStreamPlayer } from '../components/player/LiveStreamPlayer';
+import { streamingApiService } from '../services/streamingApiService';
 
 interface LiveStreamDetailsScreenProps {
   match: DiscoverMatchup;
@@ -50,9 +56,27 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
   const { navigate } = useAppNavigation();
   const { profile, toggleMatchReminder, toggleSaveMatch } = useProfile();
 
+  const [activeStreamUrl, setActiveStreamUrl] = useState<string | undefined>(match.streamUrl);
+  const [activeStreams, setActiveStreams] = useState<any[] | undefined>(match.streams);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [selectedQuality, setSelectedQuality] = useState<'1080p' | '720p'>('1080p');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if ((!activeStreamUrl || (activeStreams && activeStreams.length === 0)) && match.id) {
+      streamingApiService.resolveStreamMirrors(match.id).then(mirrors => {
+        if (isMounted && mirrors.length > 0) {
+          setActiveStreams(mirrors);
+          if (!activeStreamUrl) {
+            setActiveStreamUrl(mirrors[0].url);
+          }
+        }
+      }).catch(() => {});
+    }
+    return () => { isMounted = false; };
+  }, [match.id, activeStreamUrl]);
 
   const isLive = match.status === 'LIVE';
   const isReminderSet = profile.matchReminderIds.includes(match.id);
@@ -94,88 +118,16 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
         {/* ── 1. WIDESCREEN 16:9 STREAM PLAYER CONTAINER ── */}
         <View style={styles.playerContainer}>
           {isLive ? (
-            <View style={styles.livePlayerSurface}>
-              {/* Simulated Stadium Broadcast Background */}
-              <View style={styles.fieldBackdrop} />
-
-              {/* Top Stream Overlay */}
-              <View style={styles.playerTopOverlay}>
-                <View style={styles.liveBadgeCluster}>
-                  <View style={styles.pulsingRedDot} />
-                  <Text style={styles.liveStreamBadgeText}>
-                    LIVE {match.minute ? `• ${match.minute}'` : ''}
-                  </Text>
-                </View>
-
-                <View style={styles.qualityPill}>
-                  <Text style={styles.qualityPillText}>{selectedQuality} 60FPS</Text>
-                </View>
-              </View>
-
-              {/* Center Match Score Bug Overlay */}
-              <View style={styles.streamScoreBug}>
-                <Image
-                  source={{ uri: getTeamCrest(match.homeTeam.name || match.homeTeam.id) }}
-                  style={styles.bugCrest}
-                />
-                <Text style={styles.bugTeamName}>{match.homeTeam.name.substring(0, 3).toUpperCase()}</Text>
-                <Text style={styles.bugScore}>{match.homeTeam.score ?? 0}</Text>
-                <Text style={styles.bugDivider}>-</Text>
-                <Text style={styles.bugScore}>{match.awayTeam.score ?? 0}</Text>
-                <Text style={styles.bugTeamName}>{match.awayTeam.name.substring(0, 3).toUpperCase()}</Text>
-                <Image
-                  source={{ uri: getTeamCrest(match.awayTeam.name || match.awayTeam.id) }}
-                  style={styles.bugCrest}
-                />
-              </View>
-
-              {/* Bottom Player Controls Overlay */}
-              <View style={styles.playerBottomControls}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.playerCtrlBtn}
-                  onPress={() => setIsPlaying(!isPlaying)}
-                >
-                  {isPlaying ? (
-                    <Pause size={18} color="#FFFFFF" strokeWidth={2.4} />
-                  ) : (
-                    <Play size={18} color="#FFFFFF" strokeWidth={2.4} />
-                  )}
-                </TouchableOpacity>
-
-                {/* Scrubber line */}
-                <View style={styles.scrubberBar}>
-                  <View style={styles.scrubberFill} />
-                  <View style={styles.scrubberThumb} />
-                </View>
-
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.playerCtrlBtn}
-                  onPress={() => setIsMuted(!isMuted)}
-                >
-                  {isMuted ? (
-                    <VolumeX size={18} color="#EF4444" strokeWidth={2.4} />
-                  ) : (
-                    <Volume2 size={18} color="#FFFFFF" strokeWidth={2.4} />
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.playerCtrlBtn}
-                  onPress={() => {
-                    setSelectedQuality(selectedQuality === '1080p' ? '720p' : '1080p');
-                  }}
-                >
-                  <Text style={styles.qualityToggleText}>{selectedQuality}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity activeOpacity={0.8} style={styles.playerCtrlBtn}>
-                  <Maximize2 size={16} color="#FFFFFF" strokeWidth={2.4} />
-                </TouchableOpacity>
-              </View>
-            </View>
+            <LiveStreamPlayer
+              streamUrl={activeStreamUrl || match.streamUrl}
+              streams={activeStreams || match.streams}
+              isLive={isLive}
+              poster={getTeamCrest(match.homeTeam.name || match.homeTeam.id)}
+              homeTeamName={match.homeTeam.name}
+              awayTeamName={match.awayTeam.name}
+              title={`${match.homeTeam.name} vs ${match.awayTeam.name}`}
+              onToggleFullscreen={() => setIsFullscreen(true)}
+            />
           ) : (
             /* Upcoming / Unavailable Stream Experience */
             <View style={styles.upcomingPlayerSurface}>
@@ -299,37 +251,73 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
           <View style={styles.relatedSection}>
             <Text style={styles.relatedSectionTitle}>Other Live Matches</Text>
 
-            {relatedStreams.map(rel => (
-              <TouchableOpacity
-                key={rel.id}
-                activeOpacity={0.85}
-                style={styles.relatedRow}
-                onPress={() => {
-                  navigate({
-                    name: 'LiveStreamDetails',
-                    params: { match: rel },
-                  });
-                }}
-              >
-                <View style={styles.relatedLeft}>
-                  <Text style={styles.relatedComp}>{rel.competition}</Text>
-                  <Text style={styles.relatedVersus} numberOfLines={1}>
-                    {rel.homeTeam.name} vs {rel.awayTeam.name}
-                  </Text>
-                  <Text style={styles.relatedTime}>
-                    {rel.status === 'LIVE' ? `${rel.minute}' LIVE` : rel.kickoffTime}
-                  </Text>
-                </View>
+            {relatedStreams.map(rel => {
+              const relHomeCrest = getTeamCrest(rel.homeTeam.name || rel.homeTeam.id);
+              const relAwayCrest = getTeamCrest(rel.awayTeam.name || rel.awayTeam.id);
 
-                <View style={styles.watchMiniBtn}>
-                  <Tv size={14} color="#FFFFFF" strokeWidth={2.2} />
-                  <Text style={styles.watchMiniText}>Switch</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+              return (
+                <TouchableOpacity
+                  key={rel.id}
+                  activeOpacity={0.85}
+                  style={styles.relatedRow}
+                  onPress={() => {
+                    navigate({
+                      name: 'LiveStreamDetails',
+                      params: { match: rel },
+                    });
+                  }}
+                >
+                  <View style={styles.relatedLeft}>
+                    <Text style={styles.relatedComp}>{rel.competition}</Text>
+                    <View style={styles.relatedMatchupRow}>
+                      <Image source={{ uri: relHomeCrest }} style={styles.relatedCrest} />
+                      <Text style={styles.relatedTeamName} numberOfLines={1}>
+                        {rel.homeTeam.name}
+                      </Text>
+                      <Text style={styles.relatedVs}>vs</Text>
+                      <Text style={styles.relatedTeamName} numberOfLines={1}>
+                        {rel.awayTeam.name}
+                      </Text>
+                      <Image source={{ uri: relAwayCrest }} style={styles.relatedCrest} />
+                    </View>
+                    <Text style={styles.relatedTime}>
+                      {rel.status === 'LIVE' ? `${rel.minute}' LIVE` : rel.kickoffTime}
+                    </Text>
+                  </View>
+
+                  <View style={styles.watchMiniBtn}>
+                    <Tv size={14} color="#FFFFFF" strokeWidth={2.2} />
+                    <Text style={styles.watchMiniText}>Switch</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
       </ScrollView>
+
+      {/* ── 5. FULLSCREEN LANDSCAPE VIDEO PLAYER MODAL ── */}
+      <Modal
+        visible={isFullscreen}
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setIsFullscreen(false)}
+      >
+        <StatusBar hidden={isFullscreen} />
+        <View style={styles.fullscreenContainer}>
+          <LiveStreamPlayer
+            streamUrl={activeStreamUrl || match.streamUrl}
+            streams={activeStreams || match.streams}
+            isLive={isLive}
+            isFullscreen={true}
+            poster={getTeamCrest(match.homeTeam.name || match.homeTeam.id)}
+            homeTeamName={match.homeTeam.name}
+            awayTeamName={match.awayTeam.name}
+            title={`${match.homeTeam.name} vs ${match.awayTeam.name}`}
+            onToggleFullscreen={() => setIsFullscreen(false)}
+          />
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -681,6 +669,29 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginVertical: 2,
   },
+  relatedMatchupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginVertical: 3,
+  },
+  relatedCrest: {
+    width: 18,
+    height: 18,
+    resizeMode: 'contain',
+  },
+  relatedTeamName: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    flexShrink: 1,
+  },
+  relatedVs: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#7952FC',
+    marginHorizontal: 1,
+  },
   relatedTime: {
     fontSize: 10.5,
     color: '#A098B5',
@@ -698,5 +709,162 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  // Fullscreen Landscape Video Player
+  fullscreenContainer: {
+    flex: 1,
+    backgroundColor: '#050409',
+    justifyContent: 'space-between',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+  },
+  fullscreenTopBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    zIndex: 10,
+  },
+  fullscreenBackBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(30, 23, 48, 0.85)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullscreenTitleCluster: {
+    flex: 1,
+    marginHorizontal: 14,
+  },
+  fullscreenCompTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#7952FC',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  fullscreenMatchTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  fullscreenTopRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  fullscreenLiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  fullscreenLiveText: {
+    color: '#FFFFFF',
+    fontSize: 10.5,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  fullscreenQualityPill: {
+    backgroundColor: 'rgba(30, 23, 48, 0.85)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  fullscreenQualityText: {
+    color: '#ECE9FA',
+    fontSize: 10.5,
+    fontWeight: '700',
+  },
+  fullscreenCenterBug: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullscreenScoreBugContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(18, 14, 28, 0.85)',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 16,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  fullscreenBugCrest: {
+    width: 32,
+    height: 32,
+    resizeMode: 'contain',
+  },
+  fullscreenBugTeamName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
+  },
+  fullscreenBugScore: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  fullscreenBugDivider: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#7952FC',
+  },
+  fullscreenBottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(18, 14, 28, 0.85)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    gap: 12,
+  },
+  fullscreenCtrlBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#2A2045',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fullscreenScrubberContainer: {
+    flex: 1,
+    height: 16,
+    justifyContent: 'center',
+  },
+  fullscreenScrubberTrack: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 2,
+    position: 'relative',
+  },
+  fullscreenScrubberFill: {
+    width: '68%',
+    height: '100%',
+    backgroundColor: '#7952FC',
+    borderRadius: 2,
+  },
+  fullscreenScrubberThumb: {
+    position: 'absolute',
+    left: '68%',
+    top: -4,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FFFFFF',
+  },
+  fullscreenQualityBtn: {
+    backgroundColor: '#2A2045',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
 });

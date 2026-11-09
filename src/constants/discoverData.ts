@@ -56,6 +56,8 @@ export interface DiscoverMatchup {
   venue: string;
   hasLiveBroadcast: boolean;
   isReminderSet?: boolean;
+  streamUrl?: string;
+  streams?: Array<{ id: string; name: string; url: string }>;
 }
 
 // ── 1. EXPLORE COMPETITIONS (Section B) ──

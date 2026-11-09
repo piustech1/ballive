@@ -61,68 +61,100 @@ export const MatchOfTheDayTicker: React.FC = () => {
   };
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      style={styles.container}
-      onPress={handleRowPress}
-    >
-      {/* Left MOTD Badge */}
-      <View style={styles.badgePill}>
-        <Sparkles size={11} color="#FFFFFF" strokeWidth={2.4} style={styles.badgeIcon} />
-        <Text style={styles.badgeText}>MOTD</Text>
+    <View style={styles.wrapper}>
+      {/* ── TOP-EDGE CENTERED RIBBON ── */}
+      <View style={styles.topEdgeRibbon} pointerEvents="none">
+        <Sparkles size={10} color="#FFFFFF" strokeWidth={2.5} style={styles.ribbonIcon} />
+        <Text style={styles.ribbonText}>MATCH OF THE DAY</Text>
       </View>
 
-      {/* Center Fixture with Home & Away Club Badges */}
-      <View style={styles.centerContent}>
-        <View style={styles.matchupRow}>
-          <Image source={{ uri: homeCrest }} style={styles.clubCrest} />
-          <Text style={styles.teamName} numberOfLines={1}>
-            {marqueeMatch.homeTeam.name}
-          </Text>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={styles.container}
+        onPress={handleRowPress}
+      >
+        {/* Matchup with Home & Away Club Badges */}
+        <View style={styles.centerContent}>
+          <View style={styles.matchupRow}>
+            <Image source={{ uri: homeCrest }} style={styles.clubCrest} />
+            <Text style={styles.teamName} numberOfLines={1}>
+              {marqueeMatch.homeTeam.name}
+            </Text>
 
-          <Text style={styles.vsText}>vs</Text>
+            <Text style={styles.vsText}>vs</Text>
 
-          <Text style={styles.teamName} numberOfLines={1}>
-            {marqueeMatch.awayTeam.name}
-          </Text>
-          <Image source={{ uri: awayCrest }} style={styles.clubCrest} />
+            <Text style={styles.teamName} numberOfLines={1}>
+              {marqueeMatch.awayTeam.name}
+            </Text>
+            <Image source={{ uri: awayCrest }} style={styles.clubCrest} />
 
-          <Text style={styles.timeBullet} numberOfLines={1}>
-            • {marqueeMatch.kickoffTime.replace(' GMT', '')}
-          </Text>
-        </View>
-      </View>
-
-      {/* Right Countdown & Bell */}
-      <View style={styles.rightCluster}>
-        <View style={styles.countdownPill}>
-          <Text style={styles.countdownText}>{countdownText}</Text>
+            <Text style={styles.timeBullet} numberOfLines={1}>
+              • {marqueeMatch.kickoffTime.replace(' GMT', '')}
+            </Text>
+          </View>
         </View>
 
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={[styles.bellButton, isReminderSet && styles.bellButtonActive]}
-          onPress={handleBellPress}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityLabel="Toggle MOTD alert"
-        >
-          {isReminderSet ? (
-            <BellRing size={14} color="#7952FC" strokeWidth={2.5} />
-          ) : (
-            <Bell size={14} color="#A098B5" strokeWidth={2} />
-          )}
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+        {/* Right Countdown & Bell */}
+        <View style={styles.rightCluster}>
+          <View style={styles.countdownPill}>
+            <Text style={styles.countdownText}>{countdownText}</Text>
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[styles.bellButton, isReminderSet && styles.bellButtonActive]}
+            onPress={handleBellPress}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="Toggle MOTD alert"
+          >
+            {isReminderSet ? (
+              <BellRing size={14} color="#7952FC" strokeWidth={2.5} />
+            ) : (
+              <Bell size={14} color="#A098B5" strokeWidth={2} />
+            )}
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    position: 'relative',
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  topEdgeRibbon: {
+    position: 'absolute',
+    top: -9,
+    alignSelf: 'center',
+    backgroundColor: '#7952FC',
+    paddingHorizontal: 11,
+    paddingVertical: 2.5,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+  },
+  ribbonIcon: {
+    marginRight: 4,
+  },
+  ribbonText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.8,
+  },
   container: {
     height: 52,
     marginHorizontal: 16,
     paddingHorizontal: 12,
-    marginBottom: 8,
     borderRadius: 14,
     backgroundColor: '#1E1730',
     flexDirection: 'row',
@@ -134,26 +166,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 4,
   },
-  badgePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#7952FC',
-    paddingHorizontal: 7,
-    paddingVertical: 3.5,
-    borderRadius: 8,
-  },
-  badgeIcon: {
-    marginRight: 3,
-  },
-  badgeText: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.6,
-  },
   centerContent: {
     flex: 1,
-    marginHorizontal: 8,
+    marginRight: 8,
     justifyContent: 'center',
   },
   matchupRow: {

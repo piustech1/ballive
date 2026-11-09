@@ -218,32 +218,80 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           <View style={styles.tabSection}>
             <View style={styles.sectionCard}>
               <Text style={styles.cardHeaderTitle}>Fixtures & Matchdays</Text>
-              {displayFixtures.map(fixture => (
-                <TouchableOpacity
-                  key={fixture.id}
-                  activeOpacity={0.8}
-                  style={styles.fixtureItem}
-                  onPress={() => {
-                    navigate({
-                      name: 'MatchDetails',
-                      params: { matchup: fixture },
-                    });
-                  }}
-                >
-                  <View style={styles.fixtureMetaLeft}>
-                    <Text style={styles.fixtureVersusText} numberOfLines={1}>
-                      {fixture.homeTeam.name} vs {fixture.awayTeam.name}
-                    </Text>
-                    <Text style={styles.fixtureDateText}>
-                      {fixture.kickoffDate} • {fixture.kickoffTime} • {fixture.venue}
-                    </Text>
-                  </View>
+              <View style={styles.fixturesList}>
+                {displayFixtures.map(fixture => {
+                  const homeCrest = getTeamCrest(fixture.homeTeam.name || fixture.homeTeam.id);
+                  const awayCrest = getTeamCrest(fixture.awayTeam.name || fixture.awayTeam.id);
 
-                  <View style={styles.fixtureRightArrow}>
-                    <ChevronRight size={18} color="#7952FC" strokeWidth={2.4} />
-                  </View>
-                </TouchableOpacity>
-              ))}
+                  return (
+                    <TouchableOpacity
+                      key={fixture.id}
+                      activeOpacity={0.85}
+                      style={styles.fixtureCard}
+                      onPress={() => {
+                        navigate({
+                          name: 'MatchDetails',
+                          params: { matchup: fixture },
+                        });
+                      }}
+                    >
+                      {/* Top Info Strip */}
+                      <View style={styles.fixtureHeaderRow}>
+                        <View style={styles.fixtureDatePill}>
+                          <Calendar size={11} color="#A098B5" strokeWidth={2.2} />
+                          <Text style={styles.fixtureDateText}>{fixture.kickoffDate}</Text>
+                        </View>
+                        <View style={styles.fixtureTimePill}>
+                          <Clock size={11} color="#7952FC" strokeWidth={2.2} />
+                          <Text style={styles.fixtureTimePillText}>{fixture.kickoffTime}</Text>
+                        </View>
+                      </View>
+
+                      {/* Main Matchup with Big Club Badges */}
+                      <View style={styles.fixtureTeamsRow}>
+                        {/* Home Club */}
+                        <View style={styles.fixtureTeamCol}>
+                          <View style={styles.fixtureCrestCircle}>
+                            <Image source={{ uri: homeCrest }} style={styles.fixtureCrestImg} />
+                          </View>
+                          <Text style={styles.fixtureTeamName} numberOfLines={1}>
+                            {fixture.homeTeam.name}
+                          </Text>
+                        </View>
+
+                        {/* Center VS */}
+                        <View style={styles.fixtureVsBox}>
+                          <View style={styles.fixtureVsPill}>
+                            <Text style={styles.fixtureVsLabel}>VS</Text>
+                          </View>
+                          <Text style={styles.fixtureVenueText} numberOfLines={1}>
+                            {fixture.venue}
+                          </Text>
+                        </View>
+
+                        {/* Away Club */}
+                        <View style={styles.fixtureTeamCol}>
+                          <View style={styles.fixtureCrestCircle}>
+                            <Image source={{ uri: awayCrest }} style={styles.fixtureCrestImg} />
+                          </View>
+                          <Text style={styles.fixtureTeamName} numberOfLines={1}>
+                            {fixture.awayTeam.name}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Bottom Action Footer */}
+                      <View style={styles.fixtureFooter}>
+                        <Text style={styles.fixtureWatchStreamLabel}>Full HD Stream • Live Coverage</Text>
+                        <View style={styles.fixtureArrowPill}>
+                          <Text style={styles.fixtureArrowPillText}>Match Details</Text>
+                          <ChevronRight size={13} color="#FFFFFF" strokeWidth={2.5} />
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           </View>
         )}
@@ -527,28 +575,134 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  fixtureItem: {
+  fixturesList: {
+    gap: 12,
+    marginTop: 6,
+  },
+  fixtureCard: {
+    backgroundColor: '#181226',
+    borderRadius: 16,
+    padding: 14,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  fixtureHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  fixtureDatePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#181524',
-  },
-  fixtureMetaLeft: {
-    flex: 1,
-  },
-  fixtureVersusText: {
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 2,
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   fixtureDateText: {
-    fontSize: 11,
+    fontSize: 10.5,
+    fontWeight: '600',
     color: '#A098B5',
   },
-  fixtureRightArrow: {
-    paddingLeft: 8,
+  fixtureTimePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(121, 82, 252, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  fixtureTimePillText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#7952FC',
+  },
+  fixtureTeamsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  fixtureTeamCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  fixtureCrestCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#261C3D',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
+  fixtureCrestImg: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
+  },
+  fixtureTeamName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  fixtureVsBox: {
+    width: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fixtureVsPill: {
+    backgroundColor: '#2A2045',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 4,
+  },
+  fixtureVsLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#7952FC',
+    letterSpacing: 0.5,
+  },
+  fixtureVenueText: {
+    fontSize: 9.5,
+    color: '#8A81A5',
+    textAlign: 'center',
+  },
+  fixtureFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  fixtureWatchStreamLabel: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  fixtureArrowPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#7952FC',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  fixtureArrowPillText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   tableHeaderSection: {
     flexDirection: 'row',

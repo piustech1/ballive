@@ -21,6 +21,10 @@ export interface LiveMatch {
   minute: number;
   imageUrl: string;
   hasLiveStream: boolean;
+  streamUrl?: string;
+  streams?: Array<{ id: string; name: string; url: string }>;
+  homeBadge?: string;
+  awayBadge?: string;
 }
 
 export interface FeaturedCompetition {

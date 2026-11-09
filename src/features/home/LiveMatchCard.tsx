@@ -43,7 +43,7 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) 
         <View style={styles.topRow}>
           <View style={styles.compBadge}>
             <CompetitionLogo competitionId={match.competition} size={18} containerStyle={{ marginRight: 6 }} />
-            <Text style={styles.competitionText} numberOfLines={1}>
+            <Text style={styles.competitionText} numberOfLines={1} ellipsizeMode="tail">
               {match.competition}
             </Text>
           </View>
@@ -129,12 +129,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3.5,
     borderRadius: 12,
-    maxWidth: 140,
+    maxWidth: 130,
+    flexShrink: 1,
+    marginRight: 8,
   },
   competitionText: {
     fontSize: 10.5,
     fontWeight: '700',
     color: '#ECE9FA',
+    flexShrink: 1,
   },
   matchupSurface: {
     backgroundColor: 'rgba(18, 14, 28, 0.88)',

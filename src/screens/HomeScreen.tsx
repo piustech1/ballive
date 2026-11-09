@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
   StatusBar,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import Colors from '../theme/colors';
 import { Header } from '../components/common/Header';
@@ -23,11 +24,39 @@ import { resolveLiveMatchToMatchup, findCompetitionById } from '../navigation/na
 import { MatchOfTheDayTicker } from '../features/home/MatchOfTheDayTicker';
 import { FilterBottomSheet } from '../features/home/FilterBottomSheet';
 import { QuickAccessLauncher } from '../features/home/QuickAccessLauncher';
+import { streamingApiService } from '../services/streamingApiService';
 
 export const HomeScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+
+  // Live match state with real API wiring
+  const [liveMatches, setLiveMatches] = useState<LiveMatch[]>(LIVE_MATCHES);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const loadRealMatches = useCallback(async () => {
+    try {
+      const real = await streamingApiService.getLiveMatches();
+      if (real && real.length > 0) {
+        setLiveMatches(real);
+      }
+    } catch (e) {
+      // Keep existing matches on network error
+    }
+  }, []);
+
+  useEffect(() => {
+    loadRealMatches();
+    const timer = setInterval(loadRealMatches, 45000);
+    return () => clearInterval(timer);
+  }, [loadRealMatches]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadRealMatches();
+    setIsRefreshing(false);
+  };
 
   // Modal bottom sheet states
   const [isFilterSheetVisible, setIsFilterSheetVisible] = useState(false);
@@ -37,7 +66,7 @@ export const HomeScreen: React.FC = () => {
 
   // Filter live matches based on search query, category, and bottom sheet filter
   const filteredMatches = useMemo(() => {
-    return LIVE_MATCHES.filter(match => {
+    return liveMatches.filter(match => {
       // Search query filtering
       const matchesSearch =
         !searchQuery.trim() ||
@@ -132,6 +161,14 @@ export const HomeScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor="#7952FC"
+            colors={['#7952FC']}
+          />
+        }
       >
         {/* 1. Football Competition Categories (Circular Colored Badges) */}
         <CompetitionCategories
@@ -141,7 +178,7 @@ export const HomeScreen: React.FC = () => {
 
         {/* 2. Live Streams Section (Wide Horizontal Cards) */}
         <LiveStreamsSection
-          matches={filteredMatches.length > 0 ? filteredMatches : LIVE_MATCHES}
+          matches={filteredMatches.length > 0 ? filteredMatches : liveMatches}
           onViewAllPress={() => {
             navigate({ name: 'AllLiveStreams' });
           }}

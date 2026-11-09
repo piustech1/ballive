@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import Colors from '../../theme/colors';
+import { CompetitionLogo } from '../../components/common/CompetitionLogo';
 import { PopularLeague } from '../../constants/discoverData';
 
 interface PopularLeaguesProps {
@@ -50,13 +51,12 @@ export const PopularLeagues: React.FC<PopularLeaguesProps> = ({
               accessibilityLabel={`${league.name}, ${league.country}`}
             >
               {/* League Crest Icon */}
-              <View style={styles.iconWrapper}>
-                <Image
-                  source={{ uri: league.logoUrl }}
-                  style={styles.leagueIcon}
-                  resizeMode="contain"
-                />
-              </View>
+              <CompetitionLogo
+                uri={league.logoUrl}
+                competitionId={league.id}
+                size={40}
+                containerStyle={styles.logoMargin}
+              />
 
               {/* League Info */}
               <View style={styles.infoCol}>
@@ -117,6 +117,9 @@ const styles = StyleSheet.create({
   rowBorder: {
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  logoMargin: {
+    marginRight: 14,
   },
   iconWrapper: {
     width: 42,

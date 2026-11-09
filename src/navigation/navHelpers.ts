@@ -25,13 +25,17 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
       minute: live.minute,
       homeTeam: {
         ...existing.homeTeam,
+        crestUrl: live.homeBadge || existing.homeTeam.crestUrl,
         score: live.score.home,
       },
       awayTeam: {
         ...existing.awayTeam,
+        crestUrl: live.awayBadge || existing.awayTeam.crestUrl,
         score: live.score.away,
       },
       status: 'LIVE',
+      streamUrl: live.streamUrl || existing.streamUrl,
+      streams: live.streams || existing.streams,
     };
   }
 
@@ -53,17 +57,19 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     homeTeam: {
       id: `team-${homeKey}`,
       name: live.homeTeam,
-      crestUrl: CLUB_CRESTS[homeKey] || CLUB_CRESTS['real-madrid'],
+      crestUrl: live.homeBadge || CLUB_CRESTS[homeKey] || CLUB_CRESTS['real-madrid'],
       score: live.score.home,
     },
     awayTeam: {
       id: `team-${awayKey}`,
       name: live.awayTeam,
-      crestUrl: CLUB_CRESTS[awayKey] || CLUB_CRESTS['man-city'],
+      crestUrl: live.awayBadge || CLUB_CRESTS[awayKey] || CLUB_CRESTS['man-city'],
       score: live.score.away,
     },
     venue: 'Premier Stadium',
     hasLiveBroadcast: live.hasLiveStream,
+    streamUrl: live.streamUrl,
+    streams: live.streams,
   };
 }
 

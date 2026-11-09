@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { ArrowLeft, Bell, BellRing, Calendar } from 'lucide-react-native';
 import Colors from '../../../theme/colors';
+import { SecondaryScreenHeader } from '../../../components/common/SecondaryScreenHeader';
 import { UPCOMING_HIGHLIGHTS } from '../../../constants/discoverData';
 
 interface MatchRemindersModalProps {
@@ -34,24 +35,11 @@ export const MatchRemindersModal: React.FC<MatchRemindersModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={onClose}
-            style={styles.backBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityLabel="Back"
-          >
-            <ArrowLeft size={22} color={Colors.textPrimary} strokeWidth={2.2} />
-          </TouchableOpacity>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>Match Reminders</Text>
-            <Text style={styles.headerSubtitle}>
-              {matchReminderIds.length} {matchReminderIds.length === 1 ? 'alert' : 'alerts'} scheduled
-            </Text>
-          </View>
-          <View style={{ width: 40 }} />
-        </View>
+        <SecondaryScreenHeader
+          title="Match Reminders"
+          subtitle={`${matchReminderIds.length} ${matchReminderIds.length === 1 ? 'alert' : 'alerts'} scheduled`}
+          onBack={onClose}
+        />
 
         {/* Content List */}
         <ScrollView

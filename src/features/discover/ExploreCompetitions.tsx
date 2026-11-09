@@ -8,6 +8,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import Colors from '../../theme/colors';
+import { CompetitionLogo } from '../../components/common/CompetitionLogo';
 import { DiscoverCompetition } from '../../constants/discoverData';
 
 interface ExploreCompetitionsProps {
@@ -53,13 +54,11 @@ export const ExploreCompetitions: React.FC<ExploreCompetitionsProps> = ({
           >
             {/* Top Accent Strip & Logo */}
             <View style={styles.cardHeader}>
-              <View style={styles.logoContainer}>
-                <Image
-                  source={{ uri: comp.logoUrl }}
-                  style={styles.logoImage}
-                  resizeMode="contain"
-                />
-              </View>
+              <CompetitionLogo
+                uri={comp.logoUrl}
+                competitionId={comp.id}
+                size={40}
+              />
               <View style={styles.regionBadge}>
                 <Text style={styles.regionText}>{comp.country}</Text>
               </View>
