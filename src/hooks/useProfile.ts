@@ -17,5 +17,6 @@ export const useProfile = () => {
     toggleFollowTeam: (teamId: string) => ProfileStorage.toggleFollowTeam(teamId),
     toggleFollowLeague: (leagueId: string) => ProfileStorage.toggleFollowLeague(leagueId),
     toggleMatchReminder: (matchId: string) => ProfileStorage.toggleMatchReminder(matchId),
+    toggleSaveMatch: (matchId: string) => ProfileStorage.toggleSaveMatch(matchId),
   };
 };

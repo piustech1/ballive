@@ -8,6 +8,7 @@ export interface UserProfileData {
   followedTeamIds: string[];
   followedLeagueIds: string[];
   matchReminderIds: string[];
+  savedMatchIds: string[];
   timeFormat: '12h' | '24h';
   timeZone: string;
   language: string;
@@ -26,6 +27,7 @@ export const DEFAULT_PROFILE: UserProfileData = {
   followedTeamIds: ['team-arsenal', 'team-real-madrid', 'team-man-city'],
   followedLeagueIds: ['league-premier-league', 'league-laliga'],
   matchReminderIds: ['matchup-2'],
+  savedMatchIds: ['matchup-1', 'matchup-2'],
   timeFormat: '12h',
   timeZone: 'Automatic',
   language: 'English',
@@ -141,6 +143,22 @@ class ProfileStorageService {
 
     await this.updateProfile({ matchReminderIds: list });
     return isSet;
+  }
+
+  public async toggleSaveMatch(matchId: string): Promise<boolean> {
+    const list = [...(this.currentData.savedMatchIds || [])];
+    const index = list.indexOf(matchId);
+    let isSaved = false;
+
+    if (index >= 0) {
+      list.splice(index, 1);
+    } else {
+      list.push(matchId);
+      isSaved = true;
+    }
+
+    await this.updateProfile({ savedMatchIds: list });
+    return isSaved;
   }
 
   public subscribe(listener: Listener): () => void {

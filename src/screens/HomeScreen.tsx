@@ -18,11 +18,24 @@ import {
   FeaturedCompetition,
 } from '../constants/mockData';
 
+import { useAppNavigation } from '../navigation/NavigationContext';
+import { resolveLiveMatchToMatchup, findCompetitionById } from '../navigation/navHelpers';
+import { MatchOfTheDayTicker } from '../features/home/MatchOfTheDayTicker';
+import { FilterBottomSheet } from '../features/home/FilterBottomSheet';
+import { QuickAccessLauncher } from '../features/home/QuickAccessLauncher';
+
 export const HomeScreen: React.FC = () => {
+  const { navigate } = useAppNavigation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
-  // Filter live matches based on search query and category
+  // Modal bottom sheet states
+  const [isFilterSheetVisible, setIsFilterSheetVisible] = useState(false);
+  const [isQuickAccessVisible, setIsQuickAccessVisible] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [competitionFilter, setCompetitionFilter] = useState('all');
+
+  // Filter live matches based on search query, category, and bottom sheet filter
   const filteredMatches = useMemo(() => {
     return LIVE_MATCHES.filter(match => {
       // Search query filtering
@@ -33,23 +46,34 @@ export const HomeScreen: React.FC = () => {
         match.homeTeam.toLowerCase().includes(searchQuery.toLowerCase()) ||
         match.awayTeam.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Category filtering
+      // Category filtering (from circular pills)
       let matchesCategory = true;
-      if (selectedCategoryId === 'pl') {
+      const cat = selectedCategoryId || (competitionFilter !== 'all' ? competitionFilter : null);
+      if (cat === 'pl') {
         matchesCategory = match.competition.toLowerCase().includes('premier');
-      } else if (selectedCategoryId === 'ucl') {
+      } else if (cat === 'ucl') {
         matchesCategory = match.competition.toLowerCase().includes('champions');
-      } else if (selectedCategoryId === 'laliga') {
+      } else if (cat === 'laliga') {
         matchesCategory = match.competition.toLowerCase().includes('laliga');
-      } else if (selectedCategoryId === 'seriea') {
+      } else if (cat === 'seriea') {
         matchesCategory = match.competition.toLowerCase().includes('serie a');
-      } else if (selectedCategoryId === 'bundesliga') {
+      } else if (cat === 'bundesliga') {
         matchesCategory = match.competition.toLowerCase().includes('bundesliga');
       }
 
-      return matchesSearch && matchesCategory;
+      // Status filtering (from bottom sheet)
+      let matchesStatus = true;
+      if (statusFilter === 'live') {
+        matchesStatus = match.minute > 0 && match.minute < 90;
+      } else if (statusFilter === 'upcoming') {
+        matchesStatus = match.minute === 0;
+      } else if (statusFilter === 'completed') {
+        matchesStatus = match.minute >= 90;
+      }
+
+      return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [searchQuery, selectedCategoryId]);
+  }, [searchQuery, selectedCategoryId, competitionFilter, statusFilter]);
 
   // Filter featured competitions based on search query
   const filteredCompetitions = useMemo(() => {
@@ -64,37 +88,29 @@ export const HomeScreen: React.FC = () => {
   }, [searchQuery]);
 
   const handleMatchPress = (match: LiveMatch) => {
-    Alert.alert(
-      'Live Stream',
-      `Connecting to high-definition live satellite feed for ${match.title}...`,
-      [{ text: 'OK' }]
-    );
+    navigate({
+      name: 'LiveStreamDetails',
+      params: { match: resolveLiveMatchToMatchup(match) },
+    });
   };
 
   const handleCompetitionPress = (comp: FeaturedCompetition) => {
-    Alert.alert(
-      comp.name,
-      `Viewing ${comp.name} standings, fixtures and broadcast schedules.`,
-      [{ text: 'Close' }]
-    );
+    navigate({
+      name: 'CompetitionDetails',
+      params: { competition: findCompetitionById(comp.id) },
+    });
   };
 
   const handleFilterPress = () => {
-    Alert.alert('Filters', 'Filter matches by live status, broadcast network, or league.', [
-      { text: 'Done' },
-    ]);
+    setIsFilterSheetVisible(true);
   };
 
   const handleMenuPress = () => {
-    Alert.alert('BALLIVE Menu', 'Version 1.0.0 (Phase 1 Build)\nNative Android Football Streaming App', [
-      { text: 'Close' },
-    ]);
+    setIsQuickAccessVisible(true);
   };
 
   const handleNotificationsPress = () => {
-    Alert.alert('Match Notifications', 'You will receive kickoff reminders for upcoming live matches.', [
-      { text: 'OK' },
-    ]);
+    navigate({ name: 'Notifications' });
   };
 
   return (
@@ -126,19 +142,43 @@ export const HomeScreen: React.FC = () => {
         {/* 2. Live Streams Section (Wide Horizontal Cards) */}
         <LiveStreamsSection
           matches={filteredMatches.length > 0 ? filteredMatches : LIVE_MATCHES}
-          onViewAllPress={() => Alert.alert('Live Streams', 'Viewing all live match feeds.')}
+          onViewAllPress={() => {
+            navigate({ name: 'AllLiveStreams' });
+          }}
           onMatchPress={handleMatchPress}
         />
 
-        {/* 3. Featured Competitions Section (Replacing Popular Creators) */}
+        {/* 3. Featured Competitions Section */}
         <FeaturedCompetitions
           competitions={
             filteredCompetitions.length > 0 ? filteredCompetitions : FEATURED_COMPETITIONS
           }
-          onViewAllPress={() => Alert.alert('Competitions', 'Viewing all major leagues.')}
+          onViewAllPress={() => {
+            navigate({ name: 'AllCompetitions' });
+          }}
           onCompetitionPress={handleCompetitionPress}
         />
+
+        {/* 4. Match of the Day Countdown Ticker (Compact 52dp height, directly beneath Featured Competitions) */}
+        <MatchOfTheDayTicker />
       </ScrollView>
+
+      {/* ── NATIVE MODAL BOTTOM SHEETS ── */}
+      <FilterBottomSheet
+        visible={isFilterSheetVisible}
+        onClose={() => setIsFilterSheetVisible(false)}
+        selectedStatus={statusFilter}
+        selectedCompetition={competitionFilter}
+        onApply={(status, comp) => {
+          setStatusFilter(status);
+          setCompetitionFilter(comp);
+        }}
+      />
+
+      <QuickAccessLauncher
+        visible={isQuickAccessVisible}
+        onClose={() => setIsQuickAccessVisible(false)}
+      />
     </View>
   );
 };

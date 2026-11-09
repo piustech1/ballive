@@ -6,9 +6,9 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { Radio } from 'lucide-react-native';
 import Colors from '../../theme/colors';
 import { LiveMatch } from '../../constants/mockData';
+import { LiveBadge } from '../../components/common/LiveBadge';
 
 interface LiveMatchCardProps {
   match: LiveMatch;
@@ -45,11 +45,8 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) 
             </Text>
           </View>
 
-          {/* Red Live Badge on the Right */}
-          <View style={styles.liveBadge}>
-            <Text style={styles.liveText}>Live</Text>
-            <Radio size={12} color="#FFFFFF" strokeWidth={2.5} style={styles.liveIcon} />
-          </View>
+          {/* Unified Solid Red Live Badge on the Right */}
+          <LiveBadge variant="solid" />
         </View>
       </ImageBackground>
     </TouchableOpacity>

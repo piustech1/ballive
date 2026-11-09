@@ -26,7 +26,12 @@ import {
   DiscoverMatchup,
 } from '../constants/discoverData';
 
+import { useAppNavigation } from '../navigation/NavigationContext';
+import { useProfile } from '../hooks/useProfile';
+
 export const DiscoverScreen: React.FC = () => {
+  const { navigate } = useAppNavigation();
+  const { toggleMatchReminder } = useProfile();
   const [searchQuery, setSearchQuery] = useState('');
 
   // ── FILTER DATA IN REAL TIME ──
@@ -85,66 +90,46 @@ export const DiscoverScreen: React.FC = () => {
 
   // ── USER INTERACTIONS & HANDLERS ──
   const handleCompetitionPress = (comp: DiscoverCompetition) => {
-    Alert.alert(
-      comp.name,
-      `Country: ${comp.country}\nSeason: ${comp.season}\nParticipating Teams: ${comp.teamsCount}\n\nStandings and official fixtures will be synchronized from the live API.`,
-      [{ text: 'Close' }]
-    );
+    navigate({
+      name: 'CompetitionDetails',
+      params: { competition: comp },
+    });
   };
 
   const handleLeaguePress = (league: PopularLeague) => {
-    Alert.alert(
-      league.name,
-      `Region: ${league.country}\nRound: ${league.currentMatchweek}\nOverview: ${league.description}`,
-      [{ text: 'View League Table' }, { text: 'Close', style: 'cancel' }]
-    );
+    navigate({
+      name: 'CompetitionDetails',
+      params: { competition: league },
+    });
   };
 
   const handleTeamPress = (team: PopularTeam) => {
-    Alert.alert(
-      team.name,
-      `Country: ${team.country}\nHome Ground: ${team.stadium}\nHonors: ${team.domesticTitle}`,
-      [{ text: 'Team Squad' }, { text: 'Close', style: 'cancel' }]
-    );
+    navigate({
+      name: 'TeamDetails',
+      params: { team },
+    });
   };
 
   const handleMatchDetailsPress = (matchup: DiscoverMatchup) => {
-    const scoreInfo =
-      matchup.status === 'LIVE' || matchup.status === 'FT'
-        ? `\nCurrent Score: ${matchup.homeTeam.name} ${matchup.homeTeam.score} - ${matchup.awayTeam.score} ${matchup.awayTeam.name}`
-        : '';
-
-    Alert.alert(
-      `${matchup.homeTeam.name} vs ${matchup.awayTeam.name}`,
-      `Tournament: ${matchup.competition}\nStatus: ${matchup.status}\nKickoff: ${matchup.kickoffDate} at ${matchup.kickoffTime}\nStadium: ${matchup.venue}${scoreInfo}\nBroadcast: Full HD Satellite Feed`,
-      [{ text: 'Close' }]
-    );
+    navigate({
+      name: 'MatchDetails',
+      params: { matchup },
+    });
   };
 
   const handleWatchPress = (matchup: DiscoverMatchup) => {
-    Alert.alert(
-      'Live Football Stream',
-      `Connecting to authorized high-bitrate live satellite feed for ${matchup.homeTeam.name} vs ${matchup.awayTeam.name}...`,
-      [{ text: 'Connect Stream' }]
-    );
+    navigate({
+      name: 'MatchDetails',
+      params: { matchup },
+    });
   };
 
   const handleReminderToggle = (matchup: DiscoverMatchup, isSet: boolean) => {
-    Alert.alert(
-      isSet ? 'Kickoff Alert Enabled' : 'Reminder Cancelled',
-      isSet
-        ? `We will notify you 15 minutes before ${matchup.homeTeam.name} vs ${matchup.awayTeam.name} kicks off on ${matchup.kickoffDate}!`
-        : `Kickoff reminder removed for ${matchup.homeTeam.name} vs ${matchup.awayTeam.name}.`,
-      [{ text: 'OK' }]
-    );
+    toggleMatchReminder(matchup.id);
   };
 
   const handleNotificationsPress = () => {
-    Alert.alert(
-      'Discover Notifications',
-      'You are receiving alerts for major cup draws, breaking team lineups, and fixture schedule releases.',
-      [{ text: 'Preferences' }, { text: 'Done' }]
-    );
+    navigate({ name: 'Notifications' });
   };
 
   return (
@@ -190,9 +175,7 @@ export const DiscoverScreen: React.FC = () => {
             {filteredCompetitions.length > 0 && (
               <ExploreCompetitions
                 competitions={filteredCompetitions}
-                onSeeAllPress={() =>
-                  Alert.alert('All Competitions', 'Browsing full directory of 40+ global competitions.')
-                }
+                onSeeAllPress={() => navigate({ name: 'AllCompetitions' })}
                 onCompetitionPress={handleCompetitionPress}
               />
             )}
@@ -201,9 +184,7 @@ export const DiscoverScreen: React.FC = () => {
             {filteredLeagues.length > 0 && (
               <PopularLeagues
                 leagues={filteredLeagues}
-                onViewAllPress={() =>
-                  Alert.alert('All Leagues', 'Viewing all European and international leagues.')
-                }
+                onViewAllPress={() => navigate({ name: 'AllLeagues' })}
                 onLeaguePress={handleLeaguePress}
               />
             )}
@@ -212,9 +193,7 @@ export const DiscoverScreen: React.FC = () => {
             {filteredTeams.length > 0 && (
               <PopularTeams
                 teams={filteredTeams}
-                onViewAllPress={() =>
-                  Alert.alert('All Clubs', 'Browsing all clubs across top flight divisions.')
-                }
+                onViewAllPress={() => navigate({ name: 'AllTeams' })}
                 onTeamPress={handleTeamPress}
               />
             )}
@@ -224,7 +203,10 @@ export const DiscoverScreen: React.FC = () => {
               <UpcomingHighlights
                 matchups={filteredMatchups}
                 onViewAllPress={() =>
-                  Alert.alert('Upcoming Highlights', 'Viewing all scheduled marquee matchups.')
+                  navigate({
+                    name: 'MatchDetails',
+                    params: { matchup: UPCOMING_HIGHLIGHTS[0] },
+                  })
                 }
                 onMatchDetailsPress={handleMatchDetailsPress}
                 onWatchPress={handleWatchPress}
