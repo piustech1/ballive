@@ -294,32 +294,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
           </TouchableOpacity>
         </View>
 
-        {/* ── 4. BROADCAST METADATA CARD ── */}
-        <View style={styles.metaCard}>
-          <Text style={styles.metaCardTitle}>Live Stream Specifications</Text>
-
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Feed Source</Text>
-            <Text style={styles.metaVal}>BALLIVE Authorized Satellite Feed 1</Text>
-          </View>
-
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Resolution</Text>
-            <Text style={styles.metaVal}>{selectedQuality} 60FPS (Auto Variable Bitrate)</Text>
-          </View>
-
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Audio Commentary</Text>
-            <Text style={styles.metaVal}>English (Dolby Surround 5.1)</Text>
-          </View>
-
-          <View style={styles.metaRow}>
-            <Text style={styles.metaLabel}>Broadcast Latency</Text>
-            <Text style={styles.metaVal}>Ultra-low latency (&lt;1.8s live)</Text>
-          </View>
-        </View>
-
-        {/* ── 5. OTHER LIVE STREAMS CAROUSEL ── */}
+        {/* ── 4. OTHER LIVE STREAMS CAROUSEL ── */}
         {relatedStreams.length > 0 && (
           <View style={styles.relatedSection}>
             <Text style={styles.relatedSectionTitle}>Other Live Matches</Text>

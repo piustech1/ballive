@@ -2,13 +2,13 @@ import React from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
 import { CheckCircle2 } from 'lucide-react-native';
 import Colors from '../../theme/colors';
 import { FeaturedCompetition } from '../../constants/mockData';
+import { CompetitionLogo } from '../../components/common/CompetitionLogo';
 
 interface FeaturedCompetitionCardProps {
   competition: FeaturedCompetition;
@@ -27,14 +27,13 @@ export const FeaturedCompetitionCard: React.FC<FeaturedCompetitionCardProps> = (
       accessibilityLabel={`${competition.name}, ${competition.season}`}
       accessibilityRole="button"
     >
-      {/* Left Circular Emblem Container */}
-      <View style={styles.avatarContainer}>
-        <Image
-          source={{ uri: competition.crestUrl }}
-          style={styles.emblemImage}
-          resizeMode="contain"
-        />
-      </View>
+      {/* Left Circular White Emblem Container */}
+      <CompetitionLogo
+        uri={competition.crestUrl}
+        competitionId={competition.id}
+        size={44}
+        containerStyle={styles.logoMargin}
+      />
 
       {/* Middle/Right Details */}
       <View style={styles.infoContainer}>
@@ -77,19 +76,8 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
-  avatarContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#231D36',
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoMargin: {
     marginRight: 12,
-    padding: 6,
-  },
-  emblemImage: {
-    width: '100%',
-    height: '100%',
   },
   infoContainer: {
     flex: 1,

@@ -11,6 +11,7 @@ import {
 import { Search, ChevronRight, Trophy } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
+import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import { EXPLORE_COMPETITIONS, DiscoverCompetition } from '../constants/discoverData';
 import { FEATURED_COMPETITIONS } from '../constants/mockData';
 import { useAppNavigation } from '../navigation/NavigationContext';
@@ -88,9 +89,12 @@ export const AllCompetitionsScreen: React.FC = () => {
               });
             }}
           >
-            <View style={styles.emblemWrapper}>
-              <Image source={{ uri: comp.logoUrl }} style={styles.emblemImage} />
-            </View>
+            <CompetitionLogo
+              uri={comp.logoUrl}
+              competitionId={comp.id}
+              size={48}
+              containerStyle={{ marginRight: 14 }}
+            />
 
             <View style={styles.infoWrapper}>
               <Text style={styles.compName} numberOfLines={1}>

@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { X, Check } from 'lucide-react-native';
+import { CompetitionLogo } from '../../components/common/CompetitionLogo';
 
 interface FilterBottomSheetProps {
   visible: boolean;
@@ -27,11 +28,11 @@ const STATUS_OPTIONS = [
 
 const COMPETITION_OPTIONS = [
   { id: 'all', label: 'All Competitions' },
-  { id: 'pl', label: 'Premier League' },
-  { id: 'ucl', label: 'UEFA Champions League' },
-  { id: 'laliga', label: 'LaLiga' },
-  { id: 'seriea', label: 'Serie A' },
-  { id: 'bundesliga', label: 'Bundesliga' },
+  { id: 'pl', label: 'Premier League', compId: 'pl' },
+  { id: 'ucl', label: 'Champions League', compId: 'ucl' },
+  { id: 'laliga', label: 'LaLiga', compId: 'laliga' },
+  { id: 'seriea', label: 'Serie A', compId: 'seriea' },
+  { id: 'bundesliga', label: 'Bundesliga', compId: 'bundesliga' },
 ];
 
 export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
@@ -128,6 +129,13 @@ export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
                         style={[styles.chip, isSelected && styles.chipActive]}
                         onPress={() => setLocalCompetition(opt.id)}
                       >
+                        {opt.compId && (
+                          <CompetitionLogo
+                            competitionId={opt.compId}
+                            size={18}
+                            containerStyle={{ marginRight: 6 }}
+                          />
+                        )}
                         <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
                           {opt.label}
                         </Text>
@@ -234,16 +242,13 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#181324',
+    backgroundColor: '#281E40',
     paddingHorizontal: 13,
-    paddingVertical: 9,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: '#2A2045',
+    paddingVertical: 8.5,
+    borderRadius: 12,
   },
   chipActive: {
     backgroundColor: '#7952FC',
-    borderColor: '#7952FC',
   },
   liveRedDot: {
     width: 6,
@@ -303,3 +308,5 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
+
+export default FilterBottomSheet;

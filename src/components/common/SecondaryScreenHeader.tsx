@@ -25,6 +25,7 @@ interface SecondaryScreenHeaderProps {
   onBack?: () => void;
   rightAction?: HeaderAction;
   secondaryRightAction?: HeaderAction;
+  rightCustomComponent?: React.ReactNode;
 }
 
 export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
@@ -33,6 +34,7 @@ export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
   onBack,
   rightAction,
   secondaryRightAction,
+  rightCustomComponent,
 }) => {
   const insets = useSafeAreaInsets();
   const { goBack } = useAppNavigation();
@@ -73,55 +75,61 @@ export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
 
         {/* Right Actions Cluster */}
         <View style={styles.rightActionsRow}>
-          {secondaryRightAction && (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.actionButton,
-                secondaryRightAction.active && styles.actionButtonActive,
-              ]}
-              onPress={secondaryRightAction.onPress}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel={secondaryRightAction.accessibilityLabel || 'Action'}
-            >
-              <secondaryRightAction.icon
-                size={19}
-                color={
-                  secondaryRightAction.active
-                    ? secondaryRightAction.activeColor || '#7952FC'
-                    : '#A098B5'
-                }
-                strokeWidth={2.2}
-              />
-            </TouchableOpacity>
-          )}
-
-          {rightAction && (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              style={[
-                styles.actionButton,
-                rightAction.active && styles.actionButtonActive,
-              ]}
-              onPress={rightAction.onPress}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              accessibilityLabel={rightAction.accessibilityLabel || 'Action'}
-            >
-              <rightAction.icon
-                size={19}
-                color={
-                  rightAction.active
-                    ? rightAction.activeColor || '#7952FC'
-                    : '#FFFFFF'
-                }
-                strokeWidth={2.2}
-              />
-              {rightAction.badge !== undefined && rightAction.badge > 0 && (
-                <View style={styles.badgePill}>
-                  <Text style={styles.badgeText}>{rightAction.badge}</Text>
-                </View>
+          {rightCustomComponent ? (
+            rightCustomComponent
+          ) : (
+            <>
+              {secondaryRightAction && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={[
+                    styles.actionButton,
+                    secondaryRightAction.active && styles.actionButtonActive,
+                  ]}
+                  onPress={secondaryRightAction.onPress}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={secondaryRightAction.accessibilityLabel || 'Action'}
+                >
+                  <secondaryRightAction.icon
+                    size={19}
+                    color={
+                      secondaryRightAction.active
+                        ? secondaryRightAction.activeColor || '#7952FC'
+                        : '#A098B5'
+                    }
+                    strokeWidth={2.2}
+                  />
+                </TouchableOpacity>
               )}
-            </TouchableOpacity>
+
+              {rightAction && (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  style={[
+                    styles.actionButton,
+                    rightAction.active && styles.actionButtonActive,
+                  ]}
+                  onPress={rightAction.onPress}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={rightAction.accessibilityLabel || 'Action'}
+                >
+                  <rightAction.icon
+                    size={19}
+                    color={
+                      rightAction.active
+                        ? rightAction.activeColor || '#7952FC'
+                        : '#FFFFFF'
+                    }
+                    strokeWidth={2.2}
+                  />
+                  {rightAction.badge !== undefined && rightAction.badge > 0 && (
+                    <View style={styles.badgePill}>
+                      <Text style={styles.badgeText}>{rightAction.badge}</Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
       </View>

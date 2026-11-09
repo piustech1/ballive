@@ -3,12 +3,15 @@ import {
   View,
   Text,
   ImageBackground,
+  Image,
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
 import Colors from '../../theme/colors';
 import { LiveMatch } from '../../constants/mockData';
 import { LiveBadge } from '../../components/common/LiveBadge';
+import { CompetitionLogo } from '../../components/common/CompetitionLogo';
+import { getTeamCrest } from '../../utils/teamCrestResolver';
 
 interface LiveMatchCardProps {
   match: LiveMatch;
@@ -16,12 +19,15 @@ interface LiveMatchCardProps {
 }
 
 export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) => {
+  const homeCrest = getTeamCrest(match.homeTeam);
+  const awayCrest = getTeamCrest(match.awayTeam);
+
   return (
     <TouchableOpacity
       style={styles.cardContainer}
       onPress={onPress}
       activeOpacity={0.88}
-      accessibilityLabel={`${match.title}, Live football stream`}
+      accessibilityLabel={`${match.homeTeam} vs ${match.awayTeam}, Live football stream`}
       accessibilityRole="button"
     >
       <ImageBackground
@@ -30,23 +36,52 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) 
         imageStyle={styles.image}
         resizeMode="cover"
       >
-        {/* Dark bottom gradient overlay for cinematic contrast */}
+        {/* Dark overlay for contrast */}
         <View style={styles.darkOverlay} />
 
-        {/* ── CARD BOTTOM ROW: Match Title (Left) + Live Badge (Right) ── */}
-        <View style={styles.bottomRow}>
-          {/* Match Title on the Left */}
-          <View style={styles.titleContainer}>
-            <Text style={styles.matchTitle} numberOfLines={1}>
-              {match.title}
-            </Text>
-            <Text style={styles.competitionSubtitle} numberOfLines={1}>
+        {/* ── CARD TOP ROW: Competition + Solid Red LIVE Badge ── */}
+        <View style={styles.topRow}>
+          <View style={styles.compBadge}>
+            <CompetitionLogo competitionId={match.competition} size={18} containerStyle={{ marginRight: 6 }} />
+            <Text style={styles.competitionText} numberOfLines={1}>
               {match.competition}
             </Text>
           </View>
 
-          {/* Unified Solid Red Live Badge on the Right */}
-          <LiveBadge variant="solid" />
+          <LiveBadge variant="solid" minute={match.minute} />
+        </View>
+
+        {/* ── CARD BOTTOM MATCHUP CONTAINER: Contrast Surface with Club Crests ── */}
+        <View style={styles.matchupSurface}>
+          {/* Home Club */}
+          <View style={styles.teamCol}>
+            <View style={styles.crestCircle}>
+              <Image source={{ uri: homeCrest }} style={styles.crestImage} />
+            </View>
+            <Text style={styles.teamNameText} numberOfLines={1}>
+              {match.homeTeam}
+            </Text>
+          </View>
+
+          {/* Center Score / VS */}
+          <View style={styles.centerScoreBox}>
+            <View style={styles.scoreRow}>
+              <Text style={styles.scoreNumber}>{match.score?.home ?? 0}</Text>
+              <Text style={styles.scoreDivider}>-</Text>
+              <Text style={styles.scoreNumber}>{match.score?.away ?? 0}</Text>
+            </View>
+            <Text style={styles.inPlayText}>LIVE</Text>
+          </View>
+
+          {/* Away Club */}
+          <View style={styles.teamCol}>
+            <View style={styles.crestCircle}>
+              <Image source={{ uri: awayCrest }} style={styles.crestImage} />
+            </View>
+            <Text style={styles.teamNameText} numberOfLines={1}>
+              {match.awayTeam}
+            </Text>
+          </View>
         </View>
       </ImageBackground>
     </TouchableOpacity>
@@ -56,7 +91,7 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) 
 const styles = StyleSheet.create({
   cardContainer: {
     width: 250,
-    height: 155,
+    height: 160,
     borderRadius: 20,
     marginRight: 16,
     overflow: 'hidden',
@@ -70,7 +105,7 @@ const styles = StyleSheet.create({
   imageBackground: {
     width: '100%',
     height: '100%',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
   },
   image: {
     borderRadius: 20,
@@ -80,57 +115,92 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(10, 8, 18, 0.45)',
     borderRadius: 20,
   },
-  bottomRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-  },
-  titleContainer: {
-    flex: 1,
-    marginRight: 10,
-  },
-  matchTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.2,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  competitionSubtitle: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.75)',
-    marginTop: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  liveBadge: {
+  topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.liveRed,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingTop: 12,
+  },
+  compBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(24, 19, 36, 0.85)',
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
     borderRadius: 12,
-    shadowColor: Colors.liveRed,
+    maxWidth: 140,
+  },
+  competitionText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#ECE9FA',
+  },
+  matchupSurface: {
+    backgroundColor: 'rgba(18, 14, 28, 0.88)',
+    borderRadius: 14,
+    marginHorizontal: 10,
+    marginBottom: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
   },
-  liveText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginRight: 4,
-    letterSpacing: 0.2,
+  teamCol: {
+    flex: 1,
+    alignItems: 'center',
   },
-  liveIcon: {
-    marginLeft: 1,
+  crestCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 3,
+  },
+  crestImage: {
+    width: 20,
+    height: 20,
+    resizeMode: 'contain',
+  },
+  teamNameText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  centerScoreBox: {
+    alignItems: 'center',
+    paddingHorizontal: 6,
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scoreNumber: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#FFFFFF',
+  },
+  scoreDivider: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#7952FC',
+    marginHorizontal: 4,
+  },
+  inPlayText: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#EF4444',
+    letterSpacing: 0.5,
+    marginTop: 1,
   },
 });
 

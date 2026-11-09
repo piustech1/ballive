@@ -138,7 +138,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
               ]}
             >
               {isLive ? (
-                <LiveBadge minute={matchup.minute} />
+                <LiveBadge variant="solid" minute={matchup.minute} />
               ) : matchup.status === 'FT' ? (
                 <Text style={styles.statusBadgeFTText}>FULL TIME</Text>
               ) : (

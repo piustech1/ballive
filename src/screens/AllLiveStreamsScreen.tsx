@@ -5,20 +5,22 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
+  Modal,
   Image,
 } from 'react-native';
 import {
   Tv,
   Radio,
-  Flame,
   Info,
-  ChevronRight,
-  Sparkles,
+  ChevronDown,
+  Check,
   Signal,
 } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
 import { LiveBadge } from '../components/common/LiveBadge';
+import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { DiscoverMatchup } from '../constants/discoverData';
 import { getAllLiveStreamMatches } from '../navigation/navHelpers';
@@ -26,9 +28,29 @@ import { useAppNavigation } from '../navigation/NavigationContext';
 
 type StreamFilter = 'all' | 'live' | 'upcoming' | 'available';
 
+interface FilterOption {
+  id: StreamFilter;
+  label: string;
+}
+
+const FILTER_OPTIONS: FilterOption[] = [
+  { id: 'all', label: 'All Matches' },
+  { id: 'live', label: 'Live Now' },
+  { id: 'upcoming', label: 'Upcoming' },
+  { id: 'available', label: 'Available Feeds' },
+];
+
+const FILTER_SHORT_LABELS: Record<StreamFilter, string> = {
+  all: 'All',
+  live: 'Live Now',
+  upcoming: 'Upcoming',
+  available: 'Feeds',
+};
+
 export const AllLiveStreamsScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
   const [selectedFilter, setSelectedFilter] = useState<StreamFilter>('all');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const allStreamMatches = useMemo(() => getAllLiveStreamMatches(), []);
 
@@ -55,64 +77,88 @@ export const AllLiveStreamsScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      {/* ── TOP APP BAR ── */}
+      {/* ── TOP APP BAR WITH INTEGRATED DROPDOWN FILTER ── */}
       <SecondaryScreenHeader
         title="Live Streams"
         subtitle={`${liveCount} Matches Currently Live`}
+        rightCustomComponent={
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.headerDropdownTrigger}
+            onPress={() => setIsDropdownOpen(true)}
+            accessibilityLabel="Filter live streams"
+          >
+            {selectedFilter === 'live' && <View style={styles.headerLiveDot} />}
+            <Text style={styles.headerDropdownText} numberOfLines={1}>
+              {FILTER_SHORT_LABELS[selectedFilter]}
+            </Text>
+            <ChevronDown size={14} color="#FFFFFF" strokeWidth={2.4} style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
+        }
       />
 
-      {/* ── FILTER CHIPS ROW ── */}
-      <View style={styles.filterSection}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScrollContent}
-        >
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.filterChip, selectedFilter === 'all' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('all')}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === 'all' && styles.filterChipTextActive]}>
-              All ({allStreamMatches.length})
-            </Text>
-          </TouchableOpacity>
+      {/* ── DROPDOWN SELECTION MODAL ── */}
+      <Modal
+        visible={isDropdownOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsDropdownOpen(false)}
+        statusBarTranslucent
+      >
+        <TouchableWithoutFeedback onPress={() => setIsDropdownOpen(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback onPress={e => e.stopPropagation()}>
+              <View style={styles.dropdownCard}>
+                <Text style={styles.dropdownCardHeader}>Filter Streams</Text>
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.filterChip, selectedFilter === 'live' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('live')}
-          >
-            <View style={styles.liveIndicatorDot} />
-            <Text style={[styles.filterChipText, selectedFilter === 'live' && styles.filterChipTextActive]}>
-              Live Now ({liveCount})
-            </Text>
-          </TouchableOpacity>
+                {FILTER_OPTIONS.map(opt => {
+                  const isSelected = selectedFilter === opt.id;
+                  const count =
+                    opt.id === 'all'
+                      ? allStreamMatches.length
+                      : opt.id === 'live'
+                      ? liveCount
+                      : opt.id === 'upcoming'
+                      ? allStreamMatches.filter(m => m.status === 'UPCOMING').length
+                      : allStreamMatches.filter(m => m.hasLiveBroadcast).length;
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.filterChip, selectedFilter === 'upcoming' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('upcoming')}
-          >
-            <Text style={[styles.filterChipText, selectedFilter === 'upcoming' && styles.filterChipTextActive]}>
-              Upcoming
-            </Text>
-          </TouchableOpacity>
+                  return (
+                    <TouchableOpacity
+                      key={opt.id}
+                      activeOpacity={0.75}
+                      style={[
+                        styles.dropdownCardItem,
+                        isSelected && styles.dropdownCardItemActive,
+                      ]}
+                      onPress={() => {
+                        setSelectedFilter(opt.id);
+                        setIsDropdownOpen(false);
+                      }}
+                    >
+                      <View style={styles.itemLeftRow}>
+                        {opt.id === 'live' && <View style={styles.menuLiveRedDot} />}
+                        <Text
+                          style={[
+                            styles.dropdownItemLabel,
+                            isSelected && styles.dropdownItemLabelActive,
+                          ]}
+                        >
+                          {opt.label} ({count})
+                        </Text>
+                      </View>
+                      {isSelected && (
+                        <Check size={16} color="#7952FC" strokeWidth={2.8} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            style={[styles.filterChip, selectedFilter === 'available' && styles.filterChipActive]}
-            onPress={() => setSelectedFilter('available')}
-          >
-            <Signal size={12} color={selectedFilter === 'available' ? '#FFFFFF' : '#A098B5'} strokeWidth={2.4} style={{ marginRight: 4 }} />
-            <Text style={[styles.filterChipText, selectedFilter === 'available' && styles.filterChipTextActive]}>
-              Available Feeds
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </View>
-
-      {/* ── MAIN VERTICAL MATCH LIST ── */}
+      {/* ── MAIN VERTICAL MATCH LIST (STARTS DIRECTLY UNDER CURVED HEADER) ── */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -137,14 +183,18 @@ export const AllLiveStreamsScreen: React.FC = () => {
                 {/* TOP HEADER ROW: Competition + Live / Kickoff Badge */}
                 <View style={styles.cardHeaderRow}>
                   <View style={styles.compInfoLeft}>
-                    <Image source={{ uri: matchup.competitionLogo }} style={styles.compLogo} />
+                    <CompetitionLogo
+                      uri={matchup.competitionLogo}
+                      size={24}
+                      containerStyle={{ marginRight: 8 }}
+                    />
                     <Text style={styles.compName} numberOfLines={1}>
                       {matchup.competition}
                     </Text>
                   </View>
 
                   {isLive ? (
-                    <LiveBadge minute={matchup.minute} />
+                    <LiveBadge variant="solid" minute={matchup.minute} />
                   ) : (
                     <View style={styles.upcomingBadgePill}>
                       <Text style={styles.upcomingBadgeText}>
@@ -268,39 +318,88 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0E0D14',
   },
-  filterSection: {
-    backgroundColor: '#1E1730',
-    paddingVertical: 10,
-  },
-  filterScrollContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  filterChip: {
+  headerDropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
     backgroundColor: '#2A2045',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 18,
   },
-  filterChipActive: {
-    backgroundColor: '#7952FC',
-  },
-  filterChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#A098B5',
-  },
-  filterChipTextActive: {
-    color: '#FFFFFF',
-  },
-  liveIndicatorDot: {
+  headerLiveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: '#EF4444',
     marginRight: 6,
+  },
+  headerDropdownText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.1,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(5, 4, 10, 0.65)',
+    justifyContent: 'flex-start',
+    alignItems: 'flex-end',
+    paddingTop: 80,
+    paddingRight: 16,
+  },
+  dropdownCard: {
+    width: 220,
+    backgroundColor: '#1E1730',
+    borderRadius: 18,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  dropdownCardHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#A098B5',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginBottom: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: '#281E40',
+  },
+  dropdownCardItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+  },
+  dropdownCardItemActive: {
+    backgroundColor: '#2A2045',
+  },
+  itemLeftRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuLiveRedDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+    marginRight: 7,
+  },
+  dropdownItemLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#A098B5',
+  },
+  dropdownItemLabelActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   scrollView: {
     flex: 1,
@@ -334,37 +433,10 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 10,
   },
-  compLogo: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
-    marginRight: 8,
-  },
   compName: {
     fontSize: 12.5,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  liveBadgePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(34, 197, 94, 0.16)',
-    paddingHorizontal: 8,
-    paddingVertical: 3.5,
-    borderRadius: 8,
-  },
-  pulsingLiveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#22C55E',
-    marginRight: 5,
-  },
-  liveBadgeText: {
-    fontSize: 10.5,
-    fontWeight: '800',
-    color: '#22C55E',
-    letterSpacing: 0.3,
   },
   upcomingBadgePill: {
     backgroundColor: '#2A2045',
@@ -522,3 +594,5 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
+
+export default AllLiveStreamsScreen;

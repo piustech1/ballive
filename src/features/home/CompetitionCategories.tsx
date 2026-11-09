@@ -6,43 +6,33 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
-import {
-  Trophy,
-  Award,
-  Shield,
-  Flame,
-  Radio,
-} from 'lucide-react-native';
 import Colors from '../../theme/colors';
-import { COMPETITION_CATEGORIES, CompetitionCategory } from '../../constants/mockData';
+import { COMPETITION_CATEGORIES } from '../../constants/mockData';
+import { CompetitionLogo } from '../../components/common/CompetitionLogo';
+import { findCompetitionById } from '../../navigation/navHelpers';
+import { useAppNavigation } from '../../navigation/NavigationContext';
 
 interface CompetitionCategoriesProps {
   selectedCategoryId: string | null;
-  onSelectCategory: (categoryId: string | null) => void;
+  onSelectCategory?: (categoryId: string | null) => void;
 }
 
 export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
   selectedCategoryId,
   onSelectCategory,
 }) => {
-  const renderIcon = (iconName: CompetitionCategory['iconName']) => {
-    const size = 26;
-    const strokeWidth = 2;
-    const color = '#FFFFFF';
+  const { navigate } = useAppNavigation();
 
-    switch (iconName) {
-      case 'trophy':
-        return <Trophy size={size} color={color} strokeWidth={strokeWidth} />;
-      case 'award':
-        return <Award size={size} color="#1A1528" strokeWidth={strokeWidth} />;
-      case 'shield':
-        return <Shield size={size} color={color} strokeWidth={strokeWidth} />;
-      case 'flame':
-        return <Flame size={size} color={color} strokeWidth={strokeWidth} />;
-      case 'radio':
-        return <Radio size={size} color={color} strokeWidth={strokeWidth} />;
-      default:
-        return <Trophy size={size} color={color} strokeWidth={strokeWidth} />;
+  const handleCategoryPress = (categoryId: string) => {
+    if (onSelectCategory) {
+      onSelectCategory(categoryId === selectedCategoryId ? null : categoryId);
+    }
+    const comp = findCompetitionById(categoryId);
+    if (comp) {
+      navigate({
+        name: 'CompetitionDetails',
+        params: { competition: comp },
+      });
     }
   };
 
@@ -51,7 +41,7 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
       {/* ── SECTION TITLE: Categories ── */}
       <Text style={styles.sectionTitle}>Categories</Text>
 
-      {/* ── HORIZONTAL ROW OF CIRCULAR COLORED ICONS ── */}
+      {/* ── HORIZONTAL ROW OF CIRCULAR WHITE LOGO CONTAINERS ── */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -64,20 +54,17 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
             <TouchableOpacity
               key={category.id}
               style={styles.categoryItem}
-              onPress={() => onSelectCategory(isSelected ? null : category.id)}
+              onPress={() => handleCategoryPress(category.id)}
               activeOpacity={0.75}
-              accessibilityLabel={category.name}
+              accessibilityLabel={`${category.name} category`}
               accessibilityRole="button"
             >
-              {/* Circular Colored Icon Badge */}
-              <View
-                style={[
-                  styles.iconCircle,
-                  { backgroundColor: category.color },
-                  isSelected && styles.iconCircleSelected,
-                ]}
-              >
-                {renderIcon(category.iconName)}
+              {/* Circular White Emblem Container */}
+              <View style={[styles.logoWrapper, isSelected && styles.logoWrapperSelected]}>
+                <CompetitionLogo
+                  competitionId={category.id}
+                  size={52}
+                />
               </View>
 
               {/* Label */}
@@ -100,7 +87,7 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 24,
+    marginTop: 22,
     marginBottom: 8,
   },
   sectionTitle: {
@@ -108,7 +95,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.textPrimary,
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 14,
     letterSpacing: -0.3,
   },
   scrollContent: {
@@ -122,23 +109,18 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     width: 62,
   },
-  iconCircle: {
+  logoWrapper: {
     width: 56,
     height: 56,
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
   },
-  iconCircleSelected: {
-    transform: [{ scale: 1.08 }],
-    borderWidth: 2.5,
-    borderColor: '#FFFFFF',
+  logoWrapperSelected: {
+    borderWidth: 2,
+    borderColor: '#7952FC',
+    borderRadius: 28,
   },
   categoryLabel: {
     fontSize: 12,

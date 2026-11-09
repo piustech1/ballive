@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Bell, BellRing, Sparkles } from 'lucide-react-native';
 import Colors from '../../theme/colors';
 import { useProfile } from '../../hooks/useProfile';
 import { getMarqueeMatchOfTheDay } from '../../navigation/navHelpers';
+import { getTeamCrest } from '../../utils/teamCrestResolver';
 import { useAppNavigation } from '../../navigation/NavigationContext';
 
 export const MatchOfTheDayTicker: React.FC = () => {
@@ -15,16 +16,13 @@ export const MatchOfTheDayTicker: React.FC = () => {
   const [countdownText, setCountdownText] = useState('In 2h 15m');
 
   useEffect(() => {
-    // Target 17:30 today
     const updateCountdown = () => {
       const now = new Date();
       const target = new Date();
       target.setHours(17, 30, 0, 0);
 
-      // If already past 17:30 today, set to tomorrow or show Live / In 2h 15m default
       let diffMs = target.getTime() - now.getTime();
       if (diffMs < 0) {
-        // Target is tomorrow 17:30
         diffMs += 24 * 60 * 60 * 1000;
       }
 
@@ -47,6 +45,8 @@ export const MatchOfTheDayTicker: React.FC = () => {
   }, []);
 
   const isReminderSet = profile.matchReminderIds.includes(marqueeMatch.id);
+  const homeCrest = getTeamCrest(marqueeMatch.homeTeam.name || marqueeMatch.homeTeam.id);
+  const awayCrest = getTeamCrest(marqueeMatch.awayTeam.name || marqueeMatch.awayTeam.id);
 
   const handleRowPress = () => {
     navigate({
@@ -72,12 +72,25 @@ export const MatchOfTheDayTicker: React.FC = () => {
         <Text style={styles.badgeText}>MOTD</Text>
       </View>
 
-      {/* Center Fixture Title */}
+      {/* Center Fixture with Home & Away Club Badges */}
       <View style={styles.centerContent}>
-        <Text style={styles.fixtureText} numberOfLines={1}>
-          {marqueeMatch.homeTeam.name} vs {marqueeMatch.awayTeam.name}
-          <Text style={styles.timeBullet}> • {marqueeMatch.kickoffTime.replace(' GMT', '')}</Text>
-        </Text>
+        <View style={styles.matchupRow}>
+          <Image source={{ uri: homeCrest }} style={styles.clubCrest} />
+          <Text style={styles.teamName} numberOfLines={1}>
+            {marqueeMatch.homeTeam.name}
+          </Text>
+
+          <Text style={styles.vsText}>vs</Text>
+
+          <Text style={styles.teamName} numberOfLines={1}>
+            {marqueeMatch.awayTeam.name}
+          </Text>
+          <Image source={{ uri: awayCrest }} style={styles.clubCrest} />
+
+          <Text style={styles.timeBullet} numberOfLines={1}>
+            • {marqueeMatch.kickoffTime.replace(' GMT', '')}
+          </Text>
+        </View>
       </View>
 
       {/* Right Countdown & Bell */}
@@ -91,6 +104,7 @@ export const MatchOfTheDayTicker: React.FC = () => {
           style={[styles.bellButton, isReminderSet && styles.bellButtonActive]}
           onPress={handleBellPress}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="Toggle MOTD alert"
         >
           {isReminderSet ? (
             <BellRing size={14} color="#7952FC" strokeWidth={2.5} />
@@ -139,18 +153,36 @@ const styles = StyleSheet.create({
   },
   centerContent: {
     flex: 1,
-    marginHorizontal: 10,
+    marginHorizontal: 8,
     justifyContent: 'center',
   },
-  fixtureText: {
-    fontSize: 12.5,
-    fontWeight: '600',
+  matchupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  clubCrest: {
+    width: 18,
+    height: 18,
+    resizeMode: 'contain',
+  },
+  teamName: {
+    fontSize: 12,
+    fontWeight: '700',
     color: '#FFFFFF',
+    flexShrink: 1,
+  },
+  vsText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#7952FC',
+    marginHorizontal: 1,
   },
   timeBullet: {
     color: '#A098B5',
     fontWeight: '500',
-    fontSize: 11.5,
+    fontSize: 11,
+    marginLeft: 2,
   },
   rightCluster: {
     flexDirection: 'row',
@@ -181,3 +213,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#382565',
   },
 });
+
+export default MatchOfTheDayTicker;

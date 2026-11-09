@@ -20,6 +20,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
+import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import {
   DiscoverCompetition,
   PopularLeague,
@@ -83,9 +84,12 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
       >
         {/* ── TOURNAMENT IDENTITY HERO CARD ── */}
         <View style={styles.heroCard}>
-          <View style={styles.emblemContainer}>
-            <Image source={{ uri: competition.logoUrl }} style={styles.emblemImage} />
-          </View>
+          <CompetitionLogo
+            uri={competition.logoUrl}
+            competitionId={competition.id}
+            size={72}
+            containerStyle={{ marginBottom: 14 }}
+          />
 
           <Text style={styles.heroTitle}>{competition.name}</Text>
           <Text style={styles.heroSubtitle}>{season}</Text>

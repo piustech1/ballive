@@ -43,7 +43,6 @@ export const QuickAccessLauncher: React.FC<QuickAccessLauncherProps> = ({
     {
       id: 'live_streams',
       label: 'Live Streams',
-      subtitle: 'Watch feeds',
       icon: Tv,
       color: '#EF4444',
       action: () => navigate({ name: 'AllLiveStreams' }),
@@ -51,7 +50,6 @@ export const QuickAccessLauncher: React.FC<QuickAccessLauncherProps> = ({
     {
       id: 'all_matches',
       label: 'All Matches',
-      subtitle: 'Fixtures & scores',
       icon: Calendar,
       color: '#7952FC',
       action: () => navigate({ name: 'AllLiveStreams' }),
@@ -59,7 +57,6 @@ export const QuickAccessLauncher: React.FC<QuickAccessLauncherProps> = ({
     {
       id: 'competitions',
       label: 'Competitions',
-      subtitle: 'Leagues & cups',
       icon: Trophy,
       color: '#F8BE38',
       action: () => navigate({ name: 'AllCompetitions' }),
@@ -67,23 +64,20 @@ export const QuickAccessLauncher: React.FC<QuickAccessLauncherProps> = ({
     {
       id: 'leagues',
       label: 'All Leagues',
-      subtitle: 'Global football',
       icon: Globe,
       color: '#38BDF8',
       action: () => navigate({ name: 'AllLeagues' }),
     },
     {
       id: 'teams',
-      label: 'Clubs & Teams',
-      subtitle: 'European giants',
+      label: 'Clubs',
       icon: Shield,
       color: '#A855F7',
       action: () => navigate({ name: 'AllTeams' }),
     },
     {
       id: 'saved',
-      label: 'Saved Matches',
-      subtitle: 'Bookmarks',
+      label: 'Saved',
       icon: Bookmark,
       color: '#10B981',
       action: () => switchTab('Saved'),
@@ -91,7 +85,6 @@ export const QuickAccessLauncher: React.FC<QuickAccessLauncherProps> = ({
     {
       id: 'reminders',
       label: 'Reminders',
-      subtitle: 'Kickoff alerts',
       icon: BellRing,
       color: '#EC4899',
       action: () => navigate({ name: 'Notifications' }),
@@ -99,7 +92,6 @@ export const QuickAccessLauncher: React.FC<QuickAccessLauncherProps> = ({
     {
       id: 'notifications',
       label: 'Notifications',
-      subtitle: 'Recent updates',
       icon: Bell,
       color: '#6366F1',
       action: () => navigate({ name: 'Notifications' }),
@@ -127,7 +119,7 @@ export const QuickAccessLauncher: React.FC<QuickAccessLauncherProps> = ({
               <View style={styles.headerRow}>
                 <View>
                   <Text style={styles.sheetTitle}>Quick Access</Text>
-                  <Text style={styles.sheetSubtitle}>BALLIVE Hub & Shortcuts</Text>
+                  <Text style={styles.sheetSubtitle}>BALLIVE Shortcuts & Hub</Text>
                 </View>
                 <TouchableOpacity
                   onPress={onClose}
@@ -139,25 +131,24 @@ export const QuickAccessLauncher: React.FC<QuickAccessLauncherProps> = ({
                 </TouchableOpacity>
               </View>
 
-              {/* 4x2 Shortcuts Grid */}
+              {/* Modern Native Launcher 4x2 Grid (No Card Outlines / No Boxed Borders) */}
               <View style={styles.gridContainer}>
                 {SHORTCUTS.map(item => {
                   const IconComponent = item.icon;
                   return (
                     <TouchableOpacity
                       key={item.id}
-                      activeOpacity={0.75}
-                      style={styles.gridItem}
+                      activeOpacity={0.7}
+                      style={styles.launcherItem}
                       onPress={() => handleAction(item.action)}
+                      accessibilityLabel={item.label}
+                      accessibilityRole="button"
                     >
-                      <View style={[styles.iconBox, { backgroundColor: `${item.color}20` }]}>
-                        <IconComponent size={22} color={item.color} strokeWidth={2.2} />
+                      <View style={[styles.iconCircle, { backgroundColor: '#281E40' }]}>
+                        <IconComponent size={24} color={item.color} strokeWidth={2.2} />
                       </View>
                       <Text style={styles.itemLabel} numberOfLines={1}>
                         {item.label}
-                      </Text>
-                      <Text style={styles.itemSubtitle} numberOfLines={1}>
-                        {item.subtitle}
                       </Text>
                     </TouchableOpacity>
                   );
@@ -181,8 +172,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E1730',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingHorizontal: 18,
-    paddingBottom: 32,
+    paddingHorizontal: 20,
+    paddingBottom: 36,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.35,
@@ -203,8 +194,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 14,
-    marginBottom: 10,
+    paddingBottom: 16,
+    marginBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#281E40',
   },
@@ -230,37 +221,34 @@ const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    rowGap: 18,
     marginTop: 6,
   },
-  gridItem: {
-    width: '23%', // 4 per row
-    backgroundColor: '#181324',
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
+  launcherItem: {
+    width: '25%', // 4 columns native launcher
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#261C3D',
+    paddingVertical: 6,
   },
-  iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
+  iconCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
   itemLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#ECE9FA',
     textAlign: 'center',
-  },
-  itemSubtitle: {
-    fontSize: 9.5,
-    color: '#A098B5',
-    textAlign: 'center',
-    marginTop: 1,
+    letterSpacing: -0.1,
   },
 });
+
+export default QuickAccessLauncher;
