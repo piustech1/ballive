@@ -170,7 +170,7 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
 
         <script>
           const video = document.getElementById('streamVideo');
-          const streamSource = "${rawUrl}";
+          const initialSource = "${rawUrl}";
 
           function sendMessage(type, payload) {
             if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
@@ -186,55 +186,78 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
             sendMessage('error', { message: err });
           });
 
-          if (Hls.isSupported()) {
-            const hls = new Hls({
-              enableWorker: true,
-              lowLatencyMode: true,
-              backBufferLength: 30,
-              maxBufferLength: 30,
-              manifestLoadingMaxRetry: 4,
-              levelLoadingMaxRetry: 4,
-              fragLoadingMaxRetry: 5,
-            });
+          async function startStream() {
+            let streamSource = initialSource;
 
-            hls.loadSource(streamSource);
-            hls.attachMedia(video);
-
-            hls.on(Hls.Events.MANIFEST_PARSED, function () {
-              video.play().catch(function(e) {
-                console.log('Autoplay blocked:', e);
-              });
-            });
-
-            hls.on(Hls.Events.ERROR, function (event, data) {
-              if (data.fatal) {
-                switch (data.type) {
-                  case Hls.ErrorTypes.NETWORK_ERROR:
-                    console.log('Fatal network error encountered, attempting recovery...');
-                    hls.startLoad();
-                    break;
-                  case Hls.ErrorTypes.MEDIA_ERROR:
-                    console.log('Fatal media error encountered, attempting recovery...');
-                    hls.recoverMediaError();
-                    break;
-                  default:
-                    hls.destroy();
-                    sendMessage('error', { message: 'Feed offline or connection dropped' });
-                    break;
+            // If the stream source is a JSON metadata endpoint, resolve the manifest URL first
+            if (streamSource.includes('/stream/tv/') || streamSource.endsWith('.json')) {
+              try {
+                const res = await fetch(streamSource, {
+                  headers: { 'Referer': 'https://s-u.in/', 'Origin': 'https://s-u.in' }
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  const first = (data.streams || [])[0];
+                  if (first && first.url) {
+                    streamSource = first.url;
+                  }
                 }
+              } catch (e) {
+                console.log('Stream resolution failed, falling back:', e);
               }
-            });
-          } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            // Native Safari / iOS WebKit playback
-            video.src = streamSource;
-            video.addEventListener('loadedmetadata', function () {
-              video.play().catch(function(e) {
-                console.log('Native autoplay blocked:', e);
+            }
+
+            if (Hls.isSupported()) {
+              const hls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true,
+                backBufferLength: 30,
+                maxBufferLength: 30,
+                manifestLoadingMaxRetry: 5,
+                levelLoadingMaxRetry: 5,
+                fragLoadingMaxRetry: 6,
               });
-            });
-          } else {
-            sendMessage('error', { message: 'HLS streaming not supported in this browser environment.' });
+
+              hls.loadSource(streamSource);
+              hls.attachMedia(video);
+
+              hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                video.play().catch(function(e) {
+                  console.log('Autoplay deferred:', e);
+                });
+              });
+
+              hls.on(Hls.Events.ERROR, function (event, data) {
+                if (data.fatal) {
+                  switch (data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                      console.log('Network stall, retrying manifest load...');
+                      hls.startLoad();
+                      break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                      console.log('Media error, recovering buffer...');
+                      hls.recoverMediaError();
+                      break;
+                    default:
+                      hls.destroy();
+                      sendMessage('error', { message: 'Feed offline or satellite signal weak' });
+                      break;
+                  }
+                }
+              });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+              video.src = streamSource;
+              video.addEventListener('loadedmetadata', function () {
+                video.play().catch(function(e) {
+                  console.log('Native autoplay blocked:', e);
+                });
+              });
+            } else {
+              sendMessage('error', { message: 'HLS streaming not supported in this environment.' });
+            }
           }
+
+          startStream();
         </script>
       </body>
       </html>
@@ -272,7 +295,8 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
             key={`stream-${selectedServerIndex}-${retryKey}`}
             ref={webViewRef}
             originWhitelist={['*']}
-            source={{ html: playerHtml, baseUrl: 'https://cdn.jsdelivr.net' }}
+            source={{ html: playerHtml, baseUrl: 'https://s-u.in/' }}
+            userAgent="Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 Chrome/124.0.0.0 Mobile Safari/537.36"
             style={styles.webView}
             javaScriptEnabled={true}
             domStorageEnabled={true}
