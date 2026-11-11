@@ -12,7 +12,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onSettingsPress })
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, 10) + 4 }]}>
       <View style={styles.contentRow}>
         <Text style={styles.title}>Profile</Text>
 
@@ -24,7 +24,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onSettingsPress })
           accessibilityRole="button"
           accessibilityLabel="Settings"
         >
-          <Settings size={22} color={Colors.textPrimary} strokeWidth={2} />
+          <Settings size={20} color={Colors.textPrimary} strokeWidth={2} />
         </TouchableOpacity>
       </View>
     </View>
@@ -35,25 +35,26 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.headerPurple,
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 4,
   },
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    height: 40,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '800',
     color: '#ECE9FA',
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
     fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium' }),
   },
   settingsButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
     alignItems: 'center',
     justifyContent: 'center',
   },

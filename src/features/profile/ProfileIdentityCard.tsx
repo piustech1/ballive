@@ -25,7 +25,7 @@ export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
     <View style={styles.container}>
       {/* ── LEFT: COMPACT CIRCULAR AVATAR ── */}
       <View style={[styles.avatarCircle, { backgroundColor: avatarBg }]}>
-        <User size={34} color="#FFFFFF" strokeWidth={2.2} />
+        <User size={28} color="#FFFFFF" strokeWidth={2.2} />
       </View>
 
       {/* ── RIGHT: USER INFO & EDIT ACTION (LEFT-ALIGNED) ── */}
@@ -35,7 +35,7 @@ export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
         </Text>
 
         <View style={styles.membershipRow}>
-          <CheckCircle2 size={13} color={Colors.verifiedBlue} strokeWidth={2.4} />
+          <CheckCircle2 size={12} color={Colors.verifiedBlue} strokeWidth={2.4} />
           <Text style={styles.membershipText}>{membership}</Text>
         </View>
 
@@ -46,7 +46,7 @@ export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
           accessibilityRole="button"
           accessibilityLabel="Edit Profile"
         >
-          <Pencil size={12} color="#ECE9FA" strokeWidth={2.2} />
+          <Pencil size={11} color="#ECE9FA" strokeWidth={2.2} />
           <Text style={styles.editButtonText}>Edit Profile</Text>
         </TouchableOpacity>
       </View>
@@ -60,30 +60,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.headerPurple,
     paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 22,
+    paddingTop: 4,
+    paddingBottom: 16,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
   avatarCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
   },
   infoColumn: {
     flex: 1,
-    marginLeft: 16,
+    marginLeft: 14,
     justifyContent: 'center',
   },
   displayName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.3,
@@ -91,11 +91,11 @@ const styles = StyleSheet.create({
   membershipRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginTop: 3,
+    gap: 4,
+    marginTop: 2,
   },
   membershipText: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: Colors.textSecondary,
     fontWeight: '500',
   },
@@ -103,15 +103,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
-    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 6,
     alignSelf: 'flex-start',
-    gap: 6,
+    gap: 5,
   },
   editButtonText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: '#ECE9FA',
   },

@@ -31,6 +31,8 @@ import { getTeamCrest } from '../utils/teamCrestResolver';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
 
+import { sportsApiService } from '../services/sportsApiService';
+
 interface CompetitionDetailsScreenProps {
   competition: DiscoverCompetition | PopularLeague;
 }
@@ -60,7 +62,17 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
   const displayFixtures = compFixtures.length > 0 ? compFixtures : UPCOMING_HIGHLIGHTS.slice(0, 4);
 
   // Dynamic League Standings with crests, W, D, L, GD, PTS
-  const standings = useMemo(() => getCompetitionStandings(competition.id), [competition.id]);
+  const [standings, setStandings] = useState<StandingsRow[]>(() => getCompetitionStandings(competition.id));
+
+  React.useEffect(() => {
+    let isMounted = true;
+    sportsApiService.getStandings(competition.id).then(liveRows => {
+      if (isMounted && liveRows && liveRows.length > 0) {
+        setStandings(liveRows);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [competition.id]);
 
   return (
     <View style={styles.root}>

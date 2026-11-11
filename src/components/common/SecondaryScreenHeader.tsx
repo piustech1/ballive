@@ -48,7 +48,7 @@ export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
   };
 
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) + 4 }]}>
+    <View style={[styles.container, { paddingTop: Math.max(insets.top, 10) + 4 }]}>
       <View style={styles.contentRow}>
         {/* Left Native Back Action */}
         <TouchableOpacity
@@ -58,19 +58,25 @@ export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityLabel="Go back"
         >
-          <ArrowLeft size={20} color="#FFFFFF" strokeWidth={2.4} />
+          <ArrowLeft size={19} color="#FFFFFF" strokeWidth={2.4} />
         </TouchableOpacity>
 
         {/* Center / Left-aligned Title */}
         <View style={styles.titleContainer}>
-          <Text style={styles.titleText} numberOfLines={1}>
-            {title}
-          </Text>
           {subtitle ? (
-            <Text style={styles.subtitleText} numberOfLines={1}>
-              {subtitle}
+            <>
+              <Text style={styles.competitionLabel} numberOfLines={1} ellipsizeMode="tail">
+                {title}
+              </Text>
+              <Text style={styles.matchTitleText} numberOfLines={1} ellipsizeMode="tail">
+                {subtitle}
+              </Text>
+            </>
+          ) : (
+            <Text style={styles.titleText} numberOfLines={1} ellipsizeMode="tail">
+              {title}
             </Text>
-          ) : null}
+          )}
         </View>
 
         {/* Right Actions Cluster */}
@@ -91,7 +97,7 @@ export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
                   accessibilityLabel={secondaryRightAction.accessibilityLabel || 'Action'}
                 >
                   <secondaryRightAction.icon
-                    size={19}
+                    size={18}
                     color={
                       secondaryRightAction.active
                         ? secondaryRightAction.activeColor || '#7952FC'
@@ -114,7 +120,7 @@ export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
                   accessibilityLabel={rightAction.accessibilityLabel || 'Action'}
                 >
                   <rightAction.icon
-                    size={19}
+                    size={18}
                     color={
                       rightAction.active
                         ? rightAction.activeColor || '#7952FC'
@@ -141,7 +147,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: Colors.headerPurple,
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     shadowColor: '#000000',
@@ -151,7 +157,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   contentRow: {
-    height: 48,
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -168,17 +174,25 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
+  competitionLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#A098B5',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  matchTitleText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+    marginTop: 1,
+  },
   titleText: {
     fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.2,
-  },
-  subtitleText: {
-    fontSize: 11.5,
-    color: '#A098B5',
-    fontWeight: '500',
-    marginTop: 1,
   },
   rightActionsRow: {
     flexDirection: 'row',

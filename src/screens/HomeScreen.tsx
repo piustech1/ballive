@@ -31,8 +31,9 @@ export const HomeScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
-  // Live match state with real API wiring
-  const [liveMatches, setLiveMatches] = useState<LiveMatch[]>(LIVE_MATCHES);
+  // Live match state with real API wiring (zero mock data)
+  const [liveMatches, setLiveMatches] = useState<LiveMatch[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadRealMatches = useCallback(async () => {
@@ -43,6 +44,8 @@ export const HomeScreen: React.FC = () => {
       }
     } catch (e) {
       // Keep existing matches on network error
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -88,6 +91,10 @@ export const HomeScreen: React.FC = () => {
         matchesCategory = match.competition.toLowerCase().includes('serie a');
       } else if (cat === 'bundesliga') {
         matchesCategory = match.competition.toLowerCase().includes('bundesliga');
+      } else if (cat === 'nba') {
+        matchesCategory = match.competition.toLowerCase().includes('nba') || match.competition.toLowerCase().includes('basketball');
+      } else if (cat === 'nhl') {
+        matchesCategory = match.competition.toLowerCase().includes('nhl') || match.competition.toLowerCase().includes('hockey');
       }
 
       // Status filtering (from bottom sheet)
@@ -102,7 +109,7 @@ export const HomeScreen: React.FC = () => {
 
       return matchesSearch && matchesCategory && matchesStatus;
     });
-  }, [searchQuery, selectedCategoryId, competitionFilter, statusFilter]);
+  }, [liveMatches, searchQuery, selectedCategoryId, competitionFilter, statusFilter]);
 
   // Filter featured competitions based on search query
   const filteredCompetitions = useMemo(() => {
@@ -179,6 +186,7 @@ export const HomeScreen: React.FC = () => {
         {/* 2. Live Streams Section (Wide Horizontal Cards) */}
         <LiveStreamsSection
           matches={filteredMatches.length > 0 ? filteredMatches : liveMatches}
+          isLoading={isLoading}
           onViewAllPress={() => {
             navigate({ name: 'AllLiveStreams' });
           }}

@@ -10,14 +10,18 @@ import Colors from '../../theme/colors';
 import { LiveMatch } from '../../constants/mockData';
 import { LiveMatchCard } from './LiveMatchCard';
 
+import { MatchCardSkeleton } from '../../components/common/SkeletonLoader';
+
 interface LiveStreamsSectionProps {
   matches: LiveMatch[];
+  isLoading?: boolean;
   onViewAllPress?: () => void;
   onMatchPress?: (match: LiveMatch) => void;
 }
 
 export const LiveStreamsSection: React.FC<LiveStreamsSectionProps> = ({
   matches,
+  isLoading = false,
   onViewAllPress,
   onMatchPress,
 }) => {
@@ -41,13 +45,24 @@ export const LiveStreamsSection: React.FC<LiveStreamsSectionProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {matches.map(match => (
-          <LiveMatchCard
-            key={match.id}
-            match={match}
-            onPress={() => onMatchPress?.(match)}
-          />
-        ))}
+        {isLoading && matches.length === 0 ? (
+          <>
+            <View style={{ width: 280, marginRight: 12 }}>
+              <MatchCardSkeleton />
+            </View>
+            <View style={{ width: 280, marginRight: 12 }}>
+              <MatchCardSkeleton />
+            </View>
+          </>
+        ) : (
+          matches.map(match => (
+            <LiveMatchCard
+              key={match.id}
+              match={match}
+              onPress={() => onMatchPress?.(match)}
+            />
+          ))
+        )}
       </ScrollView>
     </View>
   );

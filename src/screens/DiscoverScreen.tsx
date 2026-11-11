@@ -28,11 +28,23 @@ import {
 
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { useProfile } from '../hooks/useProfile';
+import { streamingApiService } from '../services/streamingApiService';
 
 export const DiscoverScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
   const { toggleMatchReminder } = useProfile();
   const [searchQuery, setSearchQuery] = useState('');
+  const [liveHighlights, setLiveHighlights] = useState<DiscoverMatchup[]>([]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    streamingApiService.getLiveMatches().then(matches => {
+      if (isMounted && matches && matches.length > 0) {
+        setLiveHighlights(matches.map(m => streamingApiService.convertLiveMatchToMatchup(m)));
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
 
   // ── FILTER DATA IN REAL TIME ──
   const query = searchQuery.trim().toLowerCase();
@@ -69,15 +81,16 @@ export const DiscoverScreen: React.FC = () => {
   }, [query]);
 
   const filteredMatchups = useMemo(() => {
-    if (!query) return UPCOMING_HIGHLIGHTS;
-    return UPCOMING_HIGHLIGHTS.filter(
+    const list = liveHighlights.length > 0 ? liveHighlights : UPCOMING_HIGHLIGHTS;
+    if (!query) return list;
+    return list.filter(
       m =>
         m.competition.toLowerCase().includes(query) ||
         m.homeTeam.name.toLowerCase().includes(query) ||
         m.awayTeam.name.toLowerCase().includes(query) ||
         m.venue.toLowerCase().includes(query)
     );
-  }, [query]);
+  }, [liveHighlights, query]);
 
   const totalResults =
     filteredCompetitions.length +

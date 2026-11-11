@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surfaceCard,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 16,
   },
   rowFirst: {
@@ -89,27 +89,27 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255, 255, 255, 0.04)',
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   textContainer: {
     flex: 1,
     justifyContent: 'center',
   },
   label: {
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '700',
     color: Colors.textPrimary,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 11.5,
     color: Colors.textMuted,
-    marginTop: 2,
+    marginTop: 1,
   },
   badge: {
     paddingHorizontal: 9,

@@ -40,6 +40,12 @@ export function resolveCompetitionLogo(competitionIdOrName?: string): string {
   if (clean.includes('ligue') || clean.includes('ligue-1')) {
     return LEAGUE_EMBLEMS['ligue-1'];
   }
+  if (clean.includes('nba') || clean.includes('basketball')) {
+    return 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png';
+  }
+  if (clean.includes('nhl') || clean.includes('hockey')) {
+    return 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png';
+  }
 
   return LEAGUE_EMBLEMS['premier-league'];
 }

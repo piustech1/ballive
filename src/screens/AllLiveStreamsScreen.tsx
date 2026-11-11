@@ -28,7 +28,10 @@ import { getAllLiveStreamMatches } from '../navigation/navHelpers';
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { streamingApiService } from '../services/streamingApiService';
 
+import { MatchCardSkeleton } from '../components/common/SkeletonLoader';
+
 type StreamFilter = 'all' | 'live' | 'upcoming' | 'available';
+type SportFilter = 'all' | 'football' | 'basketball' | 'hockey';
 
 interface FilterOption {
   id: StreamFilter;
@@ -49,11 +52,20 @@ const FILTER_SHORT_LABELS: Record<StreamFilter, string> = {
   available: 'Feeds',
 };
 
+const SPORT_TABS: Array<{ id: SportFilter; label: string }> = [
+  { id: 'all', label: 'All Sports' },
+  { id: 'football', label: '⚽ Football' },
+  { id: 'basketball', label: '🏀 Basketball' },
+  { id: 'hockey', label: '🏒 Hockey' },
+];
+
 export const AllLiveStreamsScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
   const [selectedFilter, setSelectedFilter] = useState<StreamFilter>('all');
+  const [selectedSport, setSelectedSport] = useState<SportFilter>('all');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [allStreamMatches, setAllStreamMatches] = useState<DiscoverMatchup[]>(() => getAllLiveStreamMatches());
+  const [allStreamMatches, setAllStreamMatches] = useState<DiscoverMatchup[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadMatches = useCallback(async () => {
@@ -64,7 +76,9 @@ export const AllLiveStreamsScreen: React.FC = () => {
         setAllStreamMatches(converted);
       }
     } catch (e) {
-      // fallback to initial state
+      // fallback
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
@@ -81,23 +95,30 @@ export const AllLiveStreamsScreen: React.FC = () => {
   };
 
   const filteredMatches = useMemo(() => {
-    switch (selectedFilter) {
-      case 'live':
-        return allStreamMatches.filter(m => m.status === 'LIVE');
-      case 'upcoming':
-        return allStreamMatches.filter(m => m.status === 'UPCOMING');
-      case 'available':
-        return allStreamMatches.filter(m => m.hasLiveBroadcast);
-      case 'all':
-      default:
-        // Prioritize LIVE matches first, then upcoming
-        return [...allStreamMatches].sort((a, b) => {
-          if (a.status === 'LIVE' && b.status !== 'LIVE') return -1;
-          if (a.status !== 'LIVE' && b.status === 'LIVE') return 1;
-          return 0;
-        });
-    }
-  }, [allStreamMatches, selectedFilter]);
+    return allStreamMatches.filter(m => {
+      // Sport filter
+      if (selectedSport === 'football') {
+        const c = m.competition.toLowerCase();
+        if (c.includes('basketball') || c.includes('nba') || c.includes('hockey') || c.includes('nhl')) return false;
+      } else if (selectedSport === 'basketball') {
+        const c = m.competition.toLowerCase();
+        if (!c.includes('basketball') && !c.includes('nba')) return false;
+      } else if (selectedSport === 'hockey') {
+        const c = m.competition.toLowerCase();
+        if (!c.includes('hockey') && !c.includes('nhl')) return false;
+      }
+
+      // Status filter
+      if (selectedFilter === 'live') return m.status === 'LIVE';
+      if (selectedFilter === 'upcoming') return m.status === 'UPCOMING';
+      if (selectedFilter === 'available') return m.hasLiveBroadcast;
+      return true;
+    }).sort((a, b) => {
+      if (a.status === 'LIVE' && b.status !== 'LIVE') return -1;
+      if (a.status !== 'LIVE' && b.status === 'LIVE') return 1;
+      return 0;
+    });
+  }, [allStreamMatches, selectedFilter, selectedSport]);
 
   const liveCount = allStreamMatches.filter(m => m.status === 'LIVE').length;
 
@@ -184,6 +205,31 @@ export const AllLiveStreamsScreen: React.FC = () => {
         </TouchableWithoutFeedback>
       </Modal>
 
+      {/* ── SPORT CATEGORY PILLS BAR ── */}
+      <View style={styles.sportPillsRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.sportPillsScroll}
+        >
+          {SPORT_TABS.map(tab => {
+            const isTabActive = selectedSport === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                activeOpacity={0.8}
+                style={[styles.sportPill, isTabActive && styles.sportPillActive]}
+                onPress={() => setSelectedSport(tab.id)}
+              >
+                <Text style={[styles.sportPillText, isTabActive && styles.sportPillTextActive]}>
+                  {tab.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       {/* ── MAIN VERTICAL MATCH LIST (STARTS DIRECTLY UNDER CURVED HEADER) ── */}
       <ScrollView
         style={styles.scrollView}
@@ -198,7 +244,13 @@ export const AllLiveStreamsScreen: React.FC = () => {
           />
         }
       >
-        {filteredMatches.length > 0 ? (
+        {isLoading && allStreamMatches.length === 0 ? (
+          <>
+            <MatchCardSkeleton />
+            <MatchCardSkeleton />
+            <MatchCardSkeleton />
+          </>
+        ) : filteredMatches.length > 0 ? (
           filteredMatches.map(matchup => {
             const isLive = matchup.status === 'LIVE';
 
@@ -351,6 +403,34 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: '#0E0D14',
+  },
+  sportPillsRow: {
+    backgroundColor: '#1E1730',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#281E40',
+  },
+  sportPillsScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  sportPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 18,
+    backgroundColor: '#2A2045',
+  },
+  sportPillActive: {
+    backgroundColor: '#7952FC',
+  },
+  sportPillText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#A098B5',
+  },
+  sportPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   headerDropdownTrigger: {
     flexDirection: 'row',

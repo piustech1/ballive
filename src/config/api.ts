@@ -23,15 +23,23 @@ export const API_CONFIG = {
   // CDN Live Events
   CDNLIVE_API: 'https://api.cdnlivetv.tv/api/v1/events/sports/?user=cdnlivetv&plan=free',
 
-  // 24/7 Verified Football & Sports Broadcast Channels on DAG
+  // 24/7 Verified Football & Multi-Sport Broadcast Channels on DAG
   PRIORITY_CHANNELS: {
     PL: 'moviebay_sport_cdn_ch_xx_sky-sports-premier-league-fhd-uk',
     UCL: 'moviebay_sport_cdn_ch_xx_tnt-sports-1-fhd-uk',
     LALIGA: 'moviebay_sport_cdn_ch_xx_laliga-tv-fhd-uk',
     DAZN: 'moviebay_sport_cdn_ch_xx_dazn-la-liga-hd',
     SUPERSPORT: 'moviebay_sport_dlv_ch_414_supersport-premier-league',
+    NBA: 'moviebay_sport_cdn_ch_xx_nba-tv-fhd-us',
+    NBA_BACKUP: 'moviebay_sport_dlv_ch_404_nba-tv-usa',
+    NHL: 'moviebay_sport_dami_247-nhl-network-29780',
     F1: 'moviebay_sport_cdn_ch_xx_sky-sports-f1-fhd-uk',
+    TENNIS: 'moviebay_sport_cdn_ch_xx_sky-sport-tennis-fhd-de',
   },
+
+  // ESPN Open Real-time Public Sports APIs (Zero Auth, Free, Global)
+  ESPN_BASE: 'https://site.api.espn.com/apis/site/v2/sports',
+  ESPN_STANDINGS_BASE: 'https://site.api.espn.com/apis/v2/sports',
 
   // Request timeout
   REQUEST_TIMEOUT_MS: 8000,

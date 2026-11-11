@@ -40,6 +40,8 @@ import {
   TacticalPlayer,
   MatchIntelResponse,
 } from '../services/footballApiService';
+import { sportsApiService } from '../services/sportsApiService';
+import { MatchDetailsSkeleton } from '../components/common/SkeletonLoader';
 
 interface MatchDetailsScreenProps {
   matchup: DiscoverMatchup;
@@ -60,30 +62,43 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   useEffect(() => {
     let isMounted = true;
     setIsLoadingIntel(true);
-    footballApiService
-      .getMatchIntel(
-        matchup.homeTeam.name,
-        matchup.awayTeam.name,
-        matchup.homeTeam.score ?? 0,
-        matchup.awayTeam.score ?? 0,
-        matchup.minute ?? 0
-      )
-      .then(res => {
-        if (isMounted && res) {
-          setIntel(res);
+
+    async function fetchIntel() {
+      try {
+        const liveIntel = await sportsApiService.getMatchIntel(matchup);
+        if (isMounted && liveIntel) {
+          setIntel(liveIntel);
+          setIsLoadingIntel(false);
+          return;
         }
-      })
-      .catch(err => {
+      } catch {
+        // continue to fallback
+      }
+
+      try {
+        const fallback = await footballApiService.getMatchIntel(
+          matchup.homeTeam.name,
+          matchup.awayTeam.name,
+          matchup.homeTeam.score ?? 0,
+          matchup.awayTeam.score ?? 0,
+          matchup.minute ?? 0
+        );
+        if (isMounted && fallback) {
+          setIntel(fallback);
+        }
+      } catch (err) {
         console.warn('Error fetching match intel:', err);
-      })
-      .finally(() => {
+      } finally {
         if (isMounted) setIsLoadingIntel(false);
-      });
+      }
+    }
+
+    fetchIntel();
 
     return () => {
       isMounted = false;
     };
-  }, [matchup.homeTeam.name, matchup.awayTeam.name, matchup.homeTeam.score, matchup.awayTeam.score, matchup.minute]);
+  }, [matchup.id, matchup.homeTeam.name, matchup.awayTeam.name, matchup.homeTeam.score, matchup.awayTeam.score, matchup.minute]);
 
   const isReminderSet = profile.matchReminderIds.includes(matchup.id);
   const isSaved = profile.savedMatchIds.includes(matchup.id);
@@ -227,8 +242,12 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── SCOREBOARD HERO CARD ── */}
-        <View style={styles.scoreboardHero}>
+        {isLoadingIntel && !intel ? (
+          <MatchDetailsSkeleton />
+        ) : (
+          <>
+            {/* ── SCOREBOARD HERO CARD ── */}
+            <View style={styles.scoreboardHero}>
           {/* Status pill header */}
           <View style={styles.heroHeaderPillRow}>
             <View
@@ -880,6 +899,8 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
               })}
             </View>
           </View>
+        )}
+          </>
         )}
       </ScrollView>
     </View>

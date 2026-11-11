@@ -65,18 +65,25 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
   useEffect(() => {
     let isMounted = true;
-    if ((!activeStreamUrl || (activeStreams && activeStreams.length === 0)) && match.id) {
-      streamingApiService.resolveStreamMirrors(match.id).then(mirrors => {
-        if (isMounted && mirrors.length > 0) {
-          setActiveStreams(mirrors);
-          if (!activeStreamUrl) {
+    setActiveStreamUrl(match.streamUrl);
+    setActiveStreams(match.streams);
+
+    if (match.id) {
+      streamingApiService
+        .resolveStreamMirrors(match.id, match.competition)
+        .then(mirrors => {
+          if (isMounted && mirrors.length > 0) {
+            setActiveStreams(mirrors);
             setActiveStreamUrl(mirrors[0].url);
           }
-        }
-      }).catch(() => {});
+        })
+        .catch(() => {});
     }
-    return () => { isMounted = false; };
-  }, [match.id, activeStreamUrl]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [match.id, match.streamUrl]);
 
   const isLive = match.status === 'LIVE';
   const isReminderSet = profile.matchReminderIds.includes(match.id);
@@ -119,6 +126,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
         <View style={styles.playerContainer}>
           {isLive ? (
             <LiveStreamPlayer
+              key={`player-${match.id}-${activeStreamUrl || match.streamUrl}`}
               streamUrl={activeStreamUrl || match.streamUrl}
               streams={activeStreams || match.streams}
               isLive={isLive}
@@ -156,10 +164,10 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
           )}
         </View>
 
-        {/* ── 2. MATCH IDENTITY & SCOREBOARD CARD ── */}
+        {/* ── 2. MATCH SCORE CENTRE ── */}
         <View style={styles.matchIdentityCard}>
           <View style={styles.teamsRow}>
-            {/* Home */}
+            {/* Home Team */}
             <View style={styles.matchTeamSide}>
               <View style={styles.crestContainer}>
                 <Image
@@ -167,30 +175,40 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                   style={styles.crestImage}
                 />
               </View>
-              <Text style={styles.teamNameText} numberOfLines={1}>
+              <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
                 {match.homeTeam.name}
               </Text>
             </View>
 
-            {/* Score / VS Center */}
+            {/* Score / Match State Center */}
             <View style={styles.matchScoreCenter}>
               {isLive || match.status === 'FT' ? (
-                <View style={styles.scoreRow}>
-                  <Text style={styles.scoreNumber}>{match.homeTeam.score ?? 0}</Text>
-                  <Text style={styles.scoreColon}> - </Text>
-                  <Text style={styles.scoreNumber}>{match.awayTeam.score ?? 0}</Text>
-                </View>
+                <>
+                  <View style={styles.scoreRow}>
+                    <Text style={styles.scoreNumber}>{match.homeTeam.score ?? 0}</Text>
+                    <Text style={styles.scoreColon}>:</Text>
+                    <Text style={styles.scoreNumber}>{match.awayTeam.score ?? 0}</Text>
+                  </View>
+                  <View style={[styles.statusBadgePill, isLive ? styles.statusBadgeLive : styles.statusBadgeFT]}>
+                    {isLive && <View style={styles.liveClockDot} />}
+                    <Text style={styles.statusBadgeText}>
+                      {isLive ? `${match.minute}' LIVE` : 'FULL TIME'}
+                    </Text>
+                  </View>
+                </>
               ) : (
-                <View style={styles.vsBadge}>
-                  <Text style={styles.vsText}>VS</Text>
-                </View>
+                <>
+                  <View style={styles.vsBadge}>
+                    <Text style={styles.vsText}>VS</Text>
+                  </View>
+                  <Text style={styles.matchStatusSub}>
+                    {match.kickoffTime || '17:30'} • Today
+                  </Text>
+                </>
               )}
-              <Text style={styles.matchStatusSub}>
-                {isLive ? `${match.minute}' In-Play` : match.kickoffTime}
-              </Text>
             </View>
 
-            {/* Away */}
+            {/* Away Team */}
             <View style={styles.matchTeamSide}>
               <View style={styles.crestContainer}>
                 <Image
@@ -198,17 +216,17 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                   style={styles.crestImage}
                 />
               </View>
-              <Text style={styles.teamNameText} numberOfLines={1}>
+              <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
                 {match.awayTeam.name}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* ── 3. ACTION BUTTONS BAR ── */}
+        {/* ── 3. MATCH ACTIONS BAR ── */}
         <View style={styles.actionsBar}>
           <TouchableOpacity
-            activeOpacity={0.85}
+            activeOpacity={0.8}
             style={styles.matchDetailsActionBtn}
             onPress={() => {
               navigate({
@@ -217,7 +235,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
               });
             }}
           >
-            <Info size={16} color="#FFFFFF" strokeWidth={2.4} />
+            <Info size={15} color="#FFFFFF" strokeWidth={2.4} />
             <Text style={styles.matchDetailsActionText}>Match Details & Lineups</Text>
           </TouchableOpacity>
 
@@ -225,6 +243,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             activeOpacity={0.8}
             style={[styles.iconActionBtn, isReminderSet && styles.iconActionBtnActive]}
             onPress={() => toggleMatchReminder(match.id)}
+            accessibilityLabel="Toggle kickoff reminder"
           >
             {isReminderSet ? (
               <BellRing size={18} color="#7952FC" strokeWidth={2.4} />
@@ -237,6 +256,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             activeOpacity={0.8}
             style={[styles.iconActionBtn, isSaved && styles.iconActionBtnActive]}
             onPress={() => toggleSaveMatch(match.id)}
+            accessibilityLabel="Bookmark match"
           >
             {isSaved ? (
               <BookmarkCheck size={18} color="#7952FC" strokeWidth={2.4} />
@@ -246,19 +266,20 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
           </TouchableOpacity>
         </View>
 
-        {/* ── 4. OTHER LIVE STREAMS CAROUSEL ── */}
-        {relatedStreams.length > 0 && (
-          <View style={styles.relatedSection}>
-            <Text style={styles.relatedSectionTitle}>Other Live Matches</Text>
+        {/* ── 4. OTHER LIVE MATCHES SECTION ── */}
+        <View style={styles.relatedSection}>
+          <Text style={styles.relatedSectionTitle}>OTHER LIVE MATCHES</Text>
 
-            {relatedStreams.map(rel => {
+          {relatedStreams.length > 0 ? (
+            relatedStreams.map(rel => {
               const relHomeCrest = getTeamCrest(rel.homeTeam.name || rel.homeTeam.id);
               const relAwayCrest = getTeamCrest(rel.awayTeam.name || rel.awayTeam.id);
+              const isRelLive = rel.status === 'LIVE';
 
               return (
                 <TouchableOpacity
                   key={rel.id}
-                  activeOpacity={0.85}
+                  activeOpacity={0.8}
                   style={styles.relatedRow}
                   onPress={() => {
                     navigate({
@@ -267,33 +288,48 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                     });
                   }}
                 >
-                  <View style={styles.relatedLeft}>
-                    <Text style={styles.relatedComp}>{rel.competition}</Text>
-                    <View style={styles.relatedMatchupRow}>
+                  {/* Top Meta: Comp + Live Badge */}
+                  <View style={styles.relatedMetaRow}>
+                    <Text style={styles.relatedComp} numberOfLines={1} ellipsizeMode="tail">
+                      {rel.competition}
+                    </Text>
+                    <View style={[styles.relatedLivePill, !isRelLive && styles.relatedTimePill]}>
+                      {isRelLive && <View style={styles.relatedLiveDot} />}
+                      <Text style={styles.relatedLiveText}>
+                        {isRelLive ? `${rel.minute}' LIVE` : rel.kickoffTime}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Matchup Content Row */}
+                  <View style={styles.relatedMatchupRow}>
+                    <View style={styles.relatedTeamsGroup}>
                       <Image source={{ uri: relHomeCrest }} style={styles.relatedCrest} />
-                      <Text style={styles.relatedTeamName} numberOfLines={1}>
+                      <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
                         {rel.homeTeam.name}
                       </Text>
                       <Text style={styles.relatedVs}>vs</Text>
-                      <Text style={styles.relatedTeamName} numberOfLines={1}>
+                      <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
                         {rel.awayTeam.name}
                       </Text>
                       <Image source={{ uri: relAwayCrest }} style={styles.relatedCrest} />
                     </View>
-                    <Text style={styles.relatedTime}>
-                      {rel.status === 'LIVE' ? `${rel.minute}' LIVE` : rel.kickoffTime}
-                    </Text>
-                  </View>
 
-                  <View style={styles.watchMiniBtn}>
-                    <Tv size={14} color="#FFFFFF" strokeWidth={2.2} />
-                    <Text style={styles.watchMiniText}>Switch</Text>
+                    <View style={styles.watchMiniBtn}>
+                      <Tv size={12} color="#FFFFFF" strokeWidth={2.2} />
+                      <Text style={styles.watchMiniText}>Switch</Text>
+                    </View>
                   </View>
                 </TouchableOpacity>
               );
-            })}
-          </View>
-        )}
+            })
+          ) : (
+            <View style={styles.emptyOtherLive}>
+              <Tv size={22} color="#6D6A87" strokeWidth={2} />
+              <Text style={styles.emptyOtherLiveText}>No other live streams right now</Text>
+            </View>
+          )}
+        </View>
       </ScrollView>
 
       {/* ── 5. FULLSCREEN LANDSCAPE VIDEO PLAYER MODAL ── */}
@@ -331,11 +367,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 28,
+    paddingBottom: 40,
   },
   playerContainer: {
     width: SCREEN_WIDTH,
-    height: PLAYER_HEIGHT,
     backgroundColor: '#000000',
   },
   livePlayerSurface: {
@@ -506,7 +541,8 @@ const styles = StyleSheet.create({
   matchIdentityCard: {
     margin: 16,
     marginBottom: 12,
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     borderRadius: 18,
     backgroundColor: '#1E1730',
   },
@@ -519,17 +555,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   crestContainer: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: '#181524',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
   },
   crestImage: {
-    width: 36,
-    height: 36,
+    width: 34,
+    height: 34,
     resizeMode: 'contain',
   },
   teamNameText: {
@@ -539,31 +575,57 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   matchScoreCenter: {
-    width: 90,
+    width: 104,
     alignItems: 'center',
   },
   scoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 2,
+    marginBottom: 4,
   },
   scoreNumber: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '900',
     color: '#FFFFFF',
   },
   scoreColon: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '700',
     color: '#7952FC',
     marginHorizontal: 3,
   },
+  statusBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  statusBadgeLive: {
+    backgroundColor: '#FF2E56',
+  },
+  statusBadgeFT: {
+    backgroundColor: '#2A2045',
+  },
+  liveClockDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#FFFFFF',
+  },
+  statusBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.4,
+  },
   vsBadge: {
     backgroundColor: '#2A2045',
     paddingHorizontal: 10,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 8,
-    marginBottom: 3,
+    marginBottom: 4,
   },
   vsText: {
     fontSize: 12,
@@ -571,7 +633,7 @@ const styles = StyleSheet.create({
     color: '#7952FC',
   },
   matchStatusSub: {
-    fontSize: 10.5,
+    fontSize: 11,
     color: '#A098B5',
     fontWeight: '600',
   },
@@ -579,17 +641,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginHorizontal: 16,
     marginBottom: 16,
-    gap: 8,
+    gap: 10,
   },
   matchDetailsActionBtn: {
     flex: 1,
-    height: 44,
+    height: 42,
     borderRadius: 12,
     backgroundColor: '#7952FC',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 7,
+    gap: 6,
   },
   matchDetailsActionText: {
     fontSize: 13,
@@ -597,15 +659,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   iconActionBtn: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     borderRadius: 12,
     backgroundColor: '#1E1730',
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconActionBtnActive: {
-    backgroundColor: '#2A2045',
+    backgroundColor: '#352558',
   },
   metaCard: {
     marginHorizontal: 16,
@@ -639,69 +701,93 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   relatedSectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
     color: '#A098B5',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
     marginBottom: 10,
+    paddingLeft: 2,
   },
   relatedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#1E1730',
     borderRadius: 14,
     padding: 12,
     marginBottom: 8,
   },
-  relatedLeft: {
-    flex: 1,
+  relatedMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
   },
   relatedComp: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '700',
     color: '#7952FC',
     textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    flex: 1,
+    marginRight: 8,
   },
-  relatedVersus: {
-    fontSize: 13,
-    fontWeight: '600',
+  relatedLivePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FF2E56',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 5,
+  },
+  relatedTimePill: {
+    backgroundColor: '#2A2045',
+  },
+  relatedLiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#FFFFFF',
+  },
+  relatedLiveText: {
+    fontSize: 10,
+    fontWeight: '800',
     color: '#FFFFFF',
-    marginVertical: 2,
   },
   relatedMatchupRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    marginVertical: 3,
+    justifyContent: 'space-between',
+  },
+  relatedTeamsGroup: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginRight: 10,
   },
   relatedCrest: {
-    width: 18,
-    height: 18,
+    width: 20,
+    height: 20,
     resizeMode: 'contain',
   },
   relatedTeamName: {
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
     flexShrink: 1,
   },
   relatedVs: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#7952FC',
-    marginHorizontal: 1,
-  },
-  relatedTime: {
-    fontSize: 10.5,
-    color: '#A098B5',
+    marginHorizontal: 2,
   },
   watchMiniBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
     backgroundColor: '#2A2045',
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: 8,
   },
@@ -709,6 +795,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  emptyOtherLive: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    gap: 6,
+    backgroundColor: '#1E1730',
+    borderRadius: 14,
+  },
+  emptyOtherLiveText: {
+    fontSize: 12,
+    color: '#A098B5',
+    fontWeight: '500',
   },
   // Fullscreen Landscape Video Player
   fullscreenContainer: {

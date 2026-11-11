@@ -33,9 +33,19 @@ const AppContent: React.FC = () => {
       case 'AllLiveStreams':
         return <AllLiveStreamsScreen />;
       case 'LiveStreamDetails':
-        return <LiveStreamDetailsScreen match={currentRoute.params.match} />;
+        return (
+          <LiveStreamDetailsScreen
+            key={currentRoute.params.match.id}
+            match={currentRoute.params.match}
+          />
+        );
       case 'MatchDetails':
-        return <MatchDetailsScreen matchup={currentRoute.params.matchup} />;
+        return (
+          <MatchDetailsScreen
+            key={currentRoute.params.matchup.id}
+            matchup={currentRoute.params.matchup}
+          />
+        );
       case 'TeamDetails':
         return <TeamDetailsScreen team={currentRoute.params.team} />;
       case 'CompetitionDetails':

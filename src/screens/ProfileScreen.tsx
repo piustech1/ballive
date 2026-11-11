@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Linking,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import {
   Shield,
   Trophy,
@@ -18,9 +19,28 @@ import {
   HelpCircle,
   Info,
   MessageCircle,
-  Video,
   Check,
+  Video,
 } from 'lucide-react-native';
+
+// Authentic Official Vector Brand Icons
+const WhatsAppOfficialIcon: React.FC<{ size?: number; color?: string }> = ({ size = 22, color = '#25D366' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.89 9.885m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.746.953 3.71 1.456 5.711 1.457h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 00-3.48-8.413z"
+      fill={color}
+    />
+  </Svg>
+);
+
+const TikTokOfficialIcon: React.FC<{ size?: number; color?: string }> = ({ size = 20, color = '#FFFFFF' }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M19.589 6.686a4.793 4.793 0 01-3.77-4.245V2h-3.445v13.672a2.896 2.896 0 01-2.89 2.896 2.896 2.896 0 01-2.896-2.896 2.896 2.896 0 012.896-2.896c.31 0 .607.054.884.148V9.412a6.37 6.37 0 00-.884-.061C5.972 9.351 3.2 12.123 3.2 15.635 3.2 19.146 5.972 22 9.484 22c3.511 0 6.347-2.854 6.347-6.365V8.587a8.214 8.214 0 005.158 1.83V6.972a4.78 4.78 0 01-1.4-.286z"
+      fill={color}
+    />
+  </Svg>
+);
 import Colors from '../theme/colors';
 import { useProfile } from '../hooks/useProfile';
 import { ProfileHeader } from '../features/profile/ProfileHeader';
@@ -141,58 +161,44 @@ export const ProfileScreen: React.FC = () => {
         {/* ── SECTION: JOIN OUR FOOTBALL COMMUNITY ── */}
         <View style={styles.section}>
           <Text style={styles.sectionHeader}>JOIN OUR FOOTBALL COMMUNITY</Text>
-          <View style={styles.communityCardsColumn}>
-            {/* WhatsApp Channel Card */}
+          <View style={styles.communityGroup}>
+            {/* WhatsApp Channel */}
             <TouchableOpacity
-              style={styles.communityCard}
-              activeOpacity={0.85}
+              style={[styles.communityRow, styles.communityRowBorder]}
+              activeOpacity={0.75}
               onPress={() => Linking.openURL('https://whatsapp.com').catch(() => {})}
+              accessibilityRole="button"
+              accessibilityLabel="Join WhatsApp Channel"
             >
-              <View style={[styles.communityIconBox, { backgroundColor: '#25D366' }]}>
-                <MessageCircle size={20} color="#FFFFFF" strokeWidth={2.4} />
+              <View style={[styles.communityIconContainer, { backgroundColor: '#1A2F22' }]}>
+                <WhatsAppOfficialIcon size={22} color="#25D366" />
               </View>
-              <View style={styles.communityTextCol}>
-                <View style={styles.communityTitleRow}>
-                  <Text style={styles.communityTitle} numberOfLines={1}>
-                    WhatsApp Channel
-                  </Text>
-                  <View style={[styles.communityVerified, { backgroundColor: '#25D366' }]}>
-                    <Check size={8} color="#FFFFFF" strokeWidth={3.5} />
-                  </View>
-                </View>
-                <Text style={styles.communitySub} numberOfLines={1}>
-                  Instant stream links, lineups & alerts
-                </Text>
+              <View style={styles.communityTextContainer}>
+                <Text style={styles.communityPrimaryText}>WhatsApp Channel</Text>
+                <Text style={styles.communitySecondaryText}>Streams, lineups & match alerts</Text>
               </View>
-              <View style={[styles.communityPill, { backgroundColor: 'rgba(37, 211, 102, 0.15)' }]}>
-                <Text style={[styles.communityPillText, { color: '#25D366' }]}>Join</Text>
+              <View style={styles.communityActionPill}>
+                <Text style={styles.communityActionText}>Join</Text>
               </View>
             </TouchableOpacity>
 
-            {/* TikTok Community Card */}
+            {/* TikTok Community */}
             <TouchableOpacity
-              style={styles.communityCard}
-              activeOpacity={0.85}
+              style={styles.communityRow}
+              activeOpacity={0.75}
               onPress={() => Linking.openURL('https://tiktok.com').catch(() => {})}
+              accessibilityRole="button"
+              accessibilityLabel="Follow TikTok Community"
             >
-              <View style={[styles.communityIconBox, { backgroundColor: '#010101', borderWidth: 1.5, borderColor: '#FE2C55' }]}>
-                <Video size={19} color="#FFFFFF" strokeWidth={2.4} />
+              <View style={[styles.communityIconContainer, { backgroundColor: '#21172A' }]}>
+                <TikTokOfficialIcon size={20} color="#FE2C55" />
               </View>
-              <View style={styles.communityTextCol}>
-                <View style={styles.communityTitleRow}>
-                  <Text style={styles.communityTitle} numberOfLines={1}>
-                    TikTok Community
-                  </Text>
-                  <View style={[styles.communityVerified, { backgroundColor: '#FE2C55' }]}>
-                    <Check size={8} color="#FFFFFF" strokeWidth={3.5} />
-                  </View>
-                </View>
-                <Text style={styles.communitySub} numberOfLines={1}>
-                  Viral football clips & skill reels
-                </Text>
+              <View style={styles.communityTextContainer}>
+                <Text style={styles.communityPrimaryText}>TikTok Community</Text>
+                <Text style={styles.communitySecondaryText}>Football clips & viral moments</Text>
               </View>
-              <View style={[styles.communityPill, { backgroundColor: 'rgba(254, 44, 85, 0.15)' }]}>
-                <Text style={[styles.communityPillText, { color: '#FE2C55' }]}>Follow</Text>
+              <View style={styles.communityActionPill}>
+                <Text style={styles.communityActionText}>Follow</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -219,7 +225,7 @@ export const ProfileScreen: React.FC = () => {
               icon={Info}
               iconColor="#A58BFC"
               label="About BALLIVE"
-              badgeValue="v1.8.0"
+              badgeValue="v2.0.0"
               isLast
               onPress={() => setAboutModalVisible(true)}
             />
@@ -302,7 +308,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 32,
+    paddingBottom: 96,
     gap: 20,
   },
   section: {
@@ -320,62 +326,52 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   // Social Community Styles
-  communityCardsColumn: {
-    gap: 8,
-  },
-  communityCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  communityGroup: {
     backgroundColor: '#1E1730',
     borderRadius: 16,
-    padding: 12,
-    gap: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    overflow: 'hidden',
   },
-  communityIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  communityTextCol: {
-    flex: 1,
-  },
-  communityTitleRow: {
+  communityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  communityTitle: {
-    fontSize: 14,
+  communityRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+  },
+  communityIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  communityTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  communityPrimaryText: {
+    fontSize: 14.5,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  communityVerified: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  communitySub: {
+  communitySecondaryText: {
     fontSize: 11.5,
-    color: '#A098B5',
+    color: '#9A97B8',
     marginTop: 1,
   },
-  communityPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+  communityActionPill: {
+    backgroundColor: '#2A2045',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 8,
   },
-  communityPillText: {
+  communityActionText: {
     fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.2,
+    fontWeight: '700',
+    color: '#ECE9FA',
   },
 });
