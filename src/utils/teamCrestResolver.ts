@@ -7,6 +7,7 @@
 const CDN_FOOTBALL = 'https://media.api-sports.io/football/teams';
 const CDN_NBA = 'https://a.espncdn.com/i/teamlogos/nba/500/scoreboard';
 const CDN_NHL = 'https://a.espncdn.com/i/teamlogos/nhl/500/scoreboard';
+const CDN_COUNTRIES = 'https://a.espncdn.com/i/teamlogos/countries/500';
 
 // Neutral official sports shield placeholder (Never defaults to Arsenal or any specific club)
 export const DEFAULT_CREST = 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png';
@@ -282,9 +283,37 @@ const CREST_MAP: Record<string, string> = {
   'golden-knights': `${CDN_NHL}/vgs.png`,
   'washington-capitals': `${CDN_NHL}/wsh.png`,
   'capitals': `${CDN_NHL}/wsh.png`,
-  'caps': `${CDN_NHL}/wsh.png`,
   'winnipeg-jets': `${CDN_NHL}/wpg.png`,
   'jets': `${CDN_NHL}/wpg.png`,
+
+  // ── INTERNATIONAL / NATIONAL TEAMS ──
+  'england': `${CDN_COUNTRIES}/eng.png`,
+  'france': `${CDN_COUNTRIES}/fra.png`,
+  'germany': `${CDN_COUNTRIES}/ger.png`,
+  'spain': `${CDN_COUNTRIES}/esp.png`,
+  'italy': `${CDN_COUNTRIES}/ita.png`,
+  'portugal': `${CDN_COUNTRIES}/por.png`,
+  'netherlands': `${CDN_COUNTRIES}/ned.png`,
+  'brazil': `${CDN_COUNTRIES}/bra.png`,
+  'argentina': `${CDN_COUNTRIES}/arg.png`,
+  'ghana': `${CDN_COUNTRIES}/gha.png`,
+  'somalia': `${CDN_COUNTRIES}/som.png`,
+  'nigeria': `${CDN_COUNTRIES}/nga.png`,
+  'morocco': `${CDN_COUNTRIES}/mar.png`,
+  'senegal': `${CDN_COUNTRIES}/sen.png`,
+  'egypt': `${CDN_COUNTRIES}/egy.png`,
+  'cameroon': `${CDN_COUNTRIES}/cmr.png`,
+  'usa': `${CDN_COUNTRIES}/usa.png`,
+  'united-states': `${CDN_COUNTRIES}/usa.png`,
+  'mexico': `${CDN_COUNTRIES}/mex.png`,
+  'canada': `${CDN_COUNTRIES}/can.png`,
+  'japan': `${CDN_COUNTRIES}/jpn.png`,
+  'south-korea': `${CDN_COUNTRIES}/kor.png`,
+  'australia': `${CDN_COUNTRIES}/aus.png`,
+  'croatia': `${CDN_COUNTRIES}/cro.png`,
+  'belgium': `${CDN_COUNTRIES}/bel.png`,
+  'colombia': `${CDN_COUNTRIES}/col.png`,
+  'uruguay': `${CDN_COUNTRIES}/uru.png`,
 };
 
 /**
@@ -317,11 +346,18 @@ export function getTeamCrest(teamIdentifierOrName?: string | null): string {
     return CREST_MAP[normalized];
   }
 
-  // Search by normalized word boundaries (longest key first)
+  // Search by normalized token boundaries (longest key first)
   const sortedKeys = Object.keys(CREST_MAP).sort((a, b) => b.length - a.length);
   for (const key of sortedKeys) {
-    if (key.length >= 4) {
-      if (normalized.includes(key)) {
+    if (key.length >= 3) {
+      // Must match exact token or delimited word to prevent spurious substring match
+      const isTokenMatch =
+        normalized === key ||
+        normalized.startsWith(`${key}-`) ||
+        normalized.endsWith(`-${key}`) ||
+        normalized.includes(`-${key}-`);
+
+      if (isTokenMatch) {
         return CREST_MAP[key];
       }
     }

@@ -12,22 +12,23 @@ import {
 } from 'react-native';
 import {
   Tv,
-  Radio,
   Info,
   ChevronDown,
   Check,
   Signal,
+  Flame,
+  Trophy,
+  Activity,
+  Shield,
+  LucideIcon,
 } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
-import { LiveBadge } from '../components/common/LiveBadge';
 import { CompetitionLogo } from '../components/common/CompetitionLogo';
-import { getTeamCrest } from '../utils/teamCrestResolver';
+import { getTeamCrest, DEFAULT_CREST } from '../utils/teamCrestResolver';
 import { DiscoverMatchup } from '../constants/discoverData';
-import { getAllLiveStreamMatches } from '../navigation/navHelpers';
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { streamingApiService } from '../services/streamingApiService';
-
 import { MatchCardSkeleton } from '../components/common/SkeletonLoader';
 
 type StreamFilter = 'all' | 'live' | 'upcoming' | 'available';
@@ -52,12 +53,56 @@ const FILTER_SHORT_LABELS: Record<StreamFilter, string> = {
   available: 'Feeds',
 };
 
-const SPORT_TABS: Array<{ id: SportFilter; label: string }> = [
-  { id: 'all', label: 'All Sports' },
-  { id: 'football', label: '⚽ Football' },
-  { id: 'basketball', label: '🏀 Basketball' },
-  { id: 'hockey', label: '🏒 Hockey' },
+interface SportTab {
+  id: SportFilter;
+  label: string;
+  icon: LucideIcon;
+}
+
+const SPORT_TABS: SportTab[] = [
+  { id: 'all', label: 'All Sports', icon: Flame },
+  { id: 'football', label: 'Football', icon: Trophy },
+  { id: 'basketball', label: 'Basketball', icon: Activity },
+  { id: 'hockey', label: 'Hockey', icon: Shield },
 ];
+
+/**
+ * Resilient team crest component with automatic neutral shield fallback.
+ * Prevents any accidental assignment of Arsenal or club crests to unrelated teams.
+ */
+const TeamCrestImage: React.FC<{
+  uri?: string | null;
+  teamName?: string;
+  size?: number;
+}> = ({ uri, teamName, size = 24 }) => {
+  const [hasError, setHasError] = useState(false);
+  const resolvedUri = useMemo(() => {
+    if (uri && typeof uri === 'string' && uri.trim().length > 10 && !uri.includes('null')) {
+      return uri.trim();
+    }
+    return getTeamCrest(teamName);
+  }, [uri, teamName]);
+
+  const [currentUri, setCurrentUri] = useState<string>(resolvedUri);
+
+  useEffect(() => {
+    setCurrentUri(resolvedUri);
+    setHasError(false);
+  }, [resolvedUri]);
+
+  return (
+    <Image
+      source={{ uri: hasError ? DEFAULT_CREST : currentUri }}
+      style={{ width: size, height: size, resizeMode: 'contain' }}
+      onError={() => {
+        if (!hasError) {
+          setHasError(true);
+          setCurrentUri(DEFAULT_CREST);
+        }
+      }}
+    />
+  );
+};
 
 export const AllLiveStreamsScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
@@ -75,8 +120,8 @@ export const AllLiveStreamsScreen: React.FC = () => {
         const converted = live.map(m => streamingApiService.convertLiveMatchToMatchup(m));
         setAllStreamMatches(converted);
       }
-    } catch (e) {
-      // fallback
+    } catch {
+      // Keep existing matches on error
     } finally {
       setIsLoading(false);
     }
@@ -124,10 +169,10 @@ export const AllLiveStreamsScreen: React.FC = () => {
 
   return (
     <View style={styles.root}>
-      {/* ── TOP APP BAR WITH INTEGRATED DROPDOWN FILTER ── */}
+      {/* ── TOP APP BAR (CURVED SECONDARY HEADER WITH MATCH COUNT & FILTER DROPDOWN) ── */}
       <SecondaryScreenHeader
-        title="Live Streams"
-        subtitle={`${liveCount} Matches Currently Live`}
+        title="LIVE STREAMS"
+        subtitle={liveCount > 0 ? `${liveCount} Live Matches` : 'Live & Upcoming Feeds'}
         rightCustomComponent={
           <TouchableOpacity
             activeOpacity={0.8}
@@ -139,7 +184,7 @@ export const AllLiveStreamsScreen: React.FC = () => {
             <Text style={styles.headerDropdownText} numberOfLines={1}>
               {FILTER_SHORT_LABELS[selectedFilter]}
             </Text>
-            <ChevronDown size={14} color="#FFFFFF" strokeWidth={2.4} style={{ marginLeft: 4 }} />
+            <ChevronDown size={13} color="#FFFFFF" strokeWidth={2.4} style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         }
       />
@@ -194,7 +239,7 @@ export const AllLiveStreamsScreen: React.FC = () => {
                         </Text>
                       </View>
                       {isSelected && (
-                        <Check size={16} color="#7952FC" strokeWidth={2.8} />
+                        <Check size={15} color="#7952FC" strokeWidth={2.8} />
                       )}
                     </TouchableOpacity>
                   );
@@ -205,23 +250,29 @@ export const AllLiveStreamsScreen: React.FC = () => {
         </TouchableWithoutFeedback>
       </Modal>
 
-      {/* ── SPORT CATEGORY PILLS BAR ── */}
-      <View style={styles.sportPillsRow}>
+      {/* ── SPORT CATEGORY FILTER STRIP (LUCIDE ICONS, COMPACT CHIPS) ── */}
+      <View style={styles.sportTabsContainer}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.sportPillsScroll}
+          contentContainerStyle={styles.sportTabsScroll}
         >
           {SPORT_TABS.map(tab => {
             const isTabActive = selectedSport === tab.id;
+            const Icon = tab.icon;
             return (
               <TouchableOpacity
                 key={tab.id}
-                activeOpacity={0.8}
-                style={[styles.sportPill, isTabActive && styles.sportPillActive]}
+                activeOpacity={0.75}
+                style={[styles.sportTabChip, isTabActive && styles.sportTabChipActive]}
                 onPress={() => setSelectedSport(tab.id)}
               >
-                <Text style={[styles.sportPillText, isTabActive && styles.sportPillTextActive]}>
+                <Icon
+                  size={13}
+                  color={isTabActive ? '#FFFFFF' : '#A098B5'}
+                  strokeWidth={isTabActive ? 2.5 : 2}
+                />
+                <Text style={[styles.sportTabText, isTabActive && styles.sportTabTextActive]}>
                   {tab.label}
                 </Text>
               </TouchableOpacity>
@@ -230,7 +281,7 @@ export const AllLiveStreamsScreen: React.FC = () => {
         </ScrollView>
       </View>
 
-      {/* ── MAIN VERTICAL MATCH LIST (STARTS DIRECTLY UNDER CURVED HEADER) ── */}
+      {/* ── MAIN VERTICAL MATCH LIST ── */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -266,23 +317,32 @@ export const AllLiveStreamsScreen: React.FC = () => {
                   });
                 }}
               >
-                {/* TOP HEADER ROW: Competition + Live / Kickoff Badge */}
+                {/* 1. TOP HEADER ROW: Competition Logo & Name + Compact Solid LIVE Minute Pill */}
                 <View style={styles.cardHeaderRow}>
                   <View style={styles.compInfoLeft}>
-                    <CompetitionLogo
-                      uri={matchup.competitionLogo}
-                      size={24}
-                      containerStyle={{ marginRight: 8 }}
-                    />
+                    {Boolean(matchup.competitionLogo) && (
+                      <CompetitionLogo
+                        uri={matchup.competitionLogo}
+                        size={17}
+                        containerStyle={{ marginRight: 6 }}
+                      />
+                    )}
                     <Text style={styles.compName} numberOfLines={1}>
                       {matchup.competition}
                     </Text>
                   </View>
 
                   {isLive ? (
-                    <LiveBadge variant="solid" minute={matchup.minute} />
+                    <View style={styles.liveMinuteBadge}>
+                      <View style={styles.liveDot} />
+                      <Text style={styles.liveMinuteText}>{matchup.minute}' LIVE</Text>
+                    </View>
+                  ) : matchup.status === 'FT' ? (
+                    <View style={styles.ftBadge}>
+                      <Text style={styles.ftBadgeText}>FT</Text>
+                    </View>
                   ) : (
-                    <View style={styles.upcomingBadgePill}>
+                    <View style={styles.upcomingBadge}>
                       <Text style={styles.upcomingBadgeText}>
                         {matchup.kickoffDate} • {matchup.kickoffTime.replace(' GMT', '')}
                       </Text>
@@ -290,63 +350,65 @@ export const AllLiveStreamsScreen: React.FC = () => {
                   )}
                 </View>
 
-                {/* CENTER ROW: Teams and Scores */}
-                <View style={styles.scoreRow}>
+                {/* 2. MATCH CENTRE: Symmetrical 3-Part Layout (HOME TEAM | SCORE | AWAY TEAM) */}
+                <View style={styles.matchCentre}>
                   {/* Home Team */}
-                  <View style={styles.teamSide}>
+                  <View style={styles.teamHome}>
                     <View style={styles.crestCircle}>
-                      <Image
-                        source={{ uri: matchup.homeTeam.crestUrl || getTeamCrest(matchup.homeTeam.name || matchup.homeTeam.id) }}
-                        style={styles.teamCrest}
+                      <TeamCrestImage
+                        uri={matchup.homeTeam.crestUrl}
+                        teamName={matchup.homeTeam.name || matchup.homeTeam.id}
+                        size={22}
                       />
                     </View>
-                    <Text style={styles.teamName} numberOfLines={1}>
+                    <Text style={styles.teamNameLeft} numberOfLines={1}>
                       {matchup.homeTeam.name}
                     </Text>
                   </View>
 
                   {/* Center Score / VS */}
-                  <View style={styles.centerScoreBox}>
+                  <View style={styles.scoreCenter}>
                     {isLive || matchup.status === 'FT' ? (
-                      <View style={styles.scoreDigitsRow}>
-                        <Text style={styles.scoreNumber}>{matchup.homeTeam.score ?? 0}</Text>
-                        <Text style={styles.scoreDash}>-</Text>
-                        <Text style={styles.scoreNumber}>{matchup.awayTeam.score ?? 0}</Text>
+                      <View style={styles.scoreRow}>
+                        <Text style={styles.scoreDigit}>{matchup.homeTeam.score ?? 0}</Text>
+                        <Text style={styles.scoreColon}>:</Text>
+                        <Text style={styles.scoreDigit}>{matchup.awayTeam.score ?? 0}</Text>
                       </View>
                     ) : (
-                      <View style={styles.vsBadge}>
+                      <View style={styles.vsPill}>
                         <Text style={styles.vsText}>VS</Text>
                       </View>
                     )}
-                    <Text style={styles.venueLabel} numberOfLines={1}>
-                      {matchup.venue}
+                    <Text style={styles.venueSubtext} numberOfLines={1}>
+                      {isLive ? `${matchup.minute}' In-Play` : matchup.venue || 'Live Stadium'}
                     </Text>
                   </View>
 
                   {/* Away Team */}
-                  <View style={styles.teamSide}>
-                    <View style={styles.crestCircle}>
-                      <Image
-                        source={{ uri: matchup.awayTeam.crestUrl || getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id) }}
-                        style={styles.teamCrest}
-                      />
-                    </View>
-                    <Text style={styles.teamName} numberOfLines={1}>
+                  <View style={styles.teamAway}>
+                    <Text style={styles.teamNameRight} numberOfLines={1}>
                       {matchup.awayTeam.name}
                     </Text>
+                    <View style={styles.crestCircle}>
+                      <TeamCrestImage
+                        uri={matchup.awayTeam.crestUrl}
+                        teamName={matchup.awayTeam.name || matchup.awayTeam.id}
+                        size={22}
+                      />
+                    </View>
                   </View>
                 </View>
 
-                {/* FOOTER ROW: Stream Quality Indicator + Actions */}
+                {/* 3. CARD FOOTER: Stream Metadata + Secondary Details + Primary Watch Live */}
                 <View style={styles.cardFooter}>
-                  <View style={styles.broadcastMeta}>
-                    <Radio size={13} color="#22C55E" strokeWidth={2.4} />
-                    <Text style={styles.broadcastMetaText}>
-                      {isLive ? 'Full HD 1080p • Satellite Feed' : 'Broadcast Feed Authorized'}
+                  <View style={styles.streamMetaRow}>
+                    <Signal size={12} color="#22C55E" strokeWidth={2.4} />
+                    <Text style={styles.streamMetaText} numberOfLines={1}>
+                      {isLive ? 'HD 1080p • Satellite Feed' : 'Broadcast Feed Scheduled'}
                     </Text>
                   </View>
 
-                  <View style={styles.actionButtonsCluster}>
+                  <View style={styles.actionButtons}>
                     <TouchableOpacity
                       activeOpacity={0.8}
                       style={styles.detailsBtn}
@@ -357,8 +419,9 @@ export const AllLiveStreamsScreen: React.FC = () => {
                           params: { matchup },
                         });
                       }}
+                      accessibilityLabel={`Details for ${matchup.homeTeam.name} vs ${matchup.awayTeam.name}`}
                     >
-                      <Info size={14} color="#A098B5" strokeWidth={2.2} />
+                      <Info size={12} color="#A098B5" strokeWidth={2.2} />
                       <Text style={styles.detailsBtnText}>Details</Text>
                     </TouchableOpacity>
 
@@ -372,8 +435,9 @@ export const AllLiveStreamsScreen: React.FC = () => {
                           params: { match: matchup },
                         });
                       }}
+                      accessibilityLabel={`Watch live stream of ${matchup.homeTeam.name} vs ${matchup.awayTeam.name}`}
                     >
-                      <Tv size={14} color="#FFFFFF" strokeWidth={2.4} />
+                      <Tv size={12} color="#FFFFFF" strokeWidth={2.4} />
                       <Text style={styles.watchBtnText}>
                         {isLive ? 'Watch Live' : 'Stream Feed'}
                       </Text>
@@ -386,11 +450,13 @@ export const AllLiveStreamsScreen: React.FC = () => {
         ) : (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyCircle}>
-              <Tv size={36} color="#7952FC" strokeWidth={2} />
+              <Tv size={32} color="#7952FC" strokeWidth={2} />
             </View>
             <Text style={styles.emptyTitle}>No Streams Found</Text>
             <Text style={styles.emptySubtitle}>
-              There are no matches matching this filter right now. Check back shortly for kickoff feeds!
+              {selectedFilter === 'live'
+                ? 'There are currently no live matches in this category. Check back shortly for kickoff!'
+                : 'No match feeds matching this filter. Switch categories or pull down to refresh.'}
             </Text>
           </View>
         )}
@@ -404,41 +470,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0E0D14',
   },
-  sportPillsRow: {
-    backgroundColor: '#1E1730',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#281E40',
-  },
-  sportPillsScroll: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  sportPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 18,
-    backgroundColor: '#2A2045',
-  },
-  sportPillActive: {
-    backgroundColor: '#7952FC',
-  },
-  sportPillText: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#A098B5',
-  },
-  sportPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
   headerDropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#2A2045',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 18,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   headerLiveDot: {
     width: 6,
@@ -448,7 +486,7 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   headerDropdownText: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.1,
@@ -462,10 +500,10 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   dropdownCard: {
-    width: 220,
+    width: 210,
     backgroundColor: '#1E1730',
-    borderRadius: 18,
-    padding: 12,
+    borderRadius: 16,
+    padding: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.45,
@@ -479,7 +517,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.8,
     paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingVertical: 5,
     marginBottom: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#281E40',
@@ -488,9 +526,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 8,
   },
   dropdownCardItemActive: {
     backgroundColor: '#2A2045',
@@ -504,10 +542,10 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: '#EF4444',
-    marginRight: 7,
+    marginRight: 6,
   },
   dropdownItemLabel: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
     color: '#A098B5',
   },
@@ -515,169 +553,250 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
+  sportTabsContainer: {
+    backgroundColor: '#161224',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#241C38',
+  },
+  sportTabsScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  sportTabChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 32,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#251D3A',
+    gap: 6,
+  },
+  sportTabChipActive: {
+    backgroundColor: '#7952FC',
+  },
+  sportTabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#A098B5',
+  },
+  sportTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 28,
-    gap: 12,
+    padding: 14,
+    paddingBottom: 100, // Clearance for anchored bottom navigation
+    gap: 10,
   },
   matchCard: {
     backgroundColor: '#1E1730',
-    borderRadius: 18,
-    padding: 16,
-    elevation: 3,
+    borderRadius: 16,
+    padding: 12,
+    elevation: 2,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
   },
   cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#261C3D',
+    marginBottom: 8,
   },
   compInfoLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: 10,
+    marginRight: 8,
   },
   compName: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8E75FF',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  liveMinuteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+    gap: 4,
+  },
+  liveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#FFFFFF',
+  },
+  liveMinuteText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
+  },
+  ftBadge: {
+    backgroundColor: '#2A2045',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  ftBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#A098B5',
+  },
+  upcomingBadge: {
+    backgroundColor: '#2A2045',
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
+  },
+  upcomingBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#F8BE38',
+  },
+  matchCentre: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  teamHome: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  teamAway: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
+  },
+  crestCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#181524',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  teamNameLeft: {
     fontSize: 12.5,
     fontWeight: '700',
     color: '#FFFFFF',
+    flex: 1,
   },
-  upcomingBadgePill: {
-    backgroundColor: '#2A2045',
-    paddingHorizontal: 8,
-    paddingVertical: 3.5,
-    borderRadius: 8,
+  teamNameRight: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'right',
+    flex: 1,
   },
-  upcomingBadgeText: {
-    fontSize: 10.5,
-    fontWeight: '600',
-    color: '#F8BE38',
+  scoreCenter: {
+    width: 76,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-  },
-  teamSide: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  crestCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#181524',
-    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
   },
-  teamCrest: {
-    width: 32,
-    height: 32,
-    resizeMode: 'contain',
-  },
-  teamName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  centerScoreBox: {
-    width: 100,
-    alignItems: 'center',
-  },
-  scoreDigitsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  scoreNumber: {
-    fontSize: 26,
+  scoreDigit: {
+    fontSize: 20,
     fontWeight: '900',
     color: '#FFFFFF',
+    minWidth: 16,
+    textAlign: 'center',
   },
-  scoreDash: {
-    fontSize: 20,
+  scoreColon: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#7952FC',
-    marginHorizontal: 6,
+    marginHorizontal: 3,
   },
-  vsBadge: {
+  vsPill: {
     backgroundColor: '#2A2045',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginBottom: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   vsText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: '#7952FC',
   },
-  venueLabel: {
-    fontSize: 10.5,
+  venueSubtext: {
+    fontSize: 9.5,
+    fontWeight: '500',
     color: '#A098B5',
+    marginTop: 2,
     textAlign: 'center',
   },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 12,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#261C3D',
   },
-  broadcastMeta: {
+  streamMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     flex: 1,
+    marginRight: 8,
   },
-  broadcastMetaText: {
-    fontSize: 11,
+  streamMetaText: {
+    fontSize: 10.5,
     fontWeight: '500',
     color: '#A098B5',
   },
-  actionButtonsCluster: {
+  actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   detailsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    height: 28,
+    paddingHorizontal: 9,
+    borderRadius: 8,
     backgroundColor: '#2A2045',
+    gap: 4,
   },
   detailsBtnText: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '600',
     color: '#A098B5',
   },
   watchBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
+    height: 28,
+    paddingHorizontal: 11,
+    borderRadius: 8,
     backgroundColor: '#7952FC',
+    gap: 4,
   },
   watchBtnText: {
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -687,25 +806,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   emptyCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#1E1730',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 6,
   },
   emptySubtitle: {
-    fontSize: 12.5,
+    fontSize: 12,
     color: '#A098B5',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 17,
   },
 });
 

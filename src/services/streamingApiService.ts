@@ -36,14 +36,16 @@ function parseTeams(name: string): { home: string; away: string } {
 }
 
 /**
- * Extracts query parameters from poster image URLs.
+ * Extracts query parameters from poster image URLs with null safety.
  */
 function extractPosterParam(url: string | undefined, param: string): string | null {
   if (!url || !url.includes('?')) return null;
   try {
     const queryString = url.split('?')[1];
     const params = new URLSearchParams(queryString);
-    return params.get(param);
+    const val = params.get(param);
+    if (!val || val === 'null' || val === 'undefined' || val.trim() === '') return null;
+    return val.trim();
   } catch {
     return null;
   }
@@ -122,8 +124,13 @@ class StreamingApiService {
             }
 
             // High-resolution authentic team crests directly from DAG event meta, poster query or resolver
-            const b1 = m.team1?.logo || extractPosterParam(m.poster, 'b1') || getTeamCrest(home);
-            const b2 = m.team2?.logo || extractPosterParam(m.poster, 'b2') || getTeamCrest(away);
+            const rawLogo1 = (typeof m.team1?.logo === 'string' && m.team1.logo.trim().length > 10 && !m.team1.logo.includes('null')) ? m.team1.logo.trim() : null;
+            const rawLogo2 = (typeof m.team2?.logo === 'string' && m.team2.logo.trim().length > 10 && !m.team2.logo.includes('null')) ? m.team2.logo.trim() : null;
+            const posterLogo1 = extractPosterParam(m.poster, 'b1');
+            const posterLogo2 = extractPosterParam(m.poster, 'b2');
+
+            const b1 = rawLogo1 || posterLogo1 || getTeamCrest(home);
+            const b2 = rawLogo2 || posterLogo2 || getTeamCrest(away);
 
             const hash = m.id.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
             const minute = Math.min(88, Math.max(12, (hash % 70) + ((idx * 3) % 18)));
@@ -339,8 +346,10 @@ class StreamingApiService {
    * Converts a LiveMatch into a full DiscoverMatchup object for navigation.
    */
   convertLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
-    const homeCrest = live.homeBadge || getTeamCrest(live.homeTeam);
-    const awayCrest = live.awayBadge || getTeamCrest(live.awayTeam);
+    const validHomeBadge = (live.homeBadge && typeof live.homeBadge === 'string' && live.homeBadge.trim().length > 10 && !live.homeBadge.includes('null')) ? live.homeBadge.trim() : null;
+    const validAwayBadge = (live.awayBadge && typeof live.awayBadge === 'string' && live.awayBadge.trim().length > 10 && !live.awayBadge.includes('null')) ? live.awayBadge.trim() : null;
+    const homeCrest = validHomeBadge || getTeamCrest(live.homeTeam);
+    const awayCrest = validAwayBadge || getTeamCrest(live.awayTeam);
 
     const compLower = live.competition.toLowerCase();
     let compLogo = LEAGUE_EMBLEMS['ucl'];

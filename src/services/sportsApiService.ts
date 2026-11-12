@@ -117,13 +117,18 @@ class SportsApiService {
             const homeName = home?.team?.displayName || 'Home Team';
             const awayName = away?.team?.displayName || 'Away Team';
 
+            const isSoccer = cfg.sport === 'soccer';
             const homeLogo =
               home?.team?.logo ||
-              (home?.team?.abbreviation ? `https://a.espncdn.com/i/teamlogos/${cfg.league}/500/scoreboard/${home.team.abbreviation.toLowerCase()}.png` : getTeamCrest(homeName));
+              (!isSoccer && home?.team?.abbreviation
+                ? `https://a.espncdn.com/i/teamlogos/${cfg.league}/500/scoreboard/${home.team.abbreviation.toLowerCase()}.png`
+                : getTeamCrest(homeName));
 
             const awayLogo =
               away?.team?.logo ||
-              (away?.team?.abbreviation ? `https://a.espncdn.com/i/teamlogos/${cfg.league}/500/scoreboard/${away.team.abbreviation.toLowerCase()}.png` : getTeamCrest(awayName));
+              (!isSoccer && away?.team?.abbreviation
+                ? `https://a.espncdn.com/i/teamlogos/${cfg.league}/500/scoreboard/${away.team.abbreviation.toLowerCase()}.png`
+                : getTeamCrest(awayName));
 
             // Parse minute or period
             let minute = 45;
