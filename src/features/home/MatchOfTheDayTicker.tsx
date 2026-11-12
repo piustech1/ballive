@@ -6,16 +6,25 @@ import { useProfile } from '../../hooks/useProfile';
 import { getMarqueeMatchOfTheDay } from '../../navigation/navHelpers';
 import { getTeamCrest } from '../../utils/teamCrestResolver';
 import { useAppNavigation } from '../../navigation/NavigationContext';
+import { DiscoverMatchup } from '../../constants/discoverData';
 
-export const MatchOfTheDayTicker: React.FC = () => {
+interface MatchOfTheDayTickerProps {
+  match?: DiscoverMatchup | null;
+}
+
+export const MatchOfTheDayTicker: React.FC<MatchOfTheDayTickerProps> = ({ match }) => {
   const { profile, toggleMatchReminder } = useProfile();
   const { navigate } = useAppNavigation();
-  const marqueeMatch = getMarqueeMatchOfTheDay();
+  const marqueeMatch = match || getMarqueeMatchOfTheDay();
 
-  // Dynamic countdown calculation
-  const [countdownText, setCountdownText] = useState('In 2h 15m');
+  const isLive = marqueeMatch.status === 'LIVE';
+
+  // Dynamic countdown calculation for scheduled upcoming games
+  const [countdownText, setCountdownText] = useState('Today');
 
   useEffect(() => {
+    if (isLive) return;
+
     const updateCountdown = () => {
       const now = new Date();
       const target = new Date();
@@ -42,17 +51,24 @@ export const MatchOfTheDayTicker: React.FC = () => {
     updateCountdown();
     const interval = setInterval(updateCountdown, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isLive]);
 
   const isReminderSet = profile.matchReminderIds.includes(marqueeMatch.id);
-  const homeCrest = getTeamCrest(marqueeMatch.homeTeam.name || marqueeMatch.homeTeam.id);
-  const awayCrest = getTeamCrest(marqueeMatch.awayTeam.name || marqueeMatch.awayTeam.id);
+  const homeCrest = marqueeMatch.homeTeam.crestUrl || getTeamCrest(marqueeMatch.homeTeam.name || marqueeMatch.homeTeam.id);
+  const awayCrest = marqueeMatch.awayTeam.crestUrl || getTeamCrest(marqueeMatch.awayTeam.name || marqueeMatch.awayTeam.id);
 
   const handleRowPress = () => {
-    navigate({
-      name: 'MatchDetails',
-      params: { matchup: marqueeMatch },
-    });
+    if (isLive && marqueeMatch.hasLiveBroadcast && marqueeMatch.streamUrl) {
+      navigate({
+        name: 'LiveStreamDetails',
+        params: { match: marqueeMatch },
+      });
+    } else {
+      navigate({
+        name: 'MatchDetails',
+        params: { matchup: marqueeMatch },
+      });
+    }
   };
 
   const handleBellPress = (e: any) => {
@@ -89,16 +105,23 @@ export const MatchOfTheDayTicker: React.FC = () => {
             <Image source={{ uri: awayCrest }} style={styles.clubCrest} />
 
             <Text style={styles.timeBullet} numberOfLines={1}>
-              • {marqueeMatch.kickoffTime.replace(' GMT', '')}
+              • {isLive ? `${marqueeMatch.minute || 45}'` : marqueeMatch.kickoffTime?.replace(' GMT', '')}
             </Text>
           </View>
         </View>
 
-        {/* Right Countdown & Bell */}
+        {/* Right Status / Countdown & Bell */}
         <View style={styles.rightCluster}>
-          <View style={styles.countdownPill}>
-            <Text style={styles.countdownText}>{countdownText}</Text>
-          </View>
+          {isLive ? (
+            <View style={styles.livePill}>
+              <View style={styles.livePulseDot} />
+              <Text style={styles.livePillText}>LIVE</Text>
+            </View>
+          ) : (
+            <View style={styles.countdownPill}>
+              <Text style={styles.countdownText}>{countdownText}</Text>
+            </View>
+          )}
 
           <TouchableOpacity
             activeOpacity={0.7}
@@ -202,6 +225,30 @@ const styles = StyleSheet.create({
   rightCluster: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  livePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 8,
+    marginRight: 7,
+  },
+  livePulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#EF4444',
+    marginRight: 5,
+  },
+  livePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#EF4444',
+    letterSpacing: 0.5,
   },
   countdownPill: {
     backgroundColor: '#2A2045',

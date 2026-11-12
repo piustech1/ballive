@@ -20,7 +20,7 @@ import {
 } from '../constants/mockData';
 
 import { useAppNavigation } from '../navigation/NavigationContext';
-import { resolveLiveMatchToMatchup, findCompetitionById } from '../navigation/navHelpers';
+import { resolveLiveMatchToMatchup, findCompetitionById, getMarqueeMatchOfTheDay } from '../navigation/navHelpers';
 import { MatchOfTheDayTicker } from '../features/home/MatchOfTheDayTicker';
 import { FilterBottomSheet } from '../features/home/FilterBottomSheet';
 import { QuickAccessLauncher } from '../features/home/QuickAccessLauncher';
@@ -149,6 +149,16 @@ export const HomeScreen: React.FC = () => {
     navigate({ name: 'Notifications' });
   };
 
+  const motdMatch = useMemo(() => getMarqueeMatchOfTheDay(liveMatches), [liveMatches]);
+
+  const isFilterApplied = Boolean(
+    searchQuery.trim() ||
+    selectedCategoryId ||
+    statusFilter !== 'all' ||
+    competitionFilter !== 'all'
+  );
+  const displayedMatches = isFilterApplied ? filteredMatches : liveMatches;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.headerPurple} translucent={false} />
@@ -185,7 +195,7 @@ export const HomeScreen: React.FC = () => {
 
         {/* 2. Live Streams Section (Wide Horizontal Cards) */}
         <LiveStreamsSection
-          matches={filteredMatches.length > 0 ? filteredMatches : liveMatches}
+          matches={displayedMatches}
           isLoading={isLoading}
           onViewAllPress={() => {
             navigate({ name: 'AllLiveStreams' });
@@ -205,7 +215,7 @@ export const HomeScreen: React.FC = () => {
         />
 
         {/* 4. Match of the Day Countdown Ticker (Compact 52dp height, directly beneath Featured Competitions) */}
-        <MatchOfTheDayTicker />
+        <MatchOfTheDayTicker match={motdMatch} />
       </ScrollView>
 
       {/* ── NATIVE MODAL BOTTOM SHEETS ── */}

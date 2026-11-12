@@ -130,7 +130,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
               streamUrl={activeStreamUrl || match.streamUrl}
               streams={activeStreams || match.streams}
               isLive={isLive}
-              poster={getTeamCrest(match.homeTeam.name || match.homeTeam.id)}
+              poster={match.homeTeam.crestUrl || (match as any).homeBadge || getTeamCrest(match.homeTeam.name || match.homeTeam.id)}
               homeTeamName={match.homeTeam.name}
               awayTeamName={match.awayTeam.name}
               title={`${match.homeTeam.name} vs ${match.awayTeam.name}`}
@@ -171,7 +171,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             <View style={styles.matchTeamSide}>
               <View style={styles.crestContainer}>
                 <Image
-                  source={{ uri: getTeamCrest(match.homeTeam.name || match.homeTeam.id) }}
+                  source={{ uri: match.homeTeam.crestUrl || (match as any).homeBadge || getTeamCrest(match.homeTeam.name || match.homeTeam.id) }}
                   style={styles.crestImage}
                 />
               </View>
@@ -212,7 +212,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             <View style={styles.matchTeamSide}>
               <View style={styles.crestContainer}>
                 <Image
-                  source={{ uri: getTeamCrest(match.awayTeam.name || match.awayTeam.id) }}
+                  source={{ uri: match.awayTeam.crestUrl || (match as any).awayBadge || getTeamCrest(match.awayTeam.name || match.awayTeam.id) }}
                   style={styles.crestImage}
                 />
               </View>
@@ -272,8 +272,8 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
           {relatedStreams.length > 0 ? (
             relatedStreams.map(rel => {
-              const relHomeCrest = getTeamCrest(rel.homeTeam.name || rel.homeTeam.id);
-              const relAwayCrest = getTeamCrest(rel.awayTeam.name || rel.awayTeam.id);
+              const relHomeCrest = rel.homeTeam.crestUrl || (rel as any).homeBadge || getTeamCrest(rel.homeTeam.name || rel.homeTeam.id);
+              const relAwayCrest = rel.awayTeam.crestUrl || (rel as any).awayBadge || getTeamCrest(rel.awayTeam.name || rel.awayTeam.id);
               const isRelLive = rel.status === 'LIVE';
 
               return (
@@ -346,7 +346,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             streams={activeStreams || match.streams}
             isLive={isLive}
             isFullscreen={true}
-            poster={getTeamCrest(match.homeTeam.name || match.homeTeam.id)}
+            poster={match.homeTeam.crestUrl || (match as any).homeBadge || getTeamCrest(match.homeTeam.name || match.homeTeam.id)}
             homeTeamName={match.homeTeam.name}
             awayTeamName={match.awayTeam.name}
             title={`${match.homeTeam.name} vs ${match.awayTeam.name}`}

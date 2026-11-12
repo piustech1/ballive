@@ -19,8 +19,8 @@ interface LiveMatchCardProps {
 }
 
 export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) => {
-  const homeCrest = getTeamCrest(match.homeTeam);
-  const awayCrest = getTeamCrest(match.awayTeam);
+  const homeCrest = match.homeBadge || getTeamCrest(match.homeTeam);
+  const awayCrest = match.awayBadge || getTeamCrest(match.awayTeam);
 
   return (
     <TouchableOpacity

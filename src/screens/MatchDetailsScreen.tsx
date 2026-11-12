@@ -294,7 +294,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             >
               <View style={styles.crestContainer}>
                 <Image
-                  source={{ uri: getTeamCrest(matchup.homeTeam.name || matchup.homeTeam.id) }}
+                  source={{ uri: matchup.homeTeam.crestUrl || getTeamCrest(matchup.homeTeam.name || matchup.homeTeam.id) }}
                   style={styles.crestImg}
                 />
               </View>
@@ -334,7 +334,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                       name: matchup.awayTeam.name,
                       shortName: matchup.awayTeam.name.substring(0, 3).toUpperCase(),
                       country: 'Europe',
-                      crestUrl: getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id),
+                      crestUrl: matchup.awayTeam.crestUrl || getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id),
                       stadium: 'Home Ground',
                       domesticTitle: 'Top Tier Football Club',
                     },
@@ -344,7 +344,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             >
               <View style={styles.crestContainer}>
                 <Image
-                  source={{ uri: getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id) }}
+                  source={{ uri: matchup.awayTeam.crestUrl || getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id) }}
                   style={styles.crestImg}
                 />
               </View>
@@ -678,7 +678,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                     onPress={() => setPitchTeam('home')}
                   >
                     <Image
-                      source={{ uri: getTeamCrest(matchup.homeTeam.name || matchup.homeTeam.id) }}
+                      source={{ uri: matchup.homeTeam.crestUrl || getTeamCrest(matchup.homeTeam.name || matchup.homeTeam.id) }}
                       style={styles.pitchTeamCrest}
                     />
                     <Text
@@ -694,7 +694,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                     onPress={() => setPitchTeam('away')}
                   >
                     <Image
-                      source={{ uri: getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id) }}
+                      source={{ uri: matchup.awayTeam.crestUrl || getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id) }}
                       style={styles.pitchTeamCrest}
                     />
                     <Text
@@ -753,7 +753,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                 <View style={styles.cardContainer}>
                   <View style={styles.listHeaderRow}>
                     <Image
-                      source={{ uri: getTeamCrest(matchup.homeTeam.name || matchup.homeTeam.id) }}
+                      source={{ uri: matchup.homeTeam.crestUrl || getTeamCrest(matchup.homeTeam.name || matchup.homeTeam.id) }}
                       style={styles.listHeaderCrest}
                     />
                     <Text style={styles.cardSectionHeader}>{matchup.homeTeam.name} Starting XI ({homeFormation})</Text>
@@ -794,7 +794,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                 <View style={styles.cardContainer}>
                   <View style={styles.listHeaderRow}>
                     <Image
-                      source={{ uri: getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id) }}
+                      source={{ uri: matchup.awayTeam.crestUrl || getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id) }}
                       style={styles.listHeaderCrest}
                     />
                     <Text style={styles.cardSectionHeader}>{matchup.awayTeam.name} Starting XI ({awayFormation})</Text>

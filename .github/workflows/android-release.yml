@@ -78,19 +78,18 @@ jobs:
       - name: 🚀 Publish BALLIVE.apk to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release_tag != '' && github.event.inputs.release_tag || 'v2.2.0') }}
-          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.2.0' }} — Multi-Sport Live Streaming & Zero Mock Data"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release_tag != '' && github.event.inputs.release_tag || 'v2.3.0') }}
+          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.3.0' }} — Pure Live Sports, Authentic Badges & Real Competitions"
           body: |
-            ## ⚽🏀🏒 BALLIVE v2.2.0 — Multi-Sport Real Intelligence, Bulletproof Stream Switching & Zero Mock Data
+            ## ⚽🏀🏒 BALLIVE v2.3.0 — Pure Live Sports, Authentic Badges & Real Competitions
 
-            Installable standalone native Android APK featuring:
-            - 🔄 **Bulletproof Stream Switching**: Instant stream switching between matches and servers with independent WebView isolation—completely eliminating stale stream replay and frozen feeds.
-            - 🏀🏒⚽ **Multi-Sport Real-Time Intelligence**: Real-time scoreboards, live periods/clocks, and official 500x500 transparent crests for **Basketball (NBA)**, **Hockey (NHL)**, and **Football (EPL, Champions League, La Liga, Serie A, Bundesliga)** directly from ESPN Open Cloud APIs and DAG Sports.
-            - 📺 **Sport-Tailored Broadcast Mirrors**: Dynamic per-fixture stream manifest resolution with dedicated 24/7 sports satellite channel backups (NBA TV FHD, NBA TV USA, NHL Network, Sky Sports PL, TNT Sports, LaLiga TV).
-            - 📋 **Authentic Rosters & Boxscore Stats**: Real starting lineups, bench squads, jersey numbers, positions, and player portraits for Football, Basketball, and Hockey.
-            - ⚡ **Zero Mock Data & Pulsing Skeletons**: Eliminated all placeholder mock fixtures; displays sleek pulsing skeleton cards while live feeds connect.
-            - 🏆 **Live Standings**: Official standings across Premier League, Champions League, La Liga, Serie A, Bundesliga, NBA, and NHL with wins, losses, differential, and points.
-            - 🔓 **Native Android 14/15 Engine**: Hardware-accelerated HLS media playback with Hermes bytecode and zero cleartext network restrictions.
+            Standalone native Android APK update featuring:
+            - 🔴 **Pure Live Matches with Custom Split Poster Backgrounds**: Only truly in-play games are displayed under Live Streams with authentic custom event artwork. Finished matches (FT) and past fixtures are completely excluded from live sections.
+            - 🛡️ **Fixed Team Badges Across All Sports**: Eliminated the Arsenal crest bug! Complete high-resolution badge dictionary covering all clubs across Premier League, LaLiga, Serie A, Bundesliga, NBA, and NHL. Neutral sports shield fallback ensures no team receives incorrect crests.
+            - 🚫 **Fake Matches & TV Channels Purged**: 24/7 television networks are no longer listed as fake fixtures ("vs Opponent"). 24/7 channels serve strictly as rock-solid backup streaming servers inside the player.
+            - ⭐ **Dynamic Real Match of the Day**: Features the highest-profile active live fixture or marquee upcoming clash with live status indicators and real team crests.
+            - 📅 **Real Competition Fixtures & Reminders**: Competition Details "Matches" tab displays real scheduled fixtures directly from Football-Data.org and ESPN with dates, kickoff times, and notification reminders.
+            - 🔄 **Isolated Stream Switching**: Multi-server stream player with instant tear-down and fresh playback on every stream or server switch.
 
             ### 📱 Download & Install
             1. Download `BALLIVE.apk` below directly to your Android device.

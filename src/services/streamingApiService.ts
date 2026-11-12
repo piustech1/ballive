@@ -71,51 +71,62 @@ class StreamingApiService {
     const timer = setTimeout(() => controller.abort(), API_CONFIG.REQUEST_TIMEOUT_MS);
 
     try {
-      const [espnMatchesRes, dagLiveRes, fbPlRes, dagChannelsRes] = await Promise.allSettled([
-        // 1. ESPN Real-time Multi-sport scoreboards (NBA, NHL, EPL, LaLiga, UCL, Serie A, Bundesliga)
+      const [espnMatchesRes, dagLiveRes, fbLiveRes] = await Promise.allSettled([
+        // 1. ESPN Real-time Multi-sport scoreboards (NBA, NHL, EPL, LaLiga, UCL, Serie A, Bundesliga) - strictly in-play
         sportsApiService.getScoreboardMatches(),
 
-        // 2. DAG Live Sporting Events
+        // 2. DAG Live Sporting Events with authentic custom split poster graphics
         fetch(`${API_CONFIG.DAG_SPORTS_BASE}/catalog/tv/moviebay_sports_live.json`, {
           headers: API_CONFIG.DAG_HEADERS,
           signal: controller.signal,
         }),
 
-        // 3. Football-Data.org Premier League Matchday 10
-        fetch(`${API_CONFIG.FOOTBALL_DATA_BASE_URL}/competitions/PL/matches?matchday=10`, {
+        // 3. Football-Data.org In-Play Matches
+        fetch(`${API_CONFIG.FOOTBALL_DATA_BASE_URL}/matches?status=IN_PLAY,PAUSED`, {
           headers: { 'X-Auth-Token': API_CONFIG.FOOTBALL_DATA_API_KEY },
-          signal: controller.signal,
-        }),
-
-        // 4. DAG 24/7 Verified Multi-Sport Channels
-        fetch(`${API_CONFIG.DAG_SPORTS_BASE}/catalog/tv/moviebay_sports_networks.json`, {
-          headers: API_CONFIG.DAG_HEADERS,
           signal: controller.signal,
         }),
       ]);
 
       clearTimeout(timer);
 
-      // ── Process Source 1: ESPN Multi-Sport Scoreboard (NBA, NHL, Soccer) ──
+      // ── Process Source 1: ESPN Multi-Sport Scoreboard (Strictly Live Events) ──
       if (espnMatchesRes.status === 'fulfilled' && Array.isArray(espnMatchesRes.value)) {
         fetchedMatches.push(...espnMatchesRes.value);
       }
 
-      // ── Process Source 2: DAG Live Sports Catalog ──
+      // ── Process Source 2: DAG Live Sports Catalog (Authentic Event Posters & Badges) ──
       if (dagLiveRes.status === 'fulfilled' && dagLiveRes.value.ok) {
         try {
           const dagJson = await dagLiveRes.value.json();
           const metas = dagJson.metas || [];
-          metas.slice(0, 50).forEach((m: any, idx: number) => {
-            const cleanTitle = cleanMatchName(m.name || '');
-            const { home, away } = parseTeams(cleanTitle);
+          metas.forEach((m: any, idx: number) => {
             const genre = (m.genres?.[0] || 'LIVE SPORTS').toUpperCase();
+            // Strictly exclude 24/7 television channels or general network feeds
+            if (genre === 'NETWORKS' || genre.includes('CHANNEL')) return;
+            if (m.name && (m.name.startsWith('📺') || m.name.includes('24/7'))) return;
 
-            const b1 = extractPosterParam(m.poster, 'b1') || getTeamCrest(home);
-            const b2 = extractPosterParam(m.poster, 'b2') || getTeamCrest(away);
+            const cleanTitle = cleanMatchName(m.name || '');
+
+            let home = m.team1?.name;
+            let away = m.team2?.name;
+            if (!home || !away) {
+              const parsed = parseTeams(cleanTitle);
+              home = home || parsed.home;
+              away = away || parsed.away;
+            }
+
+            // Exclude fake fixtures ("vs Opponent" or standalone TV channels)
+            if (!away || away.toLowerCase() === 'opponent' || away.toLowerCase().includes('live 24/7') || (home.toLowerCase().includes('tv') && !m.team2)) {
+              return;
+            }
+
+            // High-resolution authentic team crests directly from DAG event meta, poster query or resolver
+            const b1 = m.team1?.logo || extractPosterParam(m.poster, 'b1') || getTeamCrest(home);
+            const b2 = m.team2?.logo || extractPosterParam(m.poster, 'b2') || getTeamCrest(away);
 
             const hash = m.id.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
-            const minute = Math.min(88, Math.max(10, (hash % 75) + ((idx * 3) % 15)));
+            const minute = Math.min(88, Math.max(12, (hash % 70) + ((idx * 3) % 18)));
             const scoreHome = (hash + idx) % 4 === 0 ? 2 : (hash + idx) % 3 === 0 ? 1 : 0;
             const scoreAway = (hash + idx) % 5 === 0 ? 1 : 0;
 
@@ -166,8 +177,10 @@ class StreamingApiService {
               competition: genre,
               score: { home: scoreHome, away: scoreAway },
               minute,
+              // Preserves authentic custom split poster graphics
               imageUrl:
                 m.poster ||
+                m.background ||
                 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80',
               hasLiveStream: true,
               homeBadge: b1,
@@ -181,32 +194,28 @@ class StreamingApiService {
         }
       }
 
-      // ── Process Source 3: Football-Data.org Premier League ──
-      if (fbPlRes.status === 'fulfilled' && fbPlRes.value.ok) {
+      // ── Process Source 3: Football-Data.org Live In-Play Matches ──
+      if (fbLiveRes.status === 'fulfilled' && fbLiveRes.value.ok) {
         try {
-          const plJson = await fbPlRes.value.json();
+          const plJson = await fbLiveRes.value.json();
           const plMatches = plJson.matches || [];
-          plMatches.forEach((m: any, idx: number) => {
+          plMatches.forEach((m: any) => {
+            // Strictly in-play only; ignore finished or scheduled
+            if (m.status !== 'IN_PLAY' && m.status !== 'PAUSED') return;
+
             const home = m.homeTeam?.name || 'Home Team';
             const away = m.awayTeam?.name || 'Away Team';
 
-            // Avoid duplicate if ESPN already provided this matchup
-            const alreadyExists = fetchedMatches.some(
-              x => x.homeTeam.toLowerCase() === home.toLowerCase() && x.awayTeam.toLowerCase() === away.toLowerCase()
-            );
-            if (alreadyExists) return;
-
             const scoreHome = m.score?.fullTime?.home ?? (m.score?.halfTime?.home ?? 0);
             const scoreAway = m.score?.fullTime?.away ?? (m.score?.halfTime?.away ?? 0);
-            const isFinished = m.status === 'FINISHED';
-            const minute = isFinished ? 90 : Math.min(88, 15 + ((idx * 7) % 70));
+            const minute = m.minute || 45;
 
             fetchedMatches.push({
-              id: `fb-pl-${m.id}`,
+              id: `fb-live-${m.id}`,
               title: `${home} vs ${away}`,
               homeTeam: home,
               awayTeam: away,
-              competition: 'Premier League',
+              competition: m.competition?.name || 'Premier League',
               score: { home: scoreHome, away: scoreAway },
               minute,
               imageUrl:
@@ -219,45 +228,6 @@ class StreamingApiService {
                 { id: 'srv-pl', name: 'Server 1 (Sky Sports PL 1080p)', url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.PL}.json` },
                 { id: 'srv-tnt', name: 'Server 2 (TNT Sports HD)', url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.UCL}.json` },
                 { id: 'srv-supersport', name: 'Server 3 (SuperSport PL)', url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.SUPERSPORT}.json` },
-              ],
-            });
-          });
-        } catch {
-          // continue
-        }
-      }
-
-      // ── Process Source 4: DAG 24/7 Verified Sports TV Channels ──
-      if (dagChannelsRes.status === 'fulfilled' && dagChannelsRes.value.ok) {
-        try {
-          const channelsJson = await dagChannelsRes.value.json();
-          const metas = channelsJson.metas || [];
-          const featuredKeywords = ['premier', 'laliga', 'champions', 'nba', 'nhl', 'f1', 'tennis', 'dazn', 'supersport'];
-          const matchedChannels = metas.filter((m: any) => {
-            const name = (m.name || '').toLowerCase();
-            return featuredKeywords.some(kw => name.includes(kw));
-          });
-
-          matchedChannels.slice(0, 15).forEach((ch: any) => {
-            const cleanName = cleanMatchName(ch.name);
-            fetchedMatches.push({
-              id: ch.id,
-              title: cleanName,
-              homeTeam: cleanName,
-              awayTeam: 'Live 24/7 Broadcast',
-              competition: 'Sports TV Channel',
-              score: { home: 1, away: 0 },
-              minute: 45,
-              imageUrl:
-                ch.poster ||
-                'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=800&q=80',
-              hasLiveStream: true,
-              homeBadge: ch.poster || CLUB_CRESTS['arsenal'],
-              awayBadge: LEAGUE_EMBLEMS['premier-league'],
-              streamUrl: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${ch.id}.json`,
-              streams: [
-                { id: 'srv-channel', name: `Server 1 (${cleanName})`, url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${ch.id}.json` },
-                { id: 'srv-pl-backup', name: 'Server 2 (Sky Sports PL)', url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.PL}.json` },
               ],
             });
           });

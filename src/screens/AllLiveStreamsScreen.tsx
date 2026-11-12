@@ -296,7 +296,7 @@ export const AllLiveStreamsScreen: React.FC = () => {
                   <View style={styles.teamSide}>
                     <View style={styles.crestCircle}>
                       <Image
-                        source={{ uri: getTeamCrest(matchup.homeTeam.name || matchup.homeTeam.id) }}
+                        source={{ uri: matchup.homeTeam.crestUrl || getTeamCrest(matchup.homeTeam.name || matchup.homeTeam.id) }}
                         style={styles.teamCrest}
                       />
                     </View>
@@ -327,7 +327,7 @@ export const AllLiveStreamsScreen: React.FC = () => {
                   <View style={styles.teamSide}>
                     <View style={styles.crestCircle}>
                       <Image
-                        source={{ uri: getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id) }}
+                        source={{ uri: matchup.awayTeam.crestUrl || getTeamCrest(matchup.awayTeam.name || matchup.awayTeam.id) }}
                         style={styles.teamCrest}
                       />
                     </View>

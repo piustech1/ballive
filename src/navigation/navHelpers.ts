@@ -10,6 +10,8 @@ import {
 } from '../constants/discoverData';
 import { LIVE_MATCHES, LiveMatch, FEATURED_COMPETITIONS, FeaturedCompetition } from '../constants/mockData';
 import { CLUB_CRESTS, LEAGUE_EMBLEMS } from '../constants/crests';
+import { getTeamCrest } from '../utils/teamCrestResolver';
+import { API_CONFIG } from '../config/api';
 
 /**
  * Resolves any LiveMatch from the Home screen into a full DiscoverMatchup.
@@ -25,12 +27,12 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
       minute: live.minute,
       homeTeam: {
         ...existing.homeTeam,
-        crestUrl: live.homeBadge || existing.homeTeam.crestUrl,
+        crestUrl: live.homeBadge || existing.homeTeam.crestUrl || getTeamCrest(live.homeTeam),
         score: live.score.home,
       },
       awayTeam: {
         ...existing.awayTeam,
-        crestUrl: live.awayBadge || existing.awayTeam.crestUrl,
+        crestUrl: live.awayBadge || existing.awayTeam.crestUrl || getTeamCrest(live.awayTeam),
         score: live.score.away,
       },
       status: 'LIVE',
@@ -40,33 +42,42 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
   }
 
   // Derive club crests
-  const homeKey = Object.keys(CLUB_CRESTS).find(k => live.homeTeam.toLowerCase().includes(k.replace('-', ' '))) || 'real-madrid';
-  const awayKey = Object.keys(CLUB_CRESTS).find(k => live.awayTeam.toLowerCase().includes(k.replace('-', ' '))) || 'man-city';
+  const homeCrest = live.homeBadge || getTeamCrest(live.homeTeam);
+  const awayCrest = live.awayBadge || getTeamCrest(live.awayTeam);
 
   // Derive competition emblem
-  const compKey = Object.keys(LEAGUE_EMBLEMS).find(k => live.competition.toLowerCase().includes(k.replace('-', ' '))) || 'ucl';
+  const compLower = live.competition.toLowerCase();
+  let compLogo = LEAGUE_EMBLEMS['ucl'];
+  if (compLower.includes('premier')) compLogo = LEAGUE_EMBLEMS['premier-league'];
+  else if (compLower.includes('laliga')) compLogo = LEAGUE_EMBLEMS['laliga'];
+  else if (compLower.includes('serie')) compLogo = LEAGUE_EMBLEMS['serie-a'];
+  else if (compLower.includes('bundesliga')) compLogo = LEAGUE_EMBLEMS['bundesliga'];
+  else if (compLower.includes('nba') || compLower.includes('basketball')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png';
+  else if (compLower.includes('nhl') || compLower.includes('hockey')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png';
+
+  const venue = compLower.includes('nba') ? 'NBA Arena' : compLower.includes('nhl') ? 'NHL Ice Arena' : 'Premier Sports Stadium';
 
   return {
     id: live.id,
     competition: live.competition,
-    competitionLogo: LEAGUE_EMBLEMS[compKey] || LEAGUE_EMBLEMS['ucl'],
+    competitionLogo: compLogo,
     status: 'LIVE',
     kickoffDate: 'Today',
     kickoffTime: `${live.minute}' Live`,
     minute: live.minute,
     homeTeam: {
-      id: `team-${homeKey}`,
+      id: `team-${live.homeTeam.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
       name: live.homeTeam,
-      crestUrl: live.homeBadge || CLUB_CRESTS[homeKey] || CLUB_CRESTS['real-madrid'],
+      crestUrl: homeCrest,
       score: live.score.home,
     },
     awayTeam: {
-      id: `team-${awayKey}`,
+      id: `team-${live.awayTeam.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
       name: live.awayTeam,
-      crestUrl: live.awayBadge || CLUB_CRESTS[awayKey] || CLUB_CRESTS['man-city'],
+      crestUrl: awayCrest,
       score: live.score.away,
     },
-    venue: 'Premier Stadium',
+    venue,
     hasLiveBroadcast: live.hasLiveStream,
     streamUrl: live.streamUrl,
     streams: live.streams,
@@ -74,37 +85,44 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
 }
 
 /**
- * Returns the marquee Match of the Day with safe fallback.
+ * Returns the marquee Match of the Day dynamically derived from active live matches or marquee fixtures.
  */
-export function getMarqueeMatchOfTheDay(): DiscoverMatchup {
+export function getMarqueeMatchOfTheDay(liveMatches?: LiveMatch[]): DiscoverMatchup {
+  if (liveMatches && liveMatches.length > 0) {
+    // 1. Pick the best active live match
+    const active = liveMatches.find(m => m.minute > 0 && m.minute < 90);
+    if (active) {
+      return resolveLiveMatchToMatchup(active);
+    }
+    return resolveLiveMatchToMatchup(liveMatches[0]);
+  }
+
   if (UPCOMING_HIGHLIGHTS && UPCOMING_HIGHLIGHTS.length > 0) {
-    const motd = UPCOMING_HIGHLIGHTS.find(m => m.id === 'matchup-2');
-    if (motd) return motd;
     return UPCOMING_HIGHLIGHTS[0];
   }
 
   // Authentic marquee default fixture
   return {
-    id: 'marquee-motd-1',
+    id: 'marquee-motd-live',
     competition: 'Premier League',
     competitionLogo: LEAGUE_EMBLEMS['premier-league'],
     status: 'LIVE',
     kickoffDate: 'Today',
-    kickoffTime: "75' Live",
-    minute: 75,
+    kickoffTime: "35' Live",
+    minute: 35,
     homeTeam: {
-      id: 'team-arsenal',
-      name: 'Arsenal',
-      crestUrl: CLUB_CRESTS['arsenal'],
-      score: 2,
+      id: 'team-man-city',
+      name: 'Manchester City',
+      crestUrl: getTeamCrest('Manchester City'),
+      score: 1,
     },
     awayTeam: {
       id: 'team-liverpool',
       name: 'Liverpool',
-      crestUrl: CLUB_CRESTS['liverpool'],
+      crestUrl: getTeamCrest('Liverpool'),
       score: 1,
     },
-    venue: 'Emirates Stadium, London',
+    venue: 'Etihad Stadium, Manchester',
     hasLiveBroadcast: true,
     streamUrl: `https://dag.s-u.in/stream/tv/moviebay_sport_cdn_ch_xx_sky-sports-premier-league-fhd-uk.json`,
     streams: [

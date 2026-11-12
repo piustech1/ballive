@@ -24,6 +24,7 @@ import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import {
   DiscoverCompetition,
   PopularLeague,
+  DiscoverMatchup,
   UPCOMING_HIGHLIGHTS,
 } from '../constants/discoverData';
 import { getCompetitionStandings, StandingsRow } from '../constants/standingsData';
@@ -53,13 +54,31 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
   const season = 'season' in competition ? competition.season : '2024/25 Season';
   const teamsCount = 'teamsCount' in competition ? competition.teamsCount : 20;
 
-  // Filter relevant fixtures
+  // Filter fallback fixtures
   const compFixtures = UPCOMING_HIGHLIGHTS.filter(
     m =>
       m.competition.toLowerCase().includes(competition.name.toLowerCase()) ||
       competition.name.toLowerCase().includes(m.competition.toLowerCase())
   );
-  const displayFixtures = compFixtures.length > 0 ? compFixtures : UPCOMING_HIGHLIGHTS.slice(0, 4);
+
+  // Dynamic Real Competition Fixtures via sportsApiService
+  const [fixtures, setFixtures] = useState<DiscoverMatchup[]>([]);
+  const [isLoadingFixtures, setIsLoadingFixtures] = useState(false);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    setIsLoadingFixtures(true);
+    sportsApiService.getCompetitionFixtures(competition.id).then(rows => {
+      if (isMounted && rows && rows.length > 0) {
+        setFixtures(rows);
+      }
+    }).catch(() => {}).finally(() => {
+      if (isMounted) setIsLoadingFixtures(false);
+    });
+    return () => { isMounted = false; };
+  }, [competition.id]);
+
+  const displayFixtures = fixtures.length > 0 ? fixtures : compFixtures;
 
   // Dynamic League Standings with crests, W, D, L, GD, PTS
   const [standings, setStandings] = useState<StandingsRow[]>(() => getCompetitionStandings(competition.id));
@@ -231,9 +250,16 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             <View style={styles.sectionCard}>
               <Text style={styles.cardHeaderTitle}>Fixtures & Matchdays</Text>
               <View style={styles.fixturesList}>
-                {displayFixtures.map(fixture => {
-                  const homeCrest = getTeamCrest(fixture.homeTeam.name || fixture.homeTeam.id);
-                  const awayCrest = getTeamCrest(fixture.awayTeam.name || fixture.awayTeam.id);
+                {displayFixtures.length === 0 ? (
+                  <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                    <Text style={{ color: '#A098B5', fontSize: 13, fontWeight: '600' }}>
+                      {isLoadingFixtures ? 'Loading upcoming fixtures...' : 'No upcoming fixtures scheduled right now'}
+                    </Text>
+                  </View>
+                ) : (
+                  displayFixtures.map(fixture => {
+                    const homeCrest = fixture.homeTeam.crestUrl || getTeamCrest(fixture.homeTeam.name || fixture.homeTeam.id);
+                    const awayCrest = fixture.awayTeam.crestUrl || getTeamCrest(fixture.awayTeam.name || fixture.awayTeam.id);
 
                   return (
                     <TouchableOpacity
@@ -302,7 +328,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                       </View>
                     </TouchableOpacity>
                   );
-                })}
+                }))}
               </View>
             </View>
           </View>
