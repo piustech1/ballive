@@ -81,7 +81,21 @@ export const HomeScreen: React.FC = () => {
       // Category filtering (from circular pills)
       let matchesCategory = true;
       const cat = selectedCategoryId || (competitionFilter !== 'all' ? competitionFilter : null);
-      if (cat === 'pl') {
+      if (cat === 'football') {
+        matchesCategory = match.sport === 'soccer' || !match.sport || match.competition.toLowerCase().includes('league') || match.competition.toLowerCase().includes('fc');
+      } else if (cat === 'nba' || cat === 'basketball') {
+        matchesCategory = match.sport === 'basketball' || match.competition.toLowerCase().includes('nba') || match.competition.toLowerCase().includes('basketball');
+      } else if (cat === 'nhl' || cat === 'hockey') {
+        matchesCategory = match.sport === 'hockey' || match.competition.toLowerCase().includes('nhl') || match.competition.toLowerCase().includes('hockey');
+      } else if (cat === 'mma' || cat === 'ufc') {
+        matchesCategory = match.sport === 'mma' || match.competition.toLowerCase().includes('ufc') || match.competition.toLowerCase().includes('mma') || match.competition.toLowerCase().includes('wwe') || match.competition.toLowerCase().includes('fighting');
+      } else if (cat === 'nfl' || cat === 'american_football') {
+        matchesCategory = match.sport === 'american_football' || match.competition.toLowerCase().includes('nfl');
+      } else if (cat === 'motorsport' || cat === 'f1') {
+        matchesCategory = match.sport === 'motorsport' || match.competition.toLowerCase().includes('f1') || match.competition.toLowerCase().includes('formula') || match.competition.toLowerCase().includes('grand prix');
+      } else if (cat === 'tennis') {
+        matchesCategory = match.sport === 'tennis' || match.competition.toLowerCase().includes('tennis') || match.competition.toLowerCase().includes('atp') || match.competition.toLowerCase().includes('wta');
+      } else if (cat === 'pl') {
         matchesCategory = match.competition.toLowerCase().includes('premier');
       } else if (cat === 'ucl') {
         matchesCategory = match.competition.toLowerCase().includes('champions');
@@ -91,20 +105,16 @@ export const HomeScreen: React.FC = () => {
         matchesCategory = match.competition.toLowerCase().includes('serie a');
       } else if (cat === 'bundesliga') {
         matchesCategory = match.competition.toLowerCase().includes('bundesliga');
-      } else if (cat === 'nba') {
-        matchesCategory = match.competition.toLowerCase().includes('nba') || match.competition.toLowerCase().includes('basketball');
-      } else if (cat === 'nhl') {
-        matchesCategory = match.competition.toLowerCase().includes('nhl') || match.competition.toLowerCase().includes('hockey');
       }
 
       // Status filtering (from bottom sheet)
       let matchesStatus = true;
       if (statusFilter === 'live') {
-        matchesStatus = match.minute > 0 && match.minute < 90;
+        matchesStatus = match.status === 'LIVE' || (match.minute > 0 && match.minute < 90);
       } else if (statusFilter === 'upcoming') {
-        matchesStatus = match.minute === 0;
+        matchesStatus = match.status === 'UPCOMING' || match.minute === 0;
       } else if (statusFilter === 'completed') {
-        matchesStatus = match.minute >= 90;
+        matchesStatus = match.status === 'FT' || match.minute >= 90;
       }
 
       return matchesSearch && matchesCategory && matchesStatus;

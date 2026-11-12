@@ -25,9 +25,80 @@ export interface MatchIntelResponse {
   source?: string;
   home: string;
   away: string;
+  sport?: 'soccer' | 'basketball' | 'hockey' | 'mma' | 'american_football' | 'tennis' | 'motorsport' | 'other';
   lineups: {
     home: TacticalLineup;
     away: TacticalLineup;
+  };
+  taleOfTheTape?: {
+    fighter1: {
+      name: string;
+      nickname?: string;
+      record: string;
+      weightClass: string;
+      reach: string;
+      height: string;
+      stance: string;
+      sigStrikesPerMin: string;
+      strikingAccuracy: string;
+      takedownAvg: string;
+      subAvg: string;
+      country?: string;
+      photo?: string;
+    };
+    fighter2: {
+      name: string;
+      nickname?: string;
+      record: string;
+      weightClass: string;
+      reach: string;
+      height: string;
+      stance: string;
+      sigStrikesPerMin: string;
+      strikingAccuracy: string;
+      takedownAvg: string;
+      subAvg: string;
+      country?: string;
+      photo?: string;
+    };
+  };
+  combatStats?: {
+    sigStrikes: [number, number];
+    sigStrikesAccuracy: [string, string];
+    takedowns: [number, number];
+    submissionAttempts: [number, number];
+    controlTime: [string, string];
+    knockdowns: [number, number];
+  };
+  basketballStats?: {
+    fgPct: [string, string];
+    threePtPct: [string, string];
+    ftPct: [string, string];
+    rebounds: [number, number];
+    assists: [number, number];
+    steals: [number, number];
+    blocks: [number, number];
+    turnovers: [number, number];
+  };
+  quarterScores?: {
+    q1: [number, number];
+    q2: [number, number];
+    q3: [number, number];
+    q4: [number, number];
+    ot?: [number, number];
+  };
+  hockeyStats?: {
+    shotsOnGoal: [number, number];
+    powerPlay: [string, string];
+    faceoffPct: [string, string];
+    hits: [number, number];
+    penaltyMinutes: [number, number];
+  };
+  periodScores?: {
+    p1: [number, number];
+    p2: [number, number];
+    p3: [number, number];
+    ot?: [number, number];
   };
   stats: {
     possession: [number, number];

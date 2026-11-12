@@ -197,7 +197,7 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
           async function startStream() {
             let streamSource = initialSource;
 
-            // If the stream source is a JSON metadata endpoint, resolve the manifest URL first
+            // If the stream source is a JSON metadata endpoint, resolve the manifest or external URL first
             if (streamSource.includes('/stream/tv/') || streamSource.endsWith('.json')) {
               try {
                 const res = await fetch(streamSource, {
@@ -206,12 +206,23 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
                 if (res.ok) {
                   const data = await res.json();
                   const first = (data.streams || [])[0];
-                  if (first && first.url) {
-                    streamSource = first.url;
+                  if (first && (first.url || first.externalUrl)) {
+                    streamSource = first.url || first.externalUrl;
                   }
                 }
               } catch (e) {
                 console.log('Stream resolution failed, falling back:', e);
+              }
+            }
+
+            // If the stream source is an embed or web player (e.g. damitv / watch?url=...)
+            const isWebEmbed = streamSource.includes('/watch?') || streamSource.includes('/embed/') || (!streamSource.includes('.m3u8') && !streamSource.includes('/manifest') && !streamSource.includes('/api/manifest') && !streamSource.includes('.ts'));
+            if (isWebEmbed) {
+              const container = document.getElementById('videoContainer');
+              if (container) {
+                container.innerHTML = '<iframe src="' + streamSource + '" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;background:#000;"></iframe>';
+                sendMessage('playing');
+                return;
               }
             }
 

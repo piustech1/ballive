@@ -49,6 +49,34 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
 
   const isFollowed = profile.followedLeagueIds.includes(competition.id);
 
+  // Derive sport type
+  const compSport = ('sport' in competition ? competition.sport : undefined) || (
+    competition.id.includes('nba') || competition.name.toLowerCase().includes('nba') ? 'basketball' :
+    competition.id.includes('nhl') || competition.name.toLowerCase().includes('nhl') ? 'hockey' :
+    competition.id.includes('ufc') || competition.name.toLowerCase().includes('ufc') || competition.name.toLowerCase().includes('mma') || competition.name.toLowerCase().includes('wwe') ? 'mma' :
+    competition.id.includes('nfl') || competition.name.toLowerCase().includes('nfl') ? 'american_football' :
+    'soccer'
+  );
+
+  const isCombat = compSport === 'mma';
+  const isBasketball = compSport === 'basketball';
+  const isHockey = compSport === 'hockey';
+  const isAmericanFootball = compSport === 'american_football';
+
+  // Combat Pound-for-Pound Rankings
+  const combatRankings = [
+    { rank: 'C', name: 'Islam Makhachev', division: 'Lightweight Champion', record: '27-1-0', country: 'Dagestan', p4p: '#1 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/3929452.png&w=120&h=120' },
+    { rank: 'C', name: 'Jon Jones', division: 'Heavyweight Champion', record: '28-1-0', country: 'United States', p4p: '#2 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/2335639.png&w=120&h=120' },
+    { rank: 'C', name: 'Alex Pereira', division: 'Light Heavyweight Champion', record: '12-2-0', country: 'Brazil', p4p: '#3 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4898132.png&w=120&h=120' },
+    { rank: 'C', name: 'Ilia Topuria', division: 'Featherweight Champion', record: '16-0-0', country: 'Georgia / Spain', p4p: '#4 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4687352.png&w=120&h=120' },
+    { rank: 'C', name: 'Dricus du Plessis', division: 'Middleweight Champion', record: '22-2-0', country: 'South Africa', p4p: '#5 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4285640.png&w=120&h=120' },
+    { rank: 'C', name: 'Belal Muhammad', division: 'Welterweight Champion', record: '24-3-0', country: 'United States', p4p: '#6 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/3153832.png&w=120&h=120' },
+    { rank: 'C', name: 'Merab Dvalishvili', division: 'Bantamweight Champion', record: '18-4-0', country: 'Georgia', p4p: '#7 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4271427.png&w=120&h=120' },
+    { rank: 'C', name: 'Alexandre Pantoja', division: 'Flyweight Champion', record: '28-5-0', country: 'Brazil', p4p: '#8 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/3028213.png&w=120&h=120' },
+    { rank: 'C', name: 'Tom Aspinall', division: 'Interim Heavyweight Champion', record: '15-3-0', country: 'United Kingdom', p4p: '#9 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4684752.png&w=120&h=120' },
+    { rank: 'C', name: 'Max Holloway', division: 'BMF Champion', record: '26-8-0', country: 'United States', p4p: '#10 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/2614933.png&w=120&h=120' },
+  ];
+
   // Region / Season fields
   const region = 'region' in competition ? competition.region : competition.country;
   const season = 'season' in competition ? competition.season : '2024/25 Season';
@@ -133,7 +161,9 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             <View style={styles.metaDot} />
             <View style={styles.metaItem}>
               <Trophy size={13} color="#A098B5" strokeWidth={2} />
-              <Text style={styles.metaText}>{teamsCount} Clubs</Text>
+              <Text style={styles.metaText}>
+                {isCombat ? `${teamsCount} Contenders` : isBasketball || isHockey ? `${teamsCount} Franchises` : `${teamsCount} Clubs`}
+              </Text>
             </View>
           </View>
 
@@ -172,7 +202,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             onPress={() => setActiveTab('matches')}
           >
             <Text style={[styles.tabText, activeTab === 'matches' && styles.tabTextActive]}>
-              Matches ({displayFixtures.length})
+              {isCombat ? `Fight Card (${displayFixtures.length})` : `Matches (${displayFixtures.length})`}
             </Text>
           </TouchableOpacity>
 
@@ -181,7 +211,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             onPress={() => setActiveTab('standings')}
           >
             <Text style={[styles.tabText, activeTab === 'standings' && styles.tabTextActive]}>
-              Standings
+              {isCombat ? 'Rankings' : isBasketball ? 'Conference' : isHockey ? 'Divisions' : 'Standings'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -191,7 +221,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           <View style={styles.tabSection}>
             {/* Upcoming Marquee Fixture */}
             <View style={styles.sectionCard}>
-              <Text style={styles.cardHeaderTitle}>Featured Match</Text>
+              <Text style={styles.cardHeaderTitle}>{isCombat ? 'Main Event' : 'Featured Match'}</Text>
               {displayFixtures[0] && (
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -334,102 +364,175 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           </View>
         )}
 
-        {/* ── TAB 3: STANDINGS ── */}
+        {/* ── TAB 3: STANDINGS / RANKINGS ── */}
         {activeTab === 'standings' && (
           <View style={styles.tabSection}>
             <View style={styles.sectionCard}>
-              <View style={styles.tableHeaderSection}>
-                <Text style={styles.cardHeaderTitle}>League Table</Text>
-                <Text style={styles.seasonBadgeLabel}>{season}</Text>
-              </View>
-
-              {/* Table Header */}
-              <View style={styles.tableHeaderRow}>
-                <Text style={[styles.tableColHeader, styles.colPos]}>#</Text>
-                <Text style={[styles.tableColHeader, styles.colTeam]}>Club</Text>
-                <Text style={[styles.tableColHeader, styles.colStat]}>P</Text>
-                <Text style={[styles.tableColHeader, styles.colStat]}>W</Text>
-                <Text style={[styles.tableColHeader, styles.colStat]}>D</Text>
-                <Text style={[styles.tableColHeader, styles.colStat]}>L</Text>
-                <Text style={[styles.tableColHeader, styles.colGd]}>GD</Text>
-                <Text style={[styles.tableColHeader, styles.colPts]}>PTS</Text>
-              </View>
-
-              {/* Rows */}
-              {standings.map(row => (
-                <TouchableOpacity
-                  key={row.pos}
-                  activeOpacity={0.8}
-                  style={styles.tableDataRow}
-                  onPress={() => {
-                    navigate({
-                      name: 'TeamDetails',
-                      params: {
-                        team: {
-                          id: row.teamId,
-                          name: row.team,
-                          shortName: row.team.substring(0, 3).toUpperCase(),
-                          country: competition.country,
-                          crestUrl: row.crestUrl,
-                          stadium: 'Home Ground',
-                          domesticTitle: 'Top Tier Football Club',
-                        },
-                      },
-                    });
-                  }}
-                >
-                  {/* Position with UCL / UEL spot bar indicator */}
-                  <View style={styles.posCellBox}>
-                    <View
-                      style={[
-                        styles.spotIndicatorDot,
-                        row.zone === 'ucl' && styles.spotUcl,
-                        row.zone === 'uel' && styles.spotUel,
-                      ]}
-                    />
-                    <Text
-                      style={[
-                        styles.tableCellText,
-                        styles.colPos,
-                        row.pos <= 4 && styles.uclSpot,
-                      ]}
-                    >
-                      {row.pos}
-                    </Text>
+              {isCombat ? (
+                <>
+                  <View style={styles.tableHeaderSection}>
+                    <Text style={styles.cardHeaderTitle}>World Champions & P4P Ranks</Text>
+                    <Text style={styles.seasonBadgeLabel}>Official Roster</Text>
                   </View>
 
-                  {/* Club info: Crest + Name */}
-                  <View style={styles.teamCellBox}>
-                    <Image
-                      source={{ uri: row.crestUrl }}
-                      style={styles.standingsCrest}
-                    />
-                    <Text style={styles.tableCellTeam} numberOfLines={1}>
-                      {row.team}
+                  <View style={{ gap: 4, marginTop: 6 }}>
+                    {combatRankings.map((c, idx) => (
+                      <View key={idx} style={styles.fighterRankRow}>
+                        <View style={c.rank === 'C' ? styles.champRankBadge : styles.contenderRankBadge}>
+                          <Text style={c.rank === 'C' ? styles.champRankText : styles.contenderRankText}>
+                            {c.rank}
+                          </Text>
+                        </View>
+                        <Image source={{ uri: c.avatar }} style={styles.fighterAvatar} />
+                        <View style={styles.fighterMeta}>
+                          <Text style={styles.fighterName}>{c.name}</Text>
+                          <Text style={styles.fighterDivision}>{c.division} • {c.country}</Text>
+                        </View>
+                        <View style={styles.fighterRecordPill}>
+                          <Text style={styles.fighterRecordText}>{c.record}</Text>
+                          <Text style={{ fontSize: 9, color: '#A098B5', textAlign: 'right' }}>{c.p4p}</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.tableHeaderSection}>
+                    <Text style={styles.cardHeaderTitle}>
+                      {isBasketball ? 'Conference Standings' : isHockey ? 'Division Standings' : 'League Table'}
                     </Text>
+                    <Text style={styles.seasonBadgeLabel}>{season}</Text>
                   </View>
 
-                  {/* Stats */}
-                  <Text style={[styles.tableCellText, styles.colStat]}>{row.p}</Text>
-                  <Text style={[styles.tableCellText, styles.colStat]}>{row.w}</Text>
-                  <Text style={[styles.tableCellText, styles.colStat]}>{row.d}</Text>
-                  <Text style={[styles.tableCellText, styles.colStat]}>{row.l}</Text>
-                  <Text style={[styles.tableCellText, styles.colGd]}>{row.gd}</Text>
-                  <Text style={[styles.tableCellPts, styles.colPts]}>{row.pts}</Text>
-                </TouchableOpacity>
-              ))}
+                  {/* Table Header */}
+                  <View style={styles.tableHeaderRow}>
+                    <Text style={[styles.tableColHeader, styles.colPos]}>#</Text>
+                    <Text style={[styles.tableColHeader, styles.colTeam]}>
+                      {isBasketball || isHockey ? 'Team' : 'Club'}
+                    </Text>
+                    <Text style={[styles.tableColHeader, styles.colStat]}>
+                      {isBasketball || isHockey ? 'GP' : 'P'}
+                    </Text>
+                    <Text style={[styles.tableColHeader, styles.colStat]}>W</Text>
+                    {isBasketball ? (
+                      <Text style={[styles.tableColHeader, styles.colStat]}>L</Text>
+                    ) : isHockey ? (
+                      <Text style={[styles.tableColHeader, styles.colStat]}>L</Text>
+                    ) : (
+                      <Text style={[styles.tableColHeader, styles.colStat]}>D</Text>
+                    )}
+                    {isBasketball ? (
+                      <Text style={[styles.tableColHeader, styles.colStat]}>PCT</Text>
+                    ) : isHockey ? (
+                      <Text style={[styles.tableColHeader, styles.colStat]}>OTL</Text>
+                    ) : (
+                      <Text style={[styles.tableColHeader, styles.colStat]}>L</Text>
+                    )}
+                    <Text style={[styles.tableColHeader, styles.colGd]}>
+                      {isBasketball || isHockey ? 'DIFF' : 'GD'}
+                    </Text>
+                    <Text style={[styles.tableColHeader, styles.colPts]}>PTS</Text>
+                  </View>
 
-              {/* Table Footer Qualification Legend */}
-              <View style={styles.tableFooterLegend}>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, styles.spotUcl]} />
-                  <Text style={styles.legendText}>Champions League</Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View style={[styles.legendDot, styles.spotUel]} />
-                  <Text style={styles.legendText}>Europa League</Text>
-                </View>
-              </View>
+                  {/* Rows */}
+                  {standings.map(row => {
+                    const pctStr = row.p > 0 ? (row.w / row.p).toFixed(3).replace(/^0/, '') : '.000';
+                    const diffStr = (parseInt(row.gd, 10) || 0) > 0 && !row.gd.startsWith('+') ? `+${row.gd}` : `${row.gd}`;
+
+                    return (
+                      <TouchableOpacity
+                        key={row.pos}
+                        activeOpacity={0.8}
+                        style={styles.tableDataRow}
+                        onPress={() => {
+                          navigate({
+                            name: 'TeamDetails',
+                            params: {
+                              team: {
+                                id: row.teamId,
+                                name: row.team,
+                                shortName: row.team.substring(0, 3).toUpperCase(),
+                                country: competition.country,
+                                crestUrl: row.crestUrl,
+                                stadium: 'Home Ground',
+                                domesticTitle: isBasketball ? 'NBA Basketball Team' : isHockey ? 'NHL Hockey Team' : 'Top Tier Football Club',
+                              },
+                            },
+                          });
+                        }}
+                      >
+                        {/* Position with UCL / UEL spot bar indicator */}
+                        <View style={styles.posCellBox}>
+                          <View
+                            style={[
+                              styles.spotIndicatorDot,
+                              row.zone === 'ucl' && styles.spotUcl,
+                              row.zone === 'uel' && styles.spotUel,
+                            ]}
+                          />
+                          <Text
+                            style={[
+                              styles.tableCellText,
+                              styles.colPos,
+                              row.pos <= 4 && styles.uclSpot,
+                            ]}
+                          >
+                            {row.pos}
+                          </Text>
+                        </View>
+
+                        {/* Club info: Crest + Name */}
+                        <View style={styles.teamCellBox}>
+                          <Image
+                            source={{ uri: row.crestUrl }}
+                            style={styles.standingsCrest}
+                          />
+                          <Text style={styles.tableCellTeam} numberOfLines={1}>
+                            {row.team}
+                          </Text>
+                        </View>
+
+                        {/* Stats */}
+                        <Text style={[styles.tableCellText, styles.colStat]}>{row.p}</Text>
+                        <Text style={[styles.tableCellText, styles.colStat]}>{row.w}</Text>
+                        {isBasketball ? (
+                          <Text style={[styles.tableCellText, styles.colStat]}>{row.l}</Text>
+                        ) : isHockey ? (
+                          <Text style={[styles.tableCellText, styles.colStat]}>{row.l}</Text>
+                        ) : (
+                          <Text style={[styles.tableCellText, styles.colStat]}>{row.d}</Text>
+                        )}
+                        {isBasketball ? (
+                          <Text style={[styles.tableCellText, styles.colStat]}>{pctStr}</Text>
+                        ) : isHockey ? (
+                          <Text style={[styles.tableCellText, styles.colStat]}>{row.d}</Text>
+                        ) : (
+                          <Text style={[styles.tableCellText, styles.colStat]}>{row.l}</Text>
+                        )}
+                        <Text style={[styles.tableCellText, styles.colGd]}>{diffStr}</Text>
+                        <Text style={[styles.tableCellPts, styles.colPts]}>{row.pts}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+
+                  {/* Table Footer Qualification Legend */}
+                  <View style={styles.tableFooterLegend}>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, styles.spotUcl]} />
+                      <Text style={styles.legendText}>
+                        {isBasketball ? 'Playoff Berth (1-6)' : isHockey ? 'Playoff Berth (1-8)' : 'Champions League'}
+                      </Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                      <View style={[styles.legendDot, styles.spotUel]} />
+                      <Text style={styles.legendText}>
+                        {isBasketball ? 'Play-In Tournament (7-10)' : isHockey ? 'Wildcard Hunt' : 'Europa League'}
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              )}
             </View>
           </View>
         )}
@@ -874,5 +977,71 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     color: '#A098B5',
     fontWeight: '500',
+  },
+  // ── Combat Rankings Styles ──
+  fighterRankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#181524',
+    gap: 10,
+  },
+  champRankBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#F8BE38',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  champRankText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#0E0D14',
+  },
+  contenderRankBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#2A2045',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contenderRankText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#A098B5',
+  },
+  fighterAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#2A2045',
+  },
+  fighterMeta: {
+    flex: 1,
+  },
+  fighterName: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  fighterDivision: {
+    fontSize: 11,
+    color: '#A098B5',
+    marginTop: 1,
+  },
+  fighterRecordPill: {
+    backgroundColor: '#2A2045',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignItems: 'flex-end',
+  },
+  fighterRecordText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#F8BE38',
   },
 });

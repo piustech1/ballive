@@ -3,12 +3,23 @@
  * Realistic development fixtures, competition categories, and featured competitions
  */
 
+export type SportType =
+  | 'soccer'
+  | 'basketball'
+  | 'hockey'
+  | 'mma'
+  | 'american_football'
+  | 'tennis'
+  | 'motorsport'
+  | 'other';
+
 export interface CompetitionCategory {
   id: string;
   name: string;
   shortLabel: string;
   color: string;
   iconName: 'trophy' | 'award' | 'shield' | 'flame' | 'radio';
+  sport?: SportType;
 }
 
 export interface LiveMatch {
@@ -25,6 +36,10 @@ export interface LiveMatch {
   streams?: Array<{ id: string; name: string; url: string }>;
   homeBadge?: string;
   awayBadge?: string;
+  sport?: SportType;
+  status?: 'LIVE' | 'FT' | 'UPCOMING';
+  kickoffTime?: string;
+  venue?: string;
 }
 
 export interface FeaturedCompetition {
@@ -35,43 +50,24 @@ export interface FeaturedCompetition {
   season: string;
   crestUrl: string;
   verified: boolean;
+  sport?: SportType;
 }
 
 export const COMPETITION_CATEGORIES: CompetitionCategory[] = [
   {
-    id: 'pl',
-    name: 'Premier League',
-    shortLabel: 'Premier',
+    id: 'all',
+    name: 'All Sports',
+    shortLabel: 'All',
     color: '#7952FC',
-    iconName: 'trophy',
-  },
-  {
-    id: 'ucl',
-    name: 'Champions League',
-    shortLabel: 'UCL',
-    color: '#F8BE38',
-    iconName: 'award',
-  },
-  {
-    id: 'laliga',
-    name: 'LaLiga',
-    shortLabel: 'LaLiga',
-    color: '#08B3E5',
-    iconName: 'shield',
-  },
-  {
-    id: 'seriea',
-    name: 'Serie A',
-    shortLabel: 'Serie A',
-    color: '#F04E6E',
     iconName: 'flame',
   },
   {
-    id: 'bundesliga',
-    name: 'Bundesliga',
-    shortLabel: 'Bundesliga',
+    id: 'football',
+    name: 'Football',
+    shortLabel: 'Football',
     color: '#22C55E',
-    iconName: 'radio',
+    iconName: 'trophy',
+    sport: 'soccer',
   },
   {
     id: 'nba',
@@ -79,13 +75,47 @@ export const COMPETITION_CATEGORIES: CompetitionCategory[] = [
     shortLabel: 'NBA',
     color: '#C9082A',
     iconName: 'trophy',
+    sport: 'basketball',
   },
   {
     id: 'nhl',
     name: 'NHL Hockey',
     shortLabel: 'NHL',
-    color: '#000000',
+    color: '#08B3E5',
     iconName: 'shield',
+    sport: 'hockey',
+  },
+  {
+    id: 'mma',
+    name: 'UFC & Combat',
+    shortLabel: 'UFC/WWE',
+    color: '#EF4444',
+    iconName: 'award',
+    sport: 'mma',
+  },
+  {
+    id: 'nfl',
+    name: 'NFL Football',
+    shortLabel: 'NFL',
+    color: '#F59E0B',
+    iconName: 'shield',
+    sport: 'american_football',
+  },
+  {
+    id: 'motorsport',
+    name: 'Formula 1',
+    shortLabel: 'F1',
+    color: '#E10600',
+    iconName: 'flame',
+    sport: 'motorsport',
+  },
+  {
+    id: 'tennis',
+    name: 'Tennis Tour',
+    shortLabel: 'Tennis',
+    color: '#10B981',
+    iconName: 'award',
+    sport: 'tennis',
   },
 ];
 
@@ -100,6 +130,7 @@ export const FEATURED_COMPETITIONS: FeaturedCompetition[] = [
     season: '2024/25 Season',
     crestUrl: 'https://media.api-sports.io/football/leagues/2.png',
     verified: true,
+    sport: 'soccer',
   },
   {
     id: 'comp-pl',
@@ -109,6 +140,37 @@ export const FEATURED_COMPETITIONS: FeaturedCompetition[] = [
     season: '2024/25 Season',
     crestUrl: 'https://media.api-sports.io/football/leagues/39.png',
     verified: true,
+    sport: 'soccer',
+  },
+  {
+    id: 'comp-nba',
+    name: 'NBA Basketball',
+    country: 'USA',
+    matchesCount: 12,
+    season: '2024/25 Regular Season',
+    crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
+    verified: true,
+    sport: 'basketball',
+  },
+  {
+    id: 'comp-nhl',
+    name: 'NHL Hockey',
+    country: 'North America',
+    matchesCount: 8,
+    season: '2024/25 Regular Season',
+    crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
+    verified: true,
+    sport: 'hockey',
+  },
+  {
+    id: 'comp-ufc',
+    name: 'UFC & Mixed Martial Arts',
+    country: 'Global',
+    matchesCount: 5,
+    season: 'Championship Series',
+    crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500/mma.png',
+    verified: true,
+    sport: 'mma',
   },
   {
     id: 'comp-laliga',
@@ -118,6 +180,7 @@ export const FEATURED_COMPETITIONS: FeaturedCompetition[] = [
     season: '2024/25 Season',
     crestUrl: 'https://media.api-sports.io/football/leagues/140.png',
     verified: true,
+    sport: 'soccer',
   },
   {
     id: 'comp-seriea',
@@ -127,6 +190,7 @@ export const FEATURED_COMPETITIONS: FeaturedCompetition[] = [
     season: '2024/25 Season',
     crestUrl: 'https://media.api-sports.io/football/leagues/135.png',
     verified: true,
+    sport: 'soccer',
   },
   {
     id: 'comp-bundesliga',
@@ -136,5 +200,17 @@ export const FEATURED_COMPETITIONS: FeaturedCompetition[] = [
     season: '2024/25 Season',
     crestUrl: 'https://media.api-sports.io/football/leagues/78.png',
     verified: true,
+    sport: 'soccer',
+  },
+  {
+    id: 'comp-nfl',
+    name: 'NFL Football',
+    country: 'USA',
+    matchesCount: 14,
+    season: '2024/25 Season',
+    crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png',
+    verified: true,
+    sport: 'american_football',
   },
 ];
+

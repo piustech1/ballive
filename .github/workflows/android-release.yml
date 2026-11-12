@@ -78,18 +78,22 @@ jobs:
       - name: 🚀 Publish BALLIVE.apk to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release_tag != '' && github.event.inputs.release_tag || 'v2.3.0') }}
-          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.3.0' }} — Pure Live Sports, Authentic Badges & Real Competitions"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release_tag != '' && github.event.inputs.release_tag || 'v2.4.0') }}
+          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.4.0' }} — Multi-Sport Engine, Tale of the Tape & Official Standings"
           body: |
-            ## ⚽🏀🏒 BALLIVE v2.3.0 — Pure Live Sports, Authentic Badges & Real Competitions
+            ## 🥊🏀🏒⚽ BALLIVE v2.4.0 — Multi-Sport Engine, Tale of the Tape & Official Standings
 
-            Standalone native Android APK update featuring:
-            - 🔴 **Pure Live Matches with Custom Split Poster Backgrounds**: Only truly in-play games are displayed under Live Streams with authentic custom event artwork. Finished matches (FT) and past fixtures are completely excluded from live sections.
-            - 🛡️ **Fixed Team Badges Across All Sports**: Eliminated the Arsenal crest bug! Complete high-resolution badge dictionary covering all clubs across Premier League, LaLiga, Serie A, Bundesliga, NBA, and NHL. Neutral sports shield fallback ensures no team receives incorrect crests.
-            - 🚫 **Fake Matches & TV Channels Purged**: 24/7 television networks are no longer listed as fake fixtures ("vs Opponent"). 24/7 channels serve strictly as rock-solid backup streaming servers inside the player.
-            - ⭐ **Dynamic Real Match of the Day**: Features the highest-profile active live fixture or marquee upcoming clash with live status indicators and real team crests.
-            - 📅 **Real Competition Fixtures & Reminders**: Competition Details "Matches" tab displays real scheduled fixtures directly from Football-Data.org and ESPN with dates, kickoff times, and notification reminders.
-            - 🔄 **Isolated Stream Switching**: Multi-server stream player with instant tear-down and fresh playback on every stream or server switch.
+            Major multi-sport and live catalog expansion release:
+            - 🌐 **Comprehensive Multi-Sport Live Engine**: Expanded upstream catalogs across 9 sports (NBA, NHL, UFC/MMA/Combat, NFL, Football/Soccer, Motorsport/F1, Tennis). Now dynamically catalogs over 200+ global in-play and scheduled sporting events.
+            - 🥊 **Combat Sports Tale of the Tape**: Complete combat sports overhaul for UFC, MMA, WWE, and Boxing events. Features full side-by-side fighter comparison (Height, Reach, Stance, Record, Striking stats, Takedown stats, Weight division), Fighter portraits, Fight Statistics, and Round-by-round results (NO soccer pitch or football badges!).
+            - 🏀 **Basketball Hardwood Court & Quarter Box Scores**: NBA matchups now feature a true hardwood court Starting 5 with court markings (Key, 3-point arc, Rim), quarter-by-quarter scoring box tables (Q1-Q4, Totals), and authentic basketball statistics (FG%, 3PT%, FT%, Rebounds, Assists, Steals, Blocks).
+            - 🏒 **Hockey Ice Rink Lines & Period Box Scores**: NHL matches feature ice rink tactical formations (Red line, Blue line, Faceoff circles), period-by-period scoring tables (1st-3rd, OT, Totals), and hockey metrics (SOG, Power Play %, Faceoff %, Hits, PIM).
+            - 🏆 **Multi-Sport Official Standings & Rankings**:
+              - UFC: Official Pound-for-Pound Champions & Division Contenders roster.
+              - NBA: Eastern & Western Conference Standings (GP, W, L, PCT, DIFF, PTS).
+              - NHL: Division Standings (GP, W, L, OTL, DIFF, PTS).
+              - Football: Premier League, Champions League, LaLiga, Serie A, Bundesliga, Ligue 1 tables.
+            - 📺 **Universal Web Embed & HLS Streaming**: Integrated responsive iframe player for web stream mirrors alongside direct HLS (.m3u8) video streaming with instant server switching.
 
             ### 📱 Download & Install
             1. Download `BALLIVE.apk` below directly to your Android device.
