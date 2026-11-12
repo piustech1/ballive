@@ -376,14 +376,9 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
           </View>
         )}
 
-        {/* ── FLOATING TOP CONTROLS (UNOBTRUSIVE) ── */}
+        {/* ── FLOATING CONTROLS (UNOBTRUSIVE FULLSCREEN TOGGLE) ── */}
         <View style={styles.topOverlay} pointerEvents="box-none">
-          <View style={styles.liveIndicatorPill}>
-            <View style={[styles.pulsingDot, isOffline && { backgroundColor: '#EF4444' }]} />
-            <Text style={styles.liveIndicatorText}>
-              {isOffline ? 'OFFLINE' : 'LIVE'}
-            </Text>
-          </View>
+          <View style={{ flex: 1 }} />
 
           {onToggleFullscreen && (
             <TouchableOpacity
@@ -393,68 +388,14 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
               accessibilityLabel={isFullscreen ? 'Exit full screen' : 'Full screen'}
             >
               {isFullscreen ? (
-                <Minimize2 size={16} color="#FFFFFF" strokeWidth={2.4} />
+                <Minimize2 size={18} color="#FFFFFF" strokeWidth={2.4} />
               ) : (
-                <Maximize2 size={16} color="#FFFFFF" strokeWidth={2.4} />
+                <Maximize2 size={18} color="#FFFFFF" strokeWidth={2.4} />
               )}
             </TouchableOpacity>
           )}
         </View>
-
-        {/* In Fullscreen mode: Floating bottom mirror pills on overlay */}
-        {isFullscreen && availableServers.length > 1 && (
-          <View style={styles.fullscreenMirrorBar}>
-            <Tv size={13} color="#A098B5" strokeWidth={2.2} />
-            <Text style={styles.dockLabel}>MIRROR:</Text>
-            {availableServers.map((srv, idx) => {
-              const isSelected = idx === selectedServerIndex;
-              return (
-                <TouchableOpacity
-                  key={srv.id || `srv-${idx}`}
-                  activeOpacity={0.8}
-                  style={[styles.dockSegment, isSelected && styles.dockSegmentActive]}
-                  onPress={() => handleServerChange(idx)}
-                >
-                  <Text style={[styles.dockSegmentText, isSelected && styles.dockSegmentTextActive]}>
-                    {srv.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
       </View>
-
-      {/* ── 2. DEDICATED STREAM MIRROR DOCK (Directly beneath video in portrait) ── */}
-      {!isFullscreen && availableServers.length > 1 && (
-        <View style={styles.dockBar}>
-          <View style={styles.dockLabelRow}>
-            <Tv size={14} color="#7952FC" strokeWidth={2.4} />
-            <Text style={styles.dockLabel}>FEED SOURCE</Text>
-          </View>
-
-          <View style={styles.dockSegmentGroup}>
-            {availableServers.map((srv, idx) => {
-              const isSelected = idx === selectedServerIndex;
-              return (
-                <TouchableOpacity
-                  key={srv.id || `srv-${idx}`}
-                  activeOpacity={0.8}
-                  style={[styles.dockSegment, isSelected && styles.dockSegmentActive]}
-                  onPress={() => handleServerChange(idx)}
-                >
-                  {isSelected && isBuffering ? (
-                    <ActivityIndicator size={10} color="#FFFFFF" style={{ marginRight: 4 }} />
-                  ) : null}
-                  <Text style={[styles.dockSegmentText, isSelected && styles.dockSegmentTextActive]}>
-                    {srv.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-      )}
     </View>
   );
 };

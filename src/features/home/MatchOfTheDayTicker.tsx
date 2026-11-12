@@ -78,40 +78,19 @@ export const MatchOfTheDayTicker: React.FC<MatchOfTheDayTickerProps> = ({ match 
 
   return (
     <View style={styles.wrapper}>
-      {/* ── TOP-EDGE CENTERED RIBBON ── */}
-      <View style={styles.topEdgeRibbon} pointerEvents="none">
-        <Sparkles size={10} color="#FFFFFF" strokeWidth={2.5} style={styles.ribbonIcon} />
-        <Text style={styles.ribbonText}>MATCH OF THE DAY</Text>
-      </View>
-
-      <TouchableOpacity
-        activeOpacity={0.85}
-        style={styles.container}
-        onPress={handleRowPress}
-      >
-        {/* Matchup with Home & Away Club Badges */}
-        <View style={styles.centerContent}>
-          <View style={styles.matchupRow}>
-            <Image source={{ uri: homeCrest }} style={styles.clubCrest} />
-            <Text style={styles.teamName} numberOfLines={1}>
-              {marqueeMatch.homeTeam.name}
-            </Text>
-
-            <Text style={styles.vsText}>vs</Text>
-
-            <Text style={styles.teamName} numberOfLines={1}>
-              {marqueeMatch.awayTeam.name}
-            </Text>
-            <Image source={{ uri: awayCrest }} style={styles.clubCrest} />
-
-            <Text style={styles.timeBullet} numberOfLines={1}>
-              • {isLive ? `${marqueeMatch.minute || 45}'` : marqueeMatch.kickoffTime?.replace(' GMT', '')}
-            </Text>
+      {/* ── CARD HEADER: Badge + Competition + Live Status ── */}
+      <View style={styles.cardHeader}>
+        <View style={styles.badgeCluster}>
+          <View style={styles.motdBadge}>
+            <Sparkles size={11} color="#A78BFA" strokeWidth={2.5} style={styles.ribbonIcon} />
+            <Text style={styles.motdBadgeText}>MATCH OF THE DAY</Text>
           </View>
+          <Text style={styles.competitionText} numberOfLines={1}>
+            {marqueeMatch.competition}
+          </Text>
         </View>
 
-        {/* Right Status / Countdown & Bell */}
-        <View style={styles.rightCluster}>
+        <View style={styles.statusCluster}>
           {isLive ? (
             <View style={styles.livePill}>
               <View style={styles.livePulseDot} />
@@ -137,6 +116,75 @@ export const MatchOfTheDayTicker: React.FC<MatchOfTheDayTickerProps> = ({ match 
             )}
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* ── MAIN MATCHUP CARD ── */}
+      <TouchableOpacity
+        activeOpacity={0.88}
+        style={styles.cardContainer}
+        onPress={handleRowPress}
+      >
+        <View style={styles.matchupRow}>
+          {/* Home Team */}
+          <View style={styles.teamCol}>
+            <View style={styles.crestCircle}>
+              <Image source={{ uri: homeCrest }} style={styles.clubCrest} />
+            </View>
+            <Text style={styles.teamName} numberOfLines={1} ellipsizeMode="tail">
+              {marqueeMatch.homeTeam.name}
+            </Text>
+          </View>
+
+          {/* Center Score & Clock */}
+          <View style={styles.centerScoreCol}>
+            {isLive || marqueeMatch.status === 'FT' ? (
+              <>
+                <View style={styles.scoreRow}>
+                  <Text style={styles.scoreText}>{marqueeMatch.homeTeam.score ?? 0}</Text>
+                  <Text style={styles.scoreColon}>:</Text>
+                  <Text style={styles.scoreText}>{marqueeMatch.awayTeam.score ?? 0}</Text>
+                </View>
+                <View style={styles.clockPill}>
+                  <Text style={styles.clockText}>
+                    {isLive ? `${marqueeMatch.minute || 45}' In Play` : 'Full Time'}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.vsBadge}>
+                  <Text style={styles.vsText}>VS</Text>
+                </View>
+                <Text style={styles.scheduledTimeText}>
+                  {marqueeMatch.kickoffTime?.replace(' GMT', '') || '19:45'}
+                </Text>
+              </>
+            )}
+          </View>
+
+          {/* Away Team */}
+          <View style={styles.teamCol}>
+            <View style={styles.crestCircle}>
+              <Image source={{ uri: awayCrest }} style={styles.clubCrest} />
+            </View>
+            <Text style={styles.teamName} numberOfLines={1} ellipsizeMode="tail">
+              {marqueeMatch.awayTeam.name}
+            </Text>
+          </View>
+        </View>
+
+        {/* ── CARD FOOTER: Venue + Watch Action ── */}
+        <View style={styles.cardFooter}>
+          <Text style={styles.venueText} numberOfLines={1}>
+            📍 {marqueeMatch.venue || 'Championship Arena'}
+          </Text>
+
+          <View style={styles.watchLiveBtn}>
+            <Text style={styles.watchLiveBtnText}>
+              {isLive ? 'Watch Live Stream' : 'Match Preview'}
+            </Text>
+          </View>
+        </View>
       </TouchableOpacity>
     </View>
   );
@@ -144,87 +192,179 @@ export const MatchOfTheDayTicker: React.FC<MatchOfTheDayTickerProps> = ({ match 
 
 const styles = StyleSheet.create({
   wrapper: {
-    position: 'relative',
-    marginTop: 10,
-    marginBottom: 8,
+    marginHorizontal: 16,
+    marginTop: 18,
+    marginBottom: 12,
   },
-  topEdgeRibbon: {
-    position: 'absolute',
-    top: -9,
-    alignSelf: 'center',
-    backgroundColor: '#7952FC',
-    paddingHorizontal: 11,
-    paddingVertical: 2.5,
-    borderRadius: 10,
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 10,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingHorizontal: 2,
+  },
+  badgeCluster: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
+  motdBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(121, 82, 252, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(121, 82, 252, 0.45)',
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 8,
+    marginRight: 8,
   },
   ribbonIcon: {
     marginRight: 4,
   },
-  ribbonText: {
-    fontSize: 9,
+  motdBadgeText: {
+    fontSize: 9.5,
     fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.8,
+    color: '#ECE9FA',
+    letterSpacing: 0.6,
   },
-  container: {
-    height: 52,
-    marginHorizontal: 16,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    backgroundColor: '#1E1730',
+  competitionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#A098B5',
+    flexShrink: 1,
+  },
+  statusCluster: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    elevation: 3,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 4,
   },
-  centerContent: {
-    flex: 1,
-    marginRight: 8,
-    justifyContent: 'center',
+  cardContainer: {
+    backgroundColor: '#1B1429',
+    borderRadius: 18,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(121, 82, 252, 0.25)',
+    elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
   },
   matchupRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  teamCol: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  crestCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#261C3B',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   clubCrest: {
-    width: 18,
-    height: 18,
+    width: '100%',
+    height: '100%',
     resizeMode: 'contain',
   },
   teamName: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
     color: '#FFFFFF',
-    flexShrink: 1,
+    textAlign: 'center',
+    maxWidth: 95,
   },
-  vsText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#7952FC',
-    marginHorizontal: 1,
+  centerScoreCol: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
   },
-  timeBullet: {
-    color: '#A098B5',
-    fontWeight: '500',
-    fontSize: 11,
-    marginLeft: 2,
-  },
-  rightCluster: {
+  scoreRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  scoreText: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+  },
+  scoreColon: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#7952FC',
+    marginHorizontal: 4,
+  },
+  clockPill: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.4)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginTop: 4,
+  },
+  clockText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  vsBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#2A2045',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  vsText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#7952FC',
+  },
+  scheduledTimeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#F8BE38',
+    marginTop: 4,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  venueText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#8E87A5',
+    flex: 1,
+    marginRight: 10,
+  },
+  watchLiveBtn: {
+    backgroundColor: '#7952FC',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 9,
+  },
+  watchLiveBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   livePill: {
     flexDirection: 'row',

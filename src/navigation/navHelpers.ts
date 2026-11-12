@@ -156,10 +156,64 @@ export function getMarqueeMatchOfTheDay(liveMatches?: LiveMatch[]): DiscoverMatc
  * Finds a competition by id, slug, or name from either explore competitions, popular leagues, or featured competitions.
  */
 export function findCompetitionById(id: string): DiscoverCompetition {
-  const foundExplore = EXPLORE_COMPETITIONS.find(c => c.id === id || c.shortName.toLowerCase() === id.toLowerCase() || c.name.toLowerCase() === id.toLowerCase());
+  if (!id) return EXPLORE_COMPETITIONS[0];
+  const clean = id.toLowerCase().trim();
+
+  // Category & Sport Aliases
+  if (clean === 'all') {
+    return {
+      id: 'all',
+      name: 'All Sports & Tournaments',
+      shortName: 'All',
+      country: 'Global',
+      region: 'International',
+      logoUrl: LEAGUE_EMBLEMS['all'],
+      accentColor: '#7952FC',
+      season: '2025 Season',
+      teamsCount: 100,
+      sport: 'other',
+    };
+  }
+  if (clean === 'football' || clean === 'soccer') {
+    return EXPLORE_COMPETITIONS.find(c => c.id === 'pl') || EXPLORE_COMPETITIONS[0];
+  }
+  if (clean === 'motorsport' || clean === 'f1' || clean === 'formula-1' || clean === 'formula1') {
+    const f1 = EXPLORE_COMPETITIONS.find(c => c.id === 'f1');
+    if (f1) return f1;
+  }
+  if (clean === 'mma' || clean === 'ufc' || clean === 'combat') {
+    const ufc = EXPLORE_COMPETITIONS.find(c => c.id === 'ufc');
+    if (ufc) return ufc;
+  }
+  if (clean === 'nfl' || clean === 'american_football' || clean === 'american-football') {
+    const nfl = EXPLORE_COMPETITIONS.find(c => c.id === 'nfl');
+    if (nfl) return nfl;
+  }
+  if (clean === 'tennis') {
+    const tennis = EXPLORE_COMPETITIONS.find(c => c.id === 'tennis');
+    if (tennis) return tennis;
+  }
+  if (clean === 'cricket') {
+    const cricket = EXPLORE_COMPETITIONS.find(c => c.id === 'cricket');
+    if (cricket) return cricket;
+  }
+  if (clean === 'boxing') {
+    const boxing = EXPLORE_COMPETITIONS.find(c => c.id === 'boxing');
+    if (boxing) return boxing;
+  }
+  if (clean === 'wc' || clean === 'world-cup') {
+    const wc = EXPLORE_COMPETITIONS.find(c => c.id === 'wc');
+    if (wc) return wc;
+  }
+
+  const foundExplore = EXPLORE_COMPETITIONS.find(
+    c => c.id === clean || c.id === `comp-${clean}` || c.shortName.toLowerCase() === clean || c.name.toLowerCase() === clean
+  );
   if (foundExplore) return foundExplore;
 
-  const foundLeague = POPULAR_LEAGUES.find(l => l.id === id || l.name.toLowerCase() === id.toLowerCase());
+  const foundLeague = POPULAR_LEAGUES.find(
+    l => l.id === clean || l.id === `league-${clean}` || l.name.toLowerCase() === clean
+  );
   if (foundLeague) {
     return {
       id: foundLeague.id,
@@ -171,10 +225,13 @@ export function findCompetitionById(id: string): DiscoverCompetition {
       accentColor: '#7952FC',
       season: '2024/25 Season',
       teamsCount: 20,
+      sport: foundLeague.sport || 'soccer',
     };
   }
 
-  const foundFeatured = FEATURED_COMPETITIONS.find(f => f.id === id || f.name.toLowerCase() === id.toLowerCase());
+  const foundFeatured = FEATURED_COMPETITIONS.find(
+    f => f.id === clean || f.id === `comp-${clean}` || f.name.toLowerCase() === clean
+  );
   if (foundFeatured) {
     return {
       id: foundFeatured.id,
@@ -186,6 +243,7 @@ export function findCompetitionById(id: string): DiscoverCompetition {
       accentColor: '#08B3E5',
       season: foundFeatured.season,
       teamsCount: foundFeatured.matchesCount * 2,
+      sport: foundFeatured.sport || 'soccer',
     };
   }
 
@@ -208,8 +266,9 @@ export function findTeamById(idOrName: string): PopularTeam {
 /**
  * Returns all live-streamable matches across live fixtures and upcoming highlights.
  */
-export function getAllLiveStreamMatches(): DiscoverMatchup[] {
-  const resolvedLive = LIVE_MATCHES.map(resolveLiveMatchToMatchup);
+export function getAllLiveStreamMatches(dynamicLive?: LiveMatch[]): DiscoverMatchup[] {
+  const baseLive = dynamicLive && dynamicLive.length > 0 ? dynamicLive : LIVE_MATCHES;
+  const resolvedLive = baseLive.map(resolveLiveMatchToMatchup);
   const streamableUpcoming = UPCOMING_HIGHLIGHTS.filter(
     u => u.hasLiveBroadcast && !resolvedLive.some(l => l.homeTeam.name.toLowerCase() === u.homeTeam.name.toLowerCase() && l.awayTeam.name.toLowerCase() === u.awayTeam.name.toLowerCase())
   );

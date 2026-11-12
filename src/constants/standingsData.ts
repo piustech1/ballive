@@ -124,8 +124,8 @@ export const BUNDESLIGA_STANDINGS: StandingsRow[] = [
 ];
 
 export function getCompetitionStandings(competitionId?: string | null): StandingsRow[] {
-  if (!competitionId) return PREMIER_LEAGUE_STANDINGS;
-  const id = competitionId.toLowerCase();
+  if (!competitionId) return [];
+  const id = competitionId.toLowerCase().replace(/^(comp-|league-)/, '');
 
   if (id.includes('ucl') || id.includes('champions')) {
     return UCL_STANDINGS;
@@ -139,6 +139,9 @@ export function getCompetitionStandings(competitionId?: string | null): Standing
   if (id.includes('bundes') || id.includes('bundesliga')) {
     return BUNDESLIGA_STANDINGS;
   }
+  if (id.includes('pl') || id.includes('premier') || id.includes('epl')) {
+    return PREMIER_LEAGUE_STANDINGS;
+  }
 
-  return PREMIER_LEAGUE_STANDINGS;
+  return [];
 }

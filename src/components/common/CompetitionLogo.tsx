@@ -13,7 +13,7 @@ export interface CompetitionLogoProps {
  * Resolves a competition ID or name to its official emblem URL.
  */
 export function resolveCompetitionLogo(competitionIdOrName?: string): string {
-  if (!competitionIdOrName) return LEAGUE_EMBLEMS['premier-league'];
+  if (!competitionIdOrName) return LEAGUE_EMBLEMS['all'];
 
   const clean = competitionIdOrName.toLowerCase().trim().replace(/\s+/g, '-');
 
@@ -21,7 +21,50 @@ export function resolveCompetitionLogo(competitionIdOrName?: string): string {
     return LEAGUE_EMBLEMS[clean];
   }
 
-  // Common aliases
+  // All Sports / Category
+  if (clean === 'all' || clean.includes('all-sport')) {
+    return LEAGUE_EMBLEMS['all'];
+  }
+
+  // Combat Sports (UFC, MMA, Boxing, WWE)
+  if (clean.includes('ufc') || clean.includes('mma') || clean.includes('combat') || clean.includes('wwe') || clean.includes('wrestling')) {
+    return LEAGUE_EMBLEMS['ufc'];
+  }
+  if (clean.includes('boxing') || clean.includes('wbc')) {
+    return LEAGUE_EMBLEMS['boxing'];
+  }
+
+  // Motorsport / Formula 1
+  if (clean.includes('f1') || clean.includes('formula') || clean.includes('motorsport') || clean.includes('racing')) {
+    return LEAGUE_EMBLEMS['f1'];
+  }
+
+  // American Football / NFL
+  if (clean.includes('nfl') || clean.includes('american-football') || clean.includes('american_football')) {
+    return LEAGUE_EMBLEMS['nfl'];
+  }
+
+  // Tennis
+  if (clean.includes('tennis') || clean.includes('atp') || clean.includes('wta') || clean.includes('wimbledon')) {
+    return LEAGUE_EMBLEMS['tennis'];
+  }
+
+  // Cricket
+  if (clean.includes('cricket') || clean.includes('icc') || clean.includes('ipl')) {
+    return LEAGUE_EMBLEMS['cricket'];
+  }
+
+  // Basketball / NBA
+  if (clean.includes('nba') || clean.includes('basketball')) {
+    return LEAGUE_EMBLEMS['nba'];
+  }
+
+  // Hockey / NHL
+  if (clean.includes('nhl') || clean.includes('hockey')) {
+    return LEAGUE_EMBLEMS['nhl'];
+  }
+
+  // Football / Soccer Leagues
   if (clean.includes('premier') || clean === 'epl' || clean === 'pl') {
     return LEAGUE_EMBLEMS['premier-league'];
   }
@@ -40,14 +83,14 @@ export function resolveCompetitionLogo(competitionIdOrName?: string): string {
   if (clean.includes('ligue') || clean.includes('ligue-1')) {
     return LEAGUE_EMBLEMS['ligue-1'];
   }
-  if (clean.includes('nba') || clean.includes('basketball')) {
-    return 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png';
+  if (clean.includes('world-cup') || clean === 'wc' || clean.includes('fifa')) {
+    return LEAGUE_EMBLEMS['world-cup'];
   }
-  if (clean.includes('nhl') || clean.includes('hockey')) {
-    return 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png';
+  if (clean === 'football' || clean === 'soccer') {
+    return LEAGUE_EMBLEMS['football'];
   }
 
-  return LEAGUE_EMBLEMS['premier-league'];
+  return LEAGUE_EMBLEMS['all'];
 }
 
 /**

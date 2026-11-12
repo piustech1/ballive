@@ -212,5 +212,25 @@ export const FEATURED_COMPETITIONS: FeaturedCompetition[] = [
     verified: true,
     sport: 'american_football',
   },
+  {
+    id: 'comp-f1',
+    name: 'Formula 1 World Championship',
+    country: 'Global',
+    matchesCount: 24,
+    season: '2025 Grand Prix Season',
+    crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
+    verified: true,
+    sport: 'motorsport',
+  },
+  {
+    id: 'comp-tennis',
+    name: 'ATP & WTA Tennis Tour',
+    country: 'Global',
+    matchesCount: 16,
+    season: '2025 Tour Season',
+    crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500/tennis.png',
+    verified: true,
+    sport: 'tennis',
+  },
 ];
 

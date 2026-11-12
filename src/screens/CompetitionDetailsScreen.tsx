@@ -53,8 +53,11 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
   const compSport = ('sport' in competition ? competition.sport : undefined) || (
     competition.id.includes('nba') || competition.name.toLowerCase().includes('nba') ? 'basketball' :
     competition.id.includes('nhl') || competition.name.toLowerCase().includes('nhl') ? 'hockey' :
-    competition.id.includes('ufc') || competition.name.toLowerCase().includes('ufc') || competition.name.toLowerCase().includes('mma') || competition.name.toLowerCase().includes('wwe') ? 'mma' :
+    competition.id.includes('ufc') || competition.name.toLowerCase().includes('ufc') || competition.name.toLowerCase().includes('mma') || competition.name.toLowerCase().includes('wwe') || competition.name.toLowerCase().includes('boxing') ? 'mma' :
     competition.id.includes('nfl') || competition.name.toLowerCase().includes('nfl') ? 'american_football' :
+    competition.id.includes('f1') || competition.id.includes('motorsport') || competition.name.toLowerCase().includes('formula') ? 'motorsport' :
+    competition.id.includes('tennis') || competition.name.toLowerCase().includes('tennis') ? 'tennis' :
+    competition.id.includes('cricket') || competition.name.toLowerCase().includes('cricket') ? 'cricket' :
     'soccer'
   );
 
@@ -62,6 +65,8 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
   const isBasketball = compSport === 'basketball';
   const isHockey = compSport === 'hockey';
   const isAmericanFootball = compSport === 'american_football';
+  const isMotorsport = compSport === 'motorsport';
+  const isTennis = compSport === 'tennis';
 
   // Combat Pound-for-Pound Rankings
   const combatRankings = [
@@ -77,17 +82,129 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
     { rank: 'C', name: 'Max Holloway', division: 'BMF Champion', record: '26-8-0', country: 'United States', p4p: '#10 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/2614933.png&w=120&h=120' },
   ];
 
+  // F1 Drivers Championship
+  const f1Drivers = [
+    { pos: 1, driver: 'Max Verstappen', team: 'Red Bull Racing', points: 437, wins: 9, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/4665.png&w=120&h=120' },
+    { pos: 2, driver: 'Lando Norris', team: 'McLaren', points: 374, wins: 4, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/5548.png&w=120&h=120' },
+    { pos: 3, driver: 'Charles Leclerc', team: 'Ferrari', points: 356, wins: 3, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/4699.png&w=120&h=120' },
+    { pos: 4, driver: 'Oscar Piastri', team: 'McLaren', points: 292, wins: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/5745.png&w=120&h=120' },
+    { pos: 5, driver: 'Carlos Sainz', team: 'Ferrari', points: 290, wins: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/4698.png&w=120&h=120' },
+    { pos: 6, driver: 'George Russell', team: 'Mercedes', points: 245, wins: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/5547.png&w=120&h=120' },
+    { pos: 7, driver: 'Lewis Hamilton', team: 'Ferrari', points: 223, wins: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/868.png&w=120&h=120' },
+    { pos: 8, driver: 'Sergio Perez', team: 'Red Bull Racing', points: 152, wins: 0, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/4472.png&w=120&h=120' },
+  ];
+
+  // F1 Constructors Championship
+  const f1Constructors = [
+    { pos: 1, team: 'McLaren', engine: 'Mercedes', points: 666, wins: 6, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/mclaren.png' },
+    { pos: 2, team: 'Ferrari', engine: 'Ferrari', points: 652, wins: 5, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/ferrari.png' },
+    { pos: 3, team: 'Red Bull Racing', engine: 'Honda RBPT', points: 589, wins: 9, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/red_bull.png' },
+    { pos: 4, team: 'Mercedes-AMG', engine: 'Mercedes', points: 468, wins: 4, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/mercedes.png' },
+    { pos: 5, team: 'Aston Martin', engine: 'Mercedes', points: 94, wins: 0, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/aston_martin.png' },
+    { pos: 6, team: 'Alpine', engine: 'Renault', points: 65, wins: 0, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/alpine.png' },
+  ];
+
+  // Tennis Rankings
+  const tennisRankings = [
+    { pos: 1, player: 'Jannik Sinner', country: 'Italy', points: '11,830 pts', titles: 8, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/5123.png&w=120&h=120' },
+    { pos: 2, player: 'Alexander Zverev', country: 'Germany', points: '7,915 pts', titles: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/4143.png&w=120&h=120' },
+    { pos: 3, player: 'Carlos Alcaraz', country: 'Spain', points: '7,010 pts', titles: 4, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/5258.png&w=120&h=120' },
+    { pos: 4, player: 'Taylor Fritz', country: 'USA', points: '5,100 pts', titles: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/4541.png&w=120&h=120' },
+    { pos: 5, player: 'Daniil Medvedev', country: 'Global', points: '5,030 pts', titles: 0, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/4351.png&w=120&h=120' },
+    { pos: 6, player: 'Novak Djokovic', country: 'Serbia', points: '3,910 pts', titles: 1, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/299.png&w=120&h=120' },
+  ];
+
   // Region / Season fields
   const region = 'region' in competition ? competition.region : competition.country;
   const season = 'season' in competition ? competition.season : '2024/25 Season';
   const teamsCount = 'teamsCount' in competition ? competition.teamsCount : 20;
 
   // Filter fallback fixtures
-  const compFixtures = UPCOMING_HIGHLIGHTS.filter(
-    m =>
-      m.competition.toLowerCase().includes(competition.name.toLowerCase()) ||
-      competition.name.toLowerCase().includes(m.competition.toLowerCase())
-  );
+  const compFixtures = useMemo((): DiscoverMatchup[] => {
+    if (isMotorsport) {
+      return [
+        {
+          id: 'f1-bahrain',
+          competition: 'Formula 1',
+          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
+          status: 'UPCOMING',
+          kickoffDate: 'Sun, 2 Mar',
+          kickoffTime: '15:00 GMT',
+          homeTeam: { id: 'team-f1-verstappen', name: 'Max Verstappen (Red Bull)', crestUrl: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/red_bull.png', score: 0 },
+          awayTeam: { id: 'team-f1-norris', name: 'Lando Norris (McLaren)', crestUrl: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/mclaren.png', score: 0 },
+          venue: 'Bahrain International Circuit, Sakhir',
+          hasLiveBroadcast: true,
+          sport: 'motorsport',
+        },
+        {
+          id: 'f1-saudi',
+          competition: 'Formula 1',
+          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
+          status: 'UPCOMING',
+          kickoffDate: 'Sun, 9 Mar',
+          kickoffTime: '17:00 GMT',
+          homeTeam: { id: 'team-f1-leclerc', name: 'Charles Leclerc (Ferrari)', crestUrl: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/ferrari.png', score: 0 },
+          awayTeam: { id: 'team-f1-hamilton', name: 'Lewis Hamilton (Ferrari)', crestUrl: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/ferrari.png', score: 0 },
+          venue: 'Jeddah Corniche Circuit, Saudi Arabia',
+          hasLiveBroadcast: true,
+          sport: 'motorsport',
+        },
+      ];
+    }
+    if (isCombat) {
+      return [
+        {
+          id: 'ufc-main-event',
+          competition: 'UFC 312',
+          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/mma.png',
+          status: 'UPCOMING',
+          kickoffDate: 'Sat, 15 Mar',
+          kickoffTime: '22:00 EST',
+          homeTeam: { id: 'team-makhachev', name: 'Islam Makhachev (C)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/3929452.png&w=120&h=120', score: 0 },
+          awayTeam: { id: 'team-tsarukyan', name: 'Arman Tsarukyan (#1)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4414441.png&w=120&h=120', score: 0 },
+          venue: 'T-Mobile Arena, Las Vegas',
+          hasLiveBroadcast: true,
+          sport: 'mma',
+        },
+        {
+          id: 'ufc-co-main',
+          competition: 'UFC 312',
+          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/mma.png',
+          status: 'UPCOMING',
+          kickoffDate: 'Sat, 15 Mar',
+          kickoffTime: '21:30 EST',
+          homeTeam: { id: 'team-pereira', name: 'Alex Pereira (C)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4898132.png&w=120&h=120', score: 0 },
+          awayTeam: { id: 'team-ankalaev', name: 'Magomed Ankalaev (#1)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4285641.png&w=120&h=120', score: 0 },
+          venue: 'T-Mobile Arena, Las Vegas',
+          hasLiveBroadcast: true,
+          sport: 'mma',
+        },
+      ];
+    }
+    if (isTennis) {
+      return [
+        {
+          id: 'tennis-final-1',
+          competition: 'ATP Masters 1000',
+          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/tennis.png',
+          status: 'UPCOMING',
+          kickoffDate: 'Sun, 23 Mar',
+          kickoffTime: '19:00 GMT',
+          homeTeam: { id: 'team-sinner', name: 'Jannik Sinner (#1)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/5123.png&w=120&h=120', score: 0 },
+          awayTeam: { id: 'team-alcaraz', name: 'Carlos Alcaraz (#3)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/5258.png&w=120&h=120', score: 0 },
+          venue: 'Indian Wells Tennis Garden',
+          hasLiveBroadcast: true,
+          sport: 'tennis',
+        },
+      ];
+    }
+    return UPCOMING_HIGHLIGHTS.filter(
+      m =>
+        (m.competition.toLowerCase().includes(competition.name.toLowerCase()) ||
+        competition.name.toLowerCase().includes(m.competition.toLowerCase())) &&
+        (m.sport === compSport || (!m.sport && compSport === 'soccer'))
+    );
+  }, [isMotorsport, isCombat, isTennis, compSport, competition.name]);
 
   // Dynamic Real Competition Fixtures via sportsApiService
   const [fixtures, setFixtures] = useState<DiscoverMatchup[]>([]);
@@ -202,7 +319,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             onPress={() => setActiveTab('matches')}
           >
             <Text style={[styles.tabText, activeTab === 'matches' && styles.tabTextActive]}>
-              {isCombat ? `Fight Card (${displayFixtures.length})` : `Matches (${displayFixtures.length})`}
+              {isCombat ? `Fight Card (${displayFixtures.length})` : isMotorsport ? `Grand Prix (${displayFixtures.length})` : isTennis ? `Draws (${displayFixtures.length})` : `Matches (${displayFixtures.length})`}
             </Text>
           </TouchableOpacity>
 
@@ -211,7 +328,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             onPress={() => setActiveTab('standings')}
           >
             <Text style={[styles.tabText, activeTab === 'standings' && styles.tabTextActive]}>
-              {isCombat ? 'Rankings' : isBasketball ? 'Conference' : isHockey ? 'Divisions' : 'Standings'}
+              {isCombat ? 'Rankings' : isMotorsport ? 'Championship' : isTennis ? 'Rankings' : isBasketball ? 'Conference' : isHockey ? 'Divisions' : isAmericanFootball ? 'Divisions' : 'Standings'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -396,11 +513,87 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                     ))}
                   </View>
                 </>
+              ) : isMotorsport ? (
+                <>
+                  <View style={styles.tableHeaderSection}>
+                    <Text style={styles.cardHeaderTitle}>Driver Championship</Text>
+                    <Text style={styles.seasonBadgeLabel}>2025 Season</Text>
+                  </View>
+
+                  <View style={{ gap: 6, marginTop: 8 }}>
+                    {f1Drivers.map(d => (
+                      <View key={d.pos} style={styles.tableDataRow}>
+                        <Text style={[styles.tableCellText, styles.colPos, d.pos === 1 && { color: '#F59E0B', fontWeight: '800' }]}>{d.pos}</Text>
+                        <Image source={{ uri: d.avatar }} style={styles.standingsCrest} />
+                        <View style={{ flex: 1, paddingLeft: 4 }}>
+                          <Text style={styles.tableCellTeam} numberOfLines={1}>{d.driver}</Text>
+                          <Text style={{ color: '#A098B5', fontSize: 10 }} numberOfLines={1}>{d.team}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end', minWidth: 64 }}>
+                          <Text style={[styles.tableCellPts, { color: '#00E5FF' }]}>{d.points} PTS</Text>
+                          <Text style={{ color: '#A098B5', fontSize: 9 }}>{d.wins} wins</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={[styles.tableHeaderSection, { marginTop: 20 }]}>
+                    <Text style={styles.cardHeaderTitle}>Constructors Championship</Text>
+                    <Text style={styles.seasonBadgeLabel}>Official Standings</Text>
+                  </View>
+
+                  <View style={{ gap: 6, marginTop: 8 }}>
+                    {f1Constructors.map(c => (
+                      <View key={c.pos} style={styles.tableDataRow}>
+                        <Text style={[styles.tableCellText, styles.colPos, c.pos === 1 && { color: '#F59E0B', fontWeight: '800' }]}>{c.pos}</Text>
+                        <Image source={{ uri: c.logo }} style={[styles.standingsCrest, { resizeMode: 'contain' }]} />
+                        <View style={{ flex: 1, paddingLeft: 4 }}>
+                          <Text style={styles.tableCellTeam} numberOfLines={1}>{c.team}</Text>
+                          <Text style={{ color: '#A098B5', fontSize: 10 }} numberOfLines={1}>{c.engine}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end', minWidth: 64 }}>
+                          <Text style={[styles.tableCellPts, { color: '#00E5FF' }]}>{c.points} PTS</Text>
+                          <Text style={{ color: '#A098B5', fontSize: 9 }}>{c.wins} wins</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              ) : isTennis ? (
+                <>
+                  <View style={styles.tableHeaderSection}>
+                    <Text style={styles.cardHeaderTitle}>ATP & WTA World Rankings</Text>
+                    <Text style={styles.seasonBadgeLabel}>Tour Leaderboard</Text>
+                  </View>
+
+                  <View style={{ gap: 6, marginTop: 8 }}>
+                    {tennisRankings.map(t => (
+                      <View key={t.pos} style={styles.tableDataRow}>
+                        <Text style={[styles.tableCellText, styles.colPos, t.pos === 1 && { color: '#10B981', fontWeight: '800' }]}>{t.pos}</Text>
+                        <Image source={{ uri: t.avatar }} style={styles.standingsCrest} />
+                        <View style={{ flex: 1, paddingLeft: 4 }}>
+                          <Text style={styles.tableCellTeam} numberOfLines={1}>{t.player}</Text>
+                          <Text style={{ color: '#A098B5', fontSize: 10 }}>{t.country}</Text>
+                        </View>
+                        <View style={{ alignItems: 'flex-end', minWidth: 70 }}>
+                          <Text style={[styles.tableCellPts, { color: '#10B981' }]}>{t.points}</Text>
+                          <Text style={{ color: '#A098B5', fontSize: 9 }}>{t.titles} titles</Text>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              ) : standings.length === 0 ? (
+                <View style={{ paddingVertical: 28, alignItems: 'center' }}>
+                  <Text style={{ color: '#A098B5', fontSize: 13, fontWeight: '600' }}>
+                    Loading official {competition.name} standings...
+                  </Text>
+                </View>
               ) : (
                 <>
                   <View style={styles.tableHeaderSection}>
                     <Text style={styles.cardHeaderTitle}>
-                      {isBasketball ? 'Conference Standings' : isHockey ? 'Division Standings' : 'League Table'}
+                      {isBasketball ? 'Conference Standings' : isHockey ? 'Division Standings' : isAmericanFootball ? 'NFL Standings' : 'League Table'}
                     </Text>
                     <Text style={styles.seasonBadgeLabel}>{season}</Text>
                   </View>

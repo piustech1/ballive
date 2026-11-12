@@ -21,6 +21,23 @@ export interface SportLeagueConfig {
   fallbackChannel: string;
 }
 
+export function resolveLeagueKey(rawKey?: string | null): string {
+  if (!rawKey) return '';
+  const clean = rawKey.toLowerCase().replace(/^(comp-|league-)/, '').trim();
+  if (clean === 'motorsport' || clean === 'formula1' || clean === 'formula-1') return 'f1';
+  if (clean === 'mma' || clean === 'wwe' || clean === 'boxing' || clean === 'combat') return 'ufc';
+  if (clean === 'american_football' || clean === 'american-football' || clean === 'gridiron') return 'nfl';
+  if (clean === 'basketball') return 'nba';
+  if (clean === 'hockey') return 'nhl';
+  if (clean === 'premier-league' || clean === 'premier' || clean === 'epl') return 'pl';
+  if (clean === 'champions-league' || clean === 'champions') return 'ucl';
+  if (clean === 'europa-league' || clean === 'europa') return 'uel';
+  if (clean === 'la-liga' || clean === 'primera-division') return 'laliga';
+  if (clean === 'serie-a') return 'seriea';
+  if (clean === 'ligue-1') return 'ligue1';
+  return clean;
+}
+
 export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
   'pl': {
     sport: 'soccer',
@@ -138,8 +155,9 @@ class SportsApiService {
    * When liveOnly is true (default), strictly returns events that are currently in-play (in).
    */
   async getScoreboardMatches(leagueKey?: string, liveOnly = true): Promise<LiveMatch[]> {
-    const leaguesToFetch = leagueKey
-      ? [SUPPORTED_LEAGUES[leagueKey]].filter(Boolean)
+    const resolvedKey = leagueKey ? resolveLeagueKey(leagueKey) : undefined;
+    const leaguesToFetch = resolvedKey
+      ? [SUPPORTED_LEAGUES[resolvedKey]].filter(Boolean)
       : Object.values(SUPPORTED_LEAGUES);
 
     const matches: LiveMatch[] = [];
@@ -264,7 +282,7 @@ class SportsApiService {
    * Fetches real upcoming fixtures for any competition from Football-Data.org or ESPN.
    */
   async getCompetitionFixtures(competitionId: string): Promise<DiscoverMatchup[]> {
-    const cleanId = competitionId.toLowerCase().replace(/^comp-/, '');
+    const cleanId = resolveLeagueKey(competitionId);
     const matchups: DiscoverMatchup[] = [];
 
     // Map to Football-Data competition code
@@ -383,12 +401,16 @@ class SportsApiService {
    * Fetches official league standings across Soccer, NBA, and NHL directly from ESPN.
    */
   async getStandings(leagueKey: string): Promise<StandingsRow[]> {
-    const cached = this.standingsCache.get(leagueKey);
+    const cleanKey = resolveLeagueKey(leagueKey);
+    const cached = this.standingsCache.get(cleanKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return cached.data;
     }
 
-    const cfg = SUPPORTED_LEAGUES[leagueKey] || SUPPORTED_LEAGUES['pl'];
+    const cfg = SUPPORTED_LEAGUES[cleanKey];
+    if (!cfg || cfg.sport === 'mma' || cfg.sport === 'racing') {
+      return [];
+    }
     const url = `${API_CONFIG.ESPN_STANDINGS_BASE}/${cfg.sport}/${cfg.league}/standings`;
 
     try {

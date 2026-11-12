@@ -78,22 +78,34 @@ jobs:
       - name: 🚀 Publish BALLIVE.apk to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release_tag != '' && github.event.inputs.release_tag || 'v2.4.0') }}
-          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.4.0' }} — Multi-Sport Engine, Tale of the Tape & Official Standings"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release_tag != '' && github.event.inputs.release_tag || 'v2.5.0') }}
+          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.5.0' }} — Universal Sport Details, Fullscreen Landscape Player & Multi-Sport Brandings"
           body: |
-            ## 🥊🏀🏒⚽ BALLIVE v2.4.0 — Multi-Sport Engine, Tale of the Tape & Official Standings
+            ## 🏎️🥊🏀🏒⚽ BALLIVE v2.5.0 — Universal Sport Details, Fullscreen Landscape Player & Multi-Sport Brandings
 
-            Major multi-sport and live catalog expansion release:
-            - 🌐 **Comprehensive Multi-Sport Live Engine**: Expanded upstream catalogs across 9 sports (NBA, NHL, UFC/MMA/Combat, NFL, Football/Soccer, Motorsport/F1, Tennis). Now dynamically catalogs over 200+ global in-play and scheduled sporting events.
-            - 🥊 **Combat Sports Tale of the Tape**: Complete combat sports overhaul for UFC, MMA, WWE, and Boxing events. Features full side-by-side fighter comparison (Height, Reach, Stance, Record, Striking stats, Takedown stats, Weight division), Fighter portraits, Fight Statistics, and Round-by-round results (NO soccer pitch or football badges!).
-            - 🏀 **Basketball Hardwood Court & Quarter Box Scores**: NBA matchups now feature a true hardwood court Starting 5 with court markings (Key, 3-point arc, Rim), quarter-by-quarter scoring box tables (Q1-Q4, Totals), and authentic basketball statistics (FG%, 3PT%, FT%, Rebounds, Assists, Steals, Blocks).
-            - 🏒 **Hockey Ice Rink Lines & Period Box Scores**: NHL matches feature ice rink tactical formations (Red line, Blue line, Faceoff circles), period-by-period scoring tables (1st-3rd, OT, Totals), and hockey metrics (SOG, Power Play %, Faceoff %, Hits, PIM).
-            - 🏆 **Multi-Sport Official Standings & Rankings**:
-              - UFC: Official Pound-for-Pound Champions & Division Contenders roster.
-              - NBA: Eastern & Western Conference Standings (GP, W, L, PCT, DIFF, PTS).
-              - NHL: Division Standings (GP, W, L, OTL, DIFF, PTS).
-              - Football: Premier League, Champions League, LaLiga, Serie A, Bundesliga, Ligue 1 tables.
-            - 📺 **Universal Web Embed & HLS Streaming**: Integrated responsive iframe player for web stream mirrors alongside direct HLS (.m3u8) video streaming with instant server switching.
+            Major upgrade release delivering universal sport-adaptive experience:
+            - 🖥️ **Fixed Viewport Architecture with ZERO Vertical Scrolling**:
+              - Re-engineered `MatchDetailsScreen` with stationary bounded viewport (`flex: 1`) fitting seamlessly between curved app bar and bottom nav.
+              - Dedicated heroes for Combat (UFC/MMA/Boxing/WWE), Racing (Formula 1), and Ball Sports.
+              - Sport-specific adaptive panels: Tale of the Tape for combat, Hardwood Court Starting 5 for basketball, Ice Rink Lines for hockey, Pitch for football, compact overview matrix, and match events.
+            - 🔄 **True Immersive Landscape Fullscreen Video Player**:
+              - Smooth hardware rotation into landscape mode via `expo-screen-orientation` without unmounting player or restarting playback (continuous stream).
+              - Physical Android back-button and minimize button listener to return seamlessly to portrait mode.
+              - Removed distracting `• LIVE` red pill overlay and redundant `FEED SOURCE` servers dock from the viewport.
+            - 🏆 **Authentic Multi-Sport Competition Brandings & Routing**:
+              - Eradicated Premier League lion logo fallback across all non-football categories.
+              - Added authentic emblems for NBA, NHL, NFL, F1, UFC/MMA, Tennis, Cricket, and World Cup.
+              - Clicking "All" navigates to all competitions; clicking categories navigates directly to their dedicated competition screen.
+            - 🏁 **Sport-Adaptive Competition Hub & Standings**:
+              - Formula 1: Full Driver Championship Standings & Constructors Championship Standings.
+              - Combat Sports: Official Pound-for-Pound Champions & Contenders roster.
+              - Tennis: ATP & WTA World Tour Leaderboard.
+              - Basketball & Hockey: NBA Conference Standings and NHL Division Standings.
+              - Fixed fixture filtering preventing football fixtures from leaking into NHL/NFL/F1 hubs.
+            - ⚡ **Redesigned Match of the Day & Live Score Sync**:
+              - Replaced cramped ticker bar with high-impact featured card featuring club crests, bold live scores/countdown, and direct "Watch Live Stream" action.
+              - Dynamic real-time score syncing via scoreboard API on live stream details screen.
+              - Real live matchup switcher dynamically listing current in-play events.
 
             ### 📱 Download & Install
             1. Download `BALLIVE.apk` below directly to your Android device.

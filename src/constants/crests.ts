@@ -33,6 +33,7 @@ export const CLUB_CRESTS: Record<string, string> = {
 };
 
 export const LEAGUE_EMBLEMS: Record<string, string> = {
+  // Football
   'ucl': `${CDN_LEAGUE}/2.png`,
   'champions-league': `${CDN_LEAGUE}/2.png`,
   'premier-league': `${CDN_LEAGUE}/39.png`,
@@ -41,6 +42,31 @@ export const LEAGUE_EMBLEMS: Record<string, string> = {
   'serie-a': `${CDN_LEAGUE}/135.png`,
   'bundesliga': `${CDN_LEAGUE}/78.png`,
   'ligue-1': `${CDN_LEAGUE}/61.png`,
+  'world-cup': `${CDN_LEAGUE}/1.png`,
+  'wc': `${CDN_LEAGUE}/1.png`,
+  'football': `${CDN_LEAGUE}/2.png`,
+  'soccer': `${CDN_LEAGUE}/2.png`,
+
+  // Multi-Sport
+  'all': 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/default-team-logo-500.png',
+  'nba': 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
+  'basketball': 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
+  'nhl': 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
+  'hockey': 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
+  'nfl': 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png',
+  'american-football': 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png',
+  'american_football': 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png',
+  'f1': 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
+  'formula-1': 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
+  'formula1': 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
+  'motorsport': 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
+  'ufc': 'https://a.espncdn.com/i/teamlogos/leagues/500/mma.png',
+  'mma': 'https://a.espncdn.com/i/teamlogos/leagues/500/mma.png',
+  'combat': 'https://a.espncdn.com/i/teamlogos/leagues/500/mma.png',
+  'wwe': 'https://a.espncdn.com/i/teamlogos/leagues/500/mma.png',
+  'tennis': 'https://a.espncdn.com/i/teamlogos/leagues/500/tennis.png',
+  'cricket': 'https://a.espncdn.com/i/teamlogos/leagues/500/cricket.png',
+  'boxing': 'https://a.espncdn.com/i/teamlogos/leagues/500/boxing.png',
 };
 
 export default { CLUB_CRESTS, LEAGUE_EMBLEMS };

@@ -2,8 +2,8 @@
   "expo": {
     "name": "BALLIVE",
     "slug": "ballive",
-    "version": "2.4.0",
-    "orientation": "portrait",
+    "version": "2.5.0",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {

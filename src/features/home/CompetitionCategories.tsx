@@ -27,6 +27,12 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
     if (onSelectCategory) {
       onSelectCategory(categoryId === selectedCategoryId ? null : categoryId);
     }
+
+    if (categoryId === 'all') {
+      navigate({ name: 'AllCompetitions' });
+      return;
+    }
+
     const comp = findCompetitionById(categoryId);
     if (comp) {
       navigate({
