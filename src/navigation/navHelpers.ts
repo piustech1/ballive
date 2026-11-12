@@ -70,10 +70,12 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
 
   const venue = compLower.includes('nba') ? 'NBA Arena' : compLower.includes('nhl') ? 'NHL Ice Arena' : compLower.includes('ufc') || compLower.includes('mma') ? 'Championship Octagon' : 'Premier Sports Stadium';
 
-  const isLive = live.minute > 0 && live.minute < 90;
-  const isFinished = live.minute >= 90;
+  const isLive = live.status === 'LIVE' || (live.minute > 0 && live.minute < 90);
+  const isFinished = live.status === 'FT' || live.minute >= 90;
   const matchStatus = isLive ? 'LIVE' : isFinished ? 'FT' : 'UPCOMING';
-  const kickoffTime = isLive ? `${live.minute}' Live` : isFinished ? 'Full Time' : (live.kickoffTime || 'Today');
+  const kickoffTime = isLive
+    ? (live.playTime ? `${live.playTime} Live` : (live.minute ? `${live.minute}' Live` : 'Live In-Play'))
+    : isFinished ? 'Full Time' : (live.kickoffTime || 'Today');
 
   return {
     id: live.id,
@@ -82,6 +84,7 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     status: matchStatus,
     kickoffDate: 'Today',
     kickoffTime,
+    playTime: live.playTime,
     minute: live.minute,
     sport,
     homeTeam: {

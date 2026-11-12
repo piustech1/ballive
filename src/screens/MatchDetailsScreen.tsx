@@ -8,6 +8,7 @@ import {
   Share,
   ActivityIndicator,
   Dimensions,
+  ScrollView,
 } from 'react-native';
 import {
   Tv,
@@ -90,6 +91,13 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
 
   const [intel, setIntel] = useState<MatchIntelResponse | null>(null);
   const [isLoadingIntel, setIsLoadingIntel] = useState(false);
+  const [currentScore, setCurrentScore] = useState<{ home: number; away: number }>({
+    home: matchup.homeTeam.score ?? 0,
+    away: matchup.awayTeam.score ?? 0,
+  });
+  const [currentPlayTime, setCurrentPlayTime] = useState<string | undefined>(
+    matchup.playTime || (matchup.minute && matchup.minute > 0 ? `${matchup.minute}'` : undefined)
+  );
 
   // Normalized Sport Type
   const sport = useMemo(() => {
@@ -99,12 +107,25 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   useEffect(() => {
     let isMounted = true;
     setIsLoadingIntel(true);
+    setCurrentScore({
+      home: matchup.homeTeam.score ?? 0,
+      away: matchup.awayTeam.score ?? 0,
+    });
+    setCurrentPlayTime(
+      matchup.playTime || (matchup.minute && matchup.minute > 0 ? `${matchup.minute}'` : undefined)
+    );
 
     async function fetchIntel() {
       try {
         const liveIntel = await sportsApiService.getMatchIntel(matchup);
         if (isMounted && liveIntel) {
           setIntel(liveIntel);
+          if (liveIntel.liveScore) {
+            setCurrentScore(liveIntel.liveScore);
+          }
+          if (liveIntel.playTime) {
+            setCurrentPlayTime(liveIntel.playTime);
+          }
           setIsLoadingIntel(false);
           return;
         }
@@ -130,9 +151,24 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       }
     }
 
+    // Direct live score polling from ESPN Scoreboards
+    sportsApiService
+      .findEspnEvent(matchup.homeTeam.name, matchup.awayTeam.name, sport)
+      .then(found => {
+        if (isMounted && found) {
+          setCurrentScore({ home: found.scoreHome, away: found.scoreAway });
+          if (found.playTime) {
+            setCurrentPlayTime(found.playTime);
+          }
+        }
+      })
+      .catch(() => {});
+
     fetchIntel();
-    return () => { isMounted = false; };
-  }, [matchup.id, matchup.homeTeam.name, matchup.awayTeam.name]);
+    return () => {
+      isMounted = false;
+    };
+  }, [matchup.id, matchup.homeTeam.name, matchup.awayTeam.name, sport]);
 
   const isReminderSet = profile.matchReminderIds.includes(matchup.id);
   const isSaved = profile.savedMatchIds.includes(matchup.id);
@@ -369,19 +405,15 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                 {isLive || matchup.status === 'FT' ? (
                   <>
                     <View style={styles.heroScoreRow}>
-                      <Text style={styles.heroScoreNum}>{matchup.homeTeam.score ?? 0}</Text>
+                      <Text style={styles.heroScoreNum}>{currentScore.home}</Text>
                       <Text style={styles.heroScoreColon}>:</Text>
-                      <Text style={styles.heroScoreNum}>{matchup.awayTeam.score ?? 0}</Text>
+                      <Text style={styles.heroScoreNum}>{currentScore.away}</Text>
                     </View>
                     <View style={[styles.heroClockBadge, !isLive && styles.heroClockBadgeFT]}>
                       {isLive && <View style={styles.pulseRedDot} />}
                       <Text style={styles.heroClockText}>
                         {isLive
-                          ? sport === 'basketball'
-                            ? `Q4 03:24`
-                            : sport === 'hockey'
-                            ? `P3 11:40`
-                            : `${matchup.minute || 45}' LIVE`
+                          ? currentPlayTime || (matchup.playTime ? `${matchup.playTime} LIVE` : (matchup.minute ? `${matchup.minute}' LIVE` : 'LIVE IN-PLAY'))
                           : 'FULL TIME'}
                       </Text>
                     </View>
@@ -564,11 +596,11 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             </View>
           )}
 
-          {/* TAB 3: LINEUPS / TALE OF THE TAPE / TACTICAL SURFACE */}
+          {/* TAB 3: LINEUPS / SQUAD SHEETS (LINE VIEW) */}
           {activeTab === 'lineups' && (
             <View style={styles.lineupsPanel}>
               {sport === 'mma' || sport === 'boxing' ? (
-                /* TALE OF THE TAPE (NO SOCCER PITCH!) */
+                /* TALE OF THE TAPE (COMBAT SPORTS) */
                 <View style={styles.tapeTable}>
                   <View style={styles.tapeHeaderRow}>
                     <Text style={styles.tapeFighterLabel} numberOfLines={1}>{matchup.homeTeam.name}</Text>
@@ -583,63 +615,140 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   <TapeRow left="58%" metric="STRIKE ACC." right="51%" />
                   <TapeRow left="3.12" metric="TAKEDOWNS/15M" right="1.45" />
                 </View>
-              ) : sport === 'basketball' ? (
-                /* HARDWOOD COURT STARTING 5 */
-                <View style={styles.hardwoodCourt}>
-                  <View style={styles.courtHeader}>
-                    <Text style={styles.courtTitle}>STARTING 5 ROTATION</Text>
-                  </View>
-                  <View style={styles.courtPlayersRow}>
-                    <CourtPlayerBadge pos="PG" name="Point Guard" num="1" />
-                    <CourtPlayerBadge pos="SG" name="Shooting Guard" num="2" />
-                    <CourtPlayerBadge pos="SF" name="Small Forward" num="3" />
-                    <CourtPlayerBadge pos="PF" name="Power Forward" num="4" />
-                    <CourtPlayerBadge pos="C" name="Center" num="5" />
-                  </View>
-                </View>
-              ) : sport === 'hockey' ? (
-                /* ICE RINK LINES */
-                <View style={styles.iceRink}>
-                  <View style={styles.courtHeader}>
-                    <Text style={styles.courtTitle}>STARTING LINE & GOALTENDER</Text>
-                  </View>
-                  <View style={styles.courtPlayersRow}>
-                    <CourtPlayerBadge pos="LW" name="Left Wing" num="11" />
-                    <CourtPlayerBadge pos="C" name="Center" num="9" />
-                    <CourtPlayerBadge pos="RW" name="Right Wing" num="88" />
-                    <CourtPlayerBadge pos="D" name="Defense" num="4" />
-                    <CourtPlayerBadge pos="G" name="Goaltender" num="31" />
-                  </View>
-                </View>
               ) : (
-                /* FOOTBALL TACTICAL PITCH (COMPACT) */
-                <View style={styles.footballPitchSurface}>
-                  <View style={styles.pitchHeader}>
+                /* LINE VIEW: SQUAD LIST (NO FAKE PITCH DIV!) */
+                <View style={styles.lineViewContainer}>
+                  {/* Team Switcher Header */}
+                  <View style={styles.lineupTeamSwitch}>
                     <TouchableOpacity
-                      activeOpacity={0.7}
-                      style={[styles.pitchTeamBtn, tacticalTeam === 'home' && styles.pitchTeamBtnActive]}
+                      activeOpacity={0.8}
+                      style={[styles.lineupTeamBtn, tacticalTeam === 'home' && styles.lineupTeamBtnActive]}
                       onPress={() => setTacticalTeam('home')}
                     >
-                      <Text style={styles.pitchTeamText}>{matchup.homeTeam.name} ({homeFormation})</Text>
+                      <Text
+                        style={[styles.lineupTeamBtnText, tacticalTeam === 'home' && styles.lineupTeamBtnTextActive]}
+                        numberOfLines={1}
+                      >
+                        {matchup.homeTeam.name} ({intel?.lineups?.home?.formation || '4-3-3'})
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                      activeOpacity={0.7}
-                      style={[styles.pitchTeamBtn, tacticalTeam === 'away' && styles.pitchTeamBtnActive]}
+                      activeOpacity={0.8}
+                      style={[styles.lineupTeamBtn, tacticalTeam === 'away' && styles.lineupTeamBtnActive]}
                       onPress={() => setTacticalTeam('away')}
                     >
-                      <Text style={styles.pitchTeamText}>{matchup.awayTeam.name} ({awayFormation})</Text>
+                      <Text
+                        style={[styles.lineupTeamBtnText, tacticalTeam === 'away' && styles.lineupTeamBtnTextActive]}
+                        numberOfLines={1}
+                      >
+                        {matchup.awayTeam.name} ({intel?.lineups?.away?.formation || '4-3-3'})
+                      </Text>
                     </TouchableOpacity>
                   </View>
-                  <View style={styles.pitchField}>
-                    <View style={styles.pitchMidline} />
-                    <View style={styles.pitchCenterCircle} />
-                    <View style={styles.pitchFormationRow}>
-                      <CourtPlayerBadge pos="GK" name="Goalkeeper" num="1" />
-                      <CourtPlayerBadge pos="DF" name="Defenders" num="4" />
-                      <CourtPlayerBadge pos="MF" name="Midfielders" num="8" />
-                      <CourtPlayerBadge pos="FW" name="Forwards" num="7" />
+
+                  {/* Scrollable Line View Squad List */}
+                  <ScrollView
+                    style={styles.lineupScroll}
+                    contentContainerStyle={styles.lineupScrollContent}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {/* STARTING SQUAD SECTION */}
+                    <View style={styles.lineupSectionHeader}>
+                      <Text style={styles.lineupSectionTitle}>
+                        {sport === 'basketball' ? 'STARTING FIVE' : sport === 'hockey' ? 'STARTING LINE' : 'STARTING XI'}
+                      </Text>
+                      <View style={styles.lineupCountBadge}>
+                        <Text style={styles.lineupCountText}>
+                          {(tacticalTeam === 'home' ? intel?.lineups?.home?.startingXI : intel?.lineups?.away?.startingXI)?.length || 0} PLAYERS
+                        </Text>
+                      </View>
                     </View>
-                  </View>
+
+                    {((tacticalTeam === 'home' ? intel?.lineups?.home?.startingXI : intel?.lineups?.away?.startingXI) || []).map((p, idx) => (
+                      <View key={p.id || `starter-${idx}`} style={styles.playerLineRow}>
+                        <View style={styles.playerJerseyPill}>
+                          <Text style={styles.playerJerseyText}>{p.number || idx + 1}</Text>
+                        </View>
+                        <View style={[styles.playerPosBadge, getPosBadgeStyle(p.position)]}>
+                          <Text style={styles.playerPosText}>{p.position}</Text>
+                        </View>
+                        <View style={styles.playerNameCol}>
+                          <View style={styles.playerNameRow}>
+                            <Text style={styles.playerFullName} numberOfLines={1}>
+                              {p.name}
+                            </Text>
+                            {p.isCaptain && (
+                              <View style={styles.captainPill}>
+                                <Text style={styles.captainPillText}>C</Text>
+                              </View>
+                            )}
+                          </View>
+                          {p.positionName ? (
+                            <Text style={styles.playerPositionSubtitle} numberOfLines={1}>
+                              {p.positionName}
+                            </Text>
+                          ) : null}
+                        </View>
+                        <View style={styles.playerRatingPill}>
+                          <Text style={styles.playerRatingText}>★ {p.rating ? p.rating.toFixed(1) : '7.5'}</Text>
+                        </View>
+                      </View>
+                    ))}
+
+                    {/* BENCH / SUBSTITUTES SECTION */}
+                    {((tacticalTeam === 'home' ? intel?.lineups?.home?.substitutes : intel?.lineups?.away?.substitutes) || []).length > 0 && (
+                      <>
+                        <View style={[styles.lineupSectionHeader, { marginTop: 10 }]}>
+                          <Text style={styles.lineupSectionTitle}>SUBSTITUTES & BENCH</Text>
+                          <View style={styles.lineupCountBadge}>
+                            <Text style={styles.lineupCountText}>
+                              {(tacticalTeam === 'home' ? intel?.lineups?.home?.substitutes : intel?.lineups?.away?.substitutes)?.length} SUBS
+                            </Text>
+                          </View>
+                        </View>
+
+                        {((tacticalTeam === 'home' ? intel?.lineups?.home?.substitutes : intel?.lineups?.away?.substitutes) || []).map((p, idx) => (
+                          <View key={p.id || `sub-${idx}`} style={styles.playerLineRow}>
+                            <View style={[styles.playerJerseyPill, styles.playerJerseyPillSub]}>
+                              <Text style={styles.playerJerseyTextSub}>{p.number || idx + 12}</Text>
+                            </View>
+                            <View style={[styles.playerPosBadge, getPosBadgeStyle(p.position)]}>
+                              <Text style={styles.playerPosText}>{p.position}</Text>
+                            </View>
+                            <View style={styles.playerNameCol}>
+                              <Text style={styles.playerFullNameSub} numberOfLines={1}>
+                                {p.name}
+                              </Text>
+                              {p.positionName ? (
+                                <Text style={styles.playerPositionSubtitle} numberOfLines={1}>
+                                  {p.positionName}
+                                </Text>
+                              ) : null}
+                            </View>
+                            <View style={styles.subTagPill}>
+                              <Text style={styles.subTagText}>SUB</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </>
+                    )}
+
+                    {/* COACH & FORMATION FOOTER */}
+                    <View style={styles.coachFooterRow}>
+                      <View style={styles.coachItem}>
+                        <Text style={styles.coachLabel}>HEAD COACH</Text>
+                        <Text style={styles.coachValue}>
+                          {(tacticalTeam === 'home' ? intel?.lineups?.home?.coach : intel?.lineups?.away?.coach) || 'Head Coach'}
+                        </Text>
+                      </View>
+                      <View style={styles.coachItemRight}>
+                        <Text style={styles.coachLabel}>FORMATION</Text>
+                        <Text style={styles.coachValue}>
+                          {(tacticalTeam === 'home' ? intel?.lineups?.home?.formation : intel?.lineups?.away?.formation) || '4-3-3'}
+                        </Text>
+                      </View>
+                    </View>
+                  </ScrollView>
                 </View>
               )}
             </View>
@@ -713,13 +822,29 @@ const TapeRow: React.FC<{ left: string; metric: string; right: string }> = ({ le
   </View>
 );
 
-const CourtPlayerBadge: React.FC<{ pos: string; name: string; num: string }> = ({ pos, name, num }) => (
-  <View style={styles.courtPlayerBadge}>
-    <View style={styles.courtNumCircle}><Text style={styles.courtNumText}>{num}</Text></View>
-    <Text style={styles.courtPosText}>{pos}</Text>
-    <Text style={styles.courtPlayerName} numberOfLines={1}>{name}</Text>
-  </View>
-);
+const getPosBadgeStyle = (pos: string) => {
+  switch (pos) {
+    case 'GK':
+    case 'G':
+      return styles.posGK;
+    case 'DF':
+    case 'D':
+    case 'PF':
+    case 'C':
+      return styles.posDF;
+    case 'MF':
+    case 'PG':
+    case 'SG':
+    case 'SF':
+      return styles.posMF;
+    case 'FW':
+    case 'LW':
+    case 'RW':
+      return styles.posFW;
+    default:
+      return styles.posMF;
+  }
+};
 
 const EventItem: React.FC<{ min: string; text: string }> = ({ min, text }) => (
   <View style={styles.eventItemRow}>
@@ -1262,129 +1387,209 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  /* HARDWOOD & ICE SURFACES */
-  hardwoodCourt: {
+  /* ── LINE VIEW: SQUAD LIST ── */
+  lineViewContainer: {
     flex: 1,
-    backgroundColor: '#2B1E13',
-    borderRadius: 10,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#784E2D',
-    justifyContent: 'space-around',
   },
-  iceRink: {
+  lineupTeamSwitch: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  lineupTeamBtn: {
     flex: 1,
-    backgroundColor: '#122336',
-    borderRadius: 10,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#215682',
-    justifyContent: 'space-around',
-  },
-  courtHeader: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: '#1E1730',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  lineupTeamBtnActive: {
+    backgroundColor: 'rgba(121, 82, 252, 0.25)',
+    borderColor: '#7952FC',
+  },
+  lineupTeamBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#A098B5',
+  },
+  lineupTeamBtnTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  lineupScroll: {
+    flex: 1,
+  },
+  lineupScrollContent: {
+    paddingBottom: 8,
+  },
+  lineupSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
     marginBottom: 4,
   },
-  courtTitle: {
+  lineupSectionTitle: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#7952FC',
     letterSpacing: 0.6,
   },
-  courtPlayersRow: {
+  lineupCountBadge: {
+    backgroundColor: '#201A33',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  lineupCountText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#A098B5',
+  },
+  playerLineRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
     alignItems: 'center',
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    gap: 8,
   },
-  courtPlayerBadge: {
-    alignItems: 'center',
-    width: 54,
-  },
-  courtNumCircle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+  playerJerseyPill: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
     backgroundColor: '#7952FC',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 3,
   },
-  courtNumText: {
-    fontSize: 11,
+  playerJerseyText: {
+    fontSize: 10.5,
     fontWeight: '800',
     color: '#FFFFFF',
   },
-  courtPosText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#F8BE38',
+  playerJerseyPillSub: {
+    backgroundColor: '#2A2045',
   },
-  courtPlayerName: {
-    fontSize: 9.5,
-    color: '#ECE9FA',
-    textAlign: 'center',
-    marginTop: 1,
-  },
-
-  /* FOOTBALL PITCH */
-  footballPitchSurface: {
-    flex: 1,
-    backgroundColor: '#163820',
-    borderRadius: 10,
-    padding: 8,
-    borderWidth: 1,
-    borderColor: '#246135',
-  },
-  pitchHeader: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  pitchTeamBtn: {
-    backgroundColor: '#1E4A2B',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  pitchTeamBtnActive: {
-    backgroundColor: '#22C55E',
-  },
-  pitchTeamText: {
+  playerJerseyTextSub: {
     fontSize: 10,
+    fontWeight: '700',
+    color: '#A098B5',
+  },
+  playerPosBadge: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    minWidth: 26,
+    alignItems: 'center',
+  },
+  playerPosText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  posGK: {
+    backgroundColor: '#D97706',
+  },
+  posDF: {
+    backgroundColor: '#2563EB',
+  },
+  posMF: {
+    backgroundColor: '#059669',
+  },
+  posFW: {
+    backgroundColor: '#DC2626',
+  },
+  playerNameCol: {
+    flex: 1,
+  },
+  playerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  playerFullName: {
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  pitchField: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
-    borderRadius: 6,
-    justifyContent: 'center',
-    position: 'relative',
+  playerFullNameSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#ECE9FA',
+  },
+  captainPill: {
+    backgroundColor: '#F8BE38',
     paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 3,
   },
-  pitchMidline: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: '50%',
-    width: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  captainPillText: {
+    fontSize: 8.5,
+    fontWeight: '900',
+    color: '#161324',
   },
-  pitchCenterCircle: {
-    position: 'absolute',
-    alignSelf: 'center',
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  playerPositionSubtitle: {
+    fontSize: 9.5,
+    fontWeight: '500',
+    color: '#8E87A5',
+    marginTop: 1,
+  },
+  playerRatingPill: {
+    backgroundColor: 'rgba(248, 190, 56, 0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(248, 190, 56, 0.3)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
-  pitchFormationRow: {
+  playerRatingText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#F8BE38',
+  },
+  subTagPill: {
+    backgroundColor: '#201A33',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  subTagText: {
+    fontSize: 8.5,
+    fontWeight: '700',
+    color: '#8E87A5',
+  },
+  coachFooterRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    zIndex: 10,
+    justifyContent: 'space-between',
+    backgroundColor: '#1E1730',
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  coachItem: {
+    flex: 1,
+  },
+  coachItemRight: {
+    alignItems: 'flex-end',
+  },
+  coachLabel: {
+    fontSize: 8.5,
+    fontWeight: '800',
+    color: '#7952FC',
+    letterSpacing: 0.5,
+  },
+  coachValue: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginTop: 2,
   },
 
   /* EVENTS PANEL */

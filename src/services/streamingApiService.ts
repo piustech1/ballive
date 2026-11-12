@@ -119,6 +119,33 @@ class StreamingApiService {
       }
 
       // ── Process Source 2: All DAG Sports Catalogs ──
+      const espnLiveList: LiveMatch[] = (espnMatchesRes.status === 'fulfilled' && Array.isArray(espnMatchesRes.value))
+        ? espnMatchesRes.value
+        : [];
+
+      const cleanName = (s: string) =>
+        s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\b(fc|cf|sc|afc|club|united|city|women|ladies|men)\b/g, '').trim();
+
+      const findMatchedEspn = (homeStr: string, awayStr: string): LiveMatch | undefined => {
+        const hClean = cleanName(homeStr);
+        const aClean = cleanName(awayStr);
+        const hToks = hClean.split(/\s+/).filter(w => w.length >= 3);
+        const aToks = aClean.split(/\s+/).filter(w => w.length >= 3);
+
+        return espnLiveList.find(em => {
+          const emH = cleanName(em.homeTeam);
+          const emA = cleanName(em.awayTeam);
+          const hHit = hToks.some(t => emH.includes(t) || emA.includes(t));
+          const aHit = aToks.some(t => emH.includes(t) || emA.includes(t));
+          return hHit && aHit;
+        }) || espnLiveList.find(em => {
+          const emH = cleanName(em.homeTeam);
+          const emA = cleanName(em.awayTeam);
+          return hToks.some(t => t.length >= 4 && (emH.includes(t) || emA.includes(t))) ||
+                 aToks.some(t => t.length >= 4 && (emH.includes(t) || emA.includes(t)));
+        });
+      };
+
       for (let i = 0; i < dagCatalogs.length; i++) {
         const catConfig = dagCatalogs[i];
         const result = dagResults[i];
@@ -191,12 +218,30 @@ class StreamingApiService {
               const b1 = rawLogo1 || posterLogo1 || (isCombat ? combatLogo : getTeamCrest(home));
               const b2 = rawLogo2 || posterLogo2 || (isCombat ? combatLogo : getTeamCrest(away));
 
-              // Check live status
+              // Check live status and cross-reference with genuine scoreboard data
               const isLiveNow = m.releaseInfo === 'LIVE' || m.name?.includes('🔴 LIVE') || m.description?.includes('LIVE NOW');
-              const hash = m.id.split('').reduce((acc: number, c: string) => acc + c.charCodeAt(0), 0);
-              const minute = isLiveNow ? Math.min(88, Math.max(12, (hash % 70) + ((idx * 3) % 18))) : 0;
-              const scoreHome = isLiveNow ? ((hash + idx) % 4 === 0 ? 2 : (hash + idx) % 3 === 0 ? 1 : 0) : 0;
-              const scoreAway = isLiveNow ? ((hash + idx) % 5 === 0 ? 1 : 0) : 0;
+              const matchedEspn = findMatchedEspn(home, away);
+
+              let scoreHome = 0;
+              let scoreAway = 0;
+              let minute = 0;
+              let playTime: string | undefined = undefined;
+              let kickoffTime = m.releaseInfo || 'Today';
+
+              if (matchedEspn) {
+                scoreHome = matchedEspn.score.home;
+                scoreAway = matchedEspn.score.away;
+                minute = matchedEspn.minute;
+                playTime = matchedEspn.playTime;
+                kickoffTime = matchedEspn.kickoffTime || (matchedEspn.playTime ? `${matchedEspn.playTime} Live` : 'Live In-Play');
+              } else if (isLiveNow) {
+                // Default genuine zero score when match is live but not yet in scoreboard
+                scoreHome = 0;
+                scoreAway = 0;
+                minute = 0;
+                playTime = 'Live';
+                kickoffTime = 'Live In-Play';
+              }
 
               // Generate sport-specific secondary server mirrors
               const streams: Array<{ id: string; name: string; url: string }> = [
@@ -251,6 +296,8 @@ class StreamingApiService {
                 competition: isCombat ? 'UFC / Combat' : (m.genres?.[0] || genre),
                 score: { home: scoreHome, away: scoreAway },
                 minute,
+                playTime,
+                status: (isLiveNow || matchedEspn) ? 'LIVE' : 'UPCOMING',
                 imageUrl:
                   m.poster ||
                   m.background ||
@@ -261,7 +308,7 @@ class StreamingApiService {
                 streamUrl: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`,
                 streams,
                 sport,
-                kickoffTime: isLiveNow ? `${minute}' Live` : (m.releaseInfo || 'Today'),
+                kickoffTime,
                 venue: isCombat ? 'Championship Octagon' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
               });
             });

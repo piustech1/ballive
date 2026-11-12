@@ -120,16 +120,17 @@ export const MatchOfTheDayTicker: React.FC<MatchOfTheDayTickerProps> = ({ match 
   // Sport-specific status text
   const getClockText = () => {
     if (!isLive) return 'Full Time';
+    if (marqueeMatch.playTime) return `${marqueeMatch.playTime} In-Play`;
     switch (sport) {
       case 'basketball':
-        return 'Q4 • 03:24';
+        return marqueeMatch.minute ? `Q${Math.min(4, Math.ceil(marqueeMatch.minute / 12))} In-Play` : 'LIVE In-Play';
       case 'hockey':
-        return 'P3 • 11:40';
+        return marqueeMatch.minute ? `P${Math.min(3, Math.ceil(marqueeMatch.minute / 20))} In-Play` : 'LIVE In-Play';
       case 'mma':
       case 'boxing':
-        return 'Round 3 • In Action';
+        return 'Round In Action';
       case 'motorsport':
-        return 'Lap 48/78';
+        return 'In Progress';
       default:
         return `${marqueeMatch.minute || 45}' In-Play`;
     }

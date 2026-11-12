@@ -74,7 +74,11 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     home: match.homeTeam.score ?? 0,
     away: match.awayTeam.score ?? 0,
     minute: match.minute,
-    statusText: match.minute && match.minute > 0 ? `${match.minute}' LIVE` : undefined,
+    statusText: match.playTime
+      ? `${match.playTime} LIVE`
+      : match.minute && match.minute > 0
+      ? `${match.minute}' LIVE`
+      : undefined,
   });
 
   // Dynamic real other live matches from catalog
@@ -88,7 +92,11 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
       home: match.homeTeam.score ?? 0,
       away: match.awayTeam.score ?? 0,
       minute: match.minute,
-      statusText: match.minute && match.minute > 0 ? `${match.minute}' LIVE` : undefined,
+      statusText: match.playTime
+        ? `${match.playTime} LIVE`
+        : match.minute && match.minute > 0
+        ? `${match.minute}' LIVE`
+        : undefined,
     });
 
     if (match.id) {
@@ -115,29 +123,35 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
       }
     }).catch(() => {});
 
-    // Real-time score sync from ESPN Scoreboard
-    sportsApiService.getScoreboardMatches(undefined, false).then(scores => {
-      if (!isMounted || !scores || scores.length === 0) return;
-      const homeNorm = match.homeTeam.name.toLowerCase();
-      const awayNorm = match.awayTeam.name.toLowerCase();
-      const found = scores.find(s =>
-        (s.homeTeam.toLowerCase().includes(homeNorm) || homeNorm.includes(s.homeTeam.toLowerCase())) &&
-        (s.awayTeam.toLowerCase().includes(awayNorm) || awayNorm.includes(s.awayTeam.toLowerCase()))
-      );
-      if (found) {
-        setLiveScore({
-          home: found.score.home,
-          away: found.score.away,
-          minute: found.minute,
-          statusText: found.status === 'LIVE' ? `${found.minute}' LIVE` : (found.status === 'FT' ? 'FULL TIME' : 'UPCOMING'),
-        });
-      }
-    }).catch(() => {});
+    // Real-time score and play-time sync from ESPN Scoreboard via findEspnEvent
+    const syncLiveScore = () => {
+      sportsApiService
+        .findEspnEvent(match.homeTeam.name, match.awayTeam.name, match.sport)
+        .then(found => {
+          if (!isMounted || !found) return;
+          setLiveScore({
+            home: found.scoreHome,
+            away: found.scoreAway,
+            minute: found.minute,
+            statusText:
+              found.isLive
+                ? found.playTime
+                  ? `${found.playTime} LIVE`
+                  : `${found.minute}' LIVE`
+                : found.statusText || 'FULL TIME',
+          });
+        })
+        .catch(() => {});
+    };
+
+    syncLiveScore();
+    const pollInterval = setInterval(syncLiveScore, 30000);
 
     return () => {
       isMounted = false;
+      clearInterval(pollInterval);
     };
-  }, [match.id, match.streamUrl, match.homeTeam.name, match.awayTeam.name]);
+  }, [match.id, match.streamUrl, match.homeTeam.name, match.awayTeam.name, match.sport]);
 
   // Fullscreen orientation and hardware back button management
   useEffect(() => {

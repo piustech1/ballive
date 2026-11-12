@@ -5,7 +5,8 @@ export interface TacticalPlayer {
   id: string;
   name: string;
   number: number;
-  position: 'GK' | 'DF' | 'MF' | 'FW';
+  position: 'GK' | 'DF' | 'MF' | 'FW' | 'PG' | 'SG' | 'SF' | 'PF' | 'C' | 'LW' | 'RW' | 'D' | 'G' | string;
+  positionName?: string;
   rating: number;
   isCaptain?: boolean;
   photo?: string;
@@ -26,6 +27,9 @@ export interface MatchIntelResponse {
   home: string;
   away: string;
   sport?: 'soccer' | 'basketball' | 'hockey' | 'mma' | 'american_football' | 'tennis' | 'motorsport' | 'other';
+  liveScore?: { home: number; away: number };
+  playTime?: string;
+  statusDetail?: string;
   lineups: {
     home: TacticalLineup;
     away: TacticalLineup;
