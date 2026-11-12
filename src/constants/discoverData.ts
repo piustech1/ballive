@@ -59,6 +59,7 @@ export interface DiscoverMatchup {
   status: MatchStatus;
   kickoffDate: string;
   kickoffTime: string;
+  playTime?: string;
   minute?: number;
   sport?: SportType;
   homeTeam: {

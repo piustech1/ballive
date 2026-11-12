@@ -44,6 +44,7 @@ import { useAppNavigation } from '../navigation/NavigationContext';
 import { LiveStreamPlayer } from '../components/player/LiveStreamPlayer';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
+import { InlineMatchDetailsModule } from '../components/player/InlineMatchDetailsModule';
 
 interface LiveStreamDetailsScreenProps {
   match: DiscoverMatchup;
@@ -61,6 +62,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
   const [activeStreamUrl, setActiveStreamUrl] = useState<string | undefined>(match.streamUrl);
   const [activeStreams, setActiveStreams] = useState<any[] | undefined>(match.streams);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [activeBottomView, setActiveBottomView] = useState<'streams' | 'details'>('streams');
 
   // Live real-time scores and clock
   const [liveScore, setLiveScore] = useState<{
@@ -323,16 +325,25 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
           <View style={styles.actionsBar}>
             <TouchableOpacity
               activeOpacity={0.8}
-              style={styles.matchDetailsActionBtn}
+              style={[
+                styles.matchDetailsActionBtn,
+                activeBottomView === 'details' && styles.matchDetailsActionBtnActive,
+              ]}
               onPress={() => {
-                navigate({
-                  name: 'MatchDetails',
-                  params: { matchup: match },
-                });
+                setActiveBottomView(prev => prev === 'details' ? 'streams' : 'details');
               }}
             >
-              <Info size={15} color="#FFFFFF" strokeWidth={2.4} />
-              <Text style={styles.matchDetailsActionText}>Match Details & Lineups</Text>
+              {activeBottomView === 'details' ? (
+                <>
+                  <Tv size={15} color="#ECE9FA" strokeWidth={2.4} />
+                  <Text style={styles.matchDetailsActionText}>Show Other Live Streams</Text>
+                </>
+              ) : (
+                <>
+                  <Info size={15} color="#FFFFFF" strokeWidth={2.4} />
+                  <Text style={styles.matchDetailsActionText}>Match Details & Lineups</Text>
+                </>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -362,9 +373,19 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             </TouchableOpacity>
           </View>
 
-          {/* ── 4. OTHER LIVE MATCHES SECTION (DYNAMIC WITH REAL TEAMS) ── */}
-          <View style={styles.relatedSection}>
-            <Text style={styles.relatedSectionTitle}>OTHER LIVE MATCHES</Text>
+          {/* ── 4. CONTENT AREA: INLINE MATCH DETAILS OR OTHER LIVE MATCHES ── */}
+          {activeBottomView === 'details' ? (
+            <View style={styles.inlineDetailsWrapper}>
+              <InlineMatchDetailsModule
+                matchup={match}
+                liveScore={liveScore}
+                onSwitchToLiveStreams={() => setActiveBottomView('streams')}
+                liveStreamCount={relatedStreams.length}
+              />
+            </View>
+          ) : (
+            <View style={styles.relatedSection}>
+              <Text style={styles.relatedSectionTitle}>OTHER LIVE MATCHES</Text>
 
             {relatedStreams.length > 0 ? (
               relatedStreams.map(rel => {
@@ -426,6 +447,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
               </View>
             )}
           </View>
+        )}
         </ScrollView>
       )}
     </View>
@@ -450,7 +472,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 96,
   },
   playerContainer: {
     width: SCREEN_WIDTH,
@@ -735,6 +757,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+  },
+  matchDetailsActionBtnActive: {
+    backgroundColor: '#2A2045',
+  },
+  inlineDetailsWrapper: {
+    marginHorizontal: 16,
   },
   matchDetailsActionText: {
     fontSize: 13,

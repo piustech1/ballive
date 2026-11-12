@@ -39,6 +39,7 @@ export interface LiveMatch {
   sport?: SportType;
   status?: 'LIVE' | 'FT' | 'UPCOMING';
   kickoffTime?: string;
+  playTime?: string;
   venue?: string;
 }
 
