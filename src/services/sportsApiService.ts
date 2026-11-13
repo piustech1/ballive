@@ -21,6 +21,15 @@ export interface SportLeagueConfig {
   fallbackChannel: string;
 }
 
+export interface GlobalSearchResult {
+  id: string;
+  name: string;
+  type: 'team' | 'competition';
+  category: string;
+  logo: string;
+  sport?: string;
+}
+
 export function resolveLeagueKey(rawKey?: string | null): string {
   if (!rawKey) return '';
   const clean = rawKey.toLowerCase().replace(/^(comp-|league-)/, '').trim();
@@ -205,6 +214,59 @@ class SportsApiService {
   private intelCache = new Map<string, { data: MatchIntelResponse; timestamp: number }>();
   private globalEventsCache: { events: any[]; timestamp: number } | null = null;
   private readonly CACHE_TTL = 60000; // 60 seconds
+
+  /**
+   * Global search for teams and leagues/competitions using ESPN Search API v2.
+   * Returns teams (e.g. Al Nassr, Inter Miami, Boca Juniors) with authentic crests
+   * and leagues (e.g. Major League Soccer, Saudi Pro League) with authentic emblems.
+   */
+  async searchGlobalTeamsAndLeagues(query: string): Promise<GlobalSearchResult[]> {
+    if (!query || query.trim().length < 2) return [];
+    try {
+      const url = `https://site.api.espn.com/apis/search/v2?query=${encodeURIComponent(query.trim())}&limit=12`;
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const data = await res.json();
+      const results: GlobalSearchResult[] = [];
+
+      if (data && Array.isArray(data.results)) {
+        for (const group of data.results) {
+          if (group.type === 'team' && Array.isArray(group.contents)) {
+            for (const item of group.contents) {
+              const name = item.displayName || item.name;
+              if (!name) continue;
+              const logo = item.image?.default || item.images?.[0]?.url || getTeamCrest(name);
+              results.push({
+                id: item.uid || item.id || `team-${name.toLowerCase().replace(/\s+/g, '-')}`,
+                name: name,
+                type: 'team',
+                category: item.subtitle || (item.sport ? item.sport.toUpperCase() : 'CLUB'),
+                logo: logo,
+                sport: item.sport || 'soccer',
+              });
+            }
+          } else if (group.type === 'league' && Array.isArray(group.contents)) {
+            for (const item of group.contents) {
+              const name = item.displayName || item.name;
+              if (!name) continue;
+              const logo = item.image?.default || item.images?.[0]?.url || LEAGUE_EMBLEMS[name.toLowerCase()] || '';
+              results.push({
+                id: item.uid || item.id || `comp-${name.toLowerCase().replace(/\s+/g, '-')}`,
+                name: name,
+                type: 'competition',
+                category: item.subtitle || 'COMPETITION',
+                logo: logo,
+                sport: item.sport || 'soccer',
+              });
+            }
+          }
+        }
+      }
+      return results;
+    } catch {
+      return [];
+    }
+  }
 
   /**
    * Fetches and caches active events across all major sports scoreboards.

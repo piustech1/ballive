@@ -29,12 +29,14 @@ import {
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { useProfile } from '../hooks/useProfile';
 import { streamingApiService } from '../services/streamingApiService';
+import { sportsApiService, GlobalSearchResult } from '../services/sportsApiService';
 
 export const DiscoverScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
   const { toggleMatchReminder } = useProfile();
   const [searchQuery, setSearchQuery] = useState('');
   const [liveHighlights, setLiveHighlights] = useState<DiscoverMatchup[]>([]);
+  const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult[]>([]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -46,39 +48,128 @@ export const DiscoverScreen: React.FC = () => {
     return () => { isMounted = false; };
   }, []);
 
-  // ── FILTER DATA IN REAL TIME ──
+  // ── FILTER DATA IN REAL TIME & GLOBAL ESPN SEARCH ──
   const query = searchQuery.trim().toLowerCase();
 
-  const filteredCompetitions = useMemo(() => {
-    if (!query) return EXPLORE_COMPETITIONS;
-    return EXPLORE_COMPETITIONS.filter(
-      c =>
-        c.name.toLowerCase().includes(query) ||
-        c.country.toLowerCase().includes(query) ||
-        c.shortName.toLowerCase().includes(query)
-    );
+  React.useEffect(() => {
+    if (!query || query.length < 2) {
+      setGlobalSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      sportsApiService.searchGlobalTeamsAndLeagues(query).then(results => {
+        setGlobalSearchResults(results);
+      }).catch(() => {
+        setGlobalSearchResults([]);
+      });
+    }, 300);
+
+    return () => clearTimeout(timer);
   }, [query]);
+
+  const filteredCompetitions = useMemo(() => {
+    const base = !query
+      ? EXPLORE_COMPETITIONS
+      : EXPLORE_COMPETITIONS.filter(
+          c =>
+            c.name.toLowerCase().includes(query) ||
+            c.country.toLowerCase().includes(query) ||
+            c.shortName.toLowerCase().includes(query)
+        );
+
+    // Merge dynamically discovered global leagues (e.g. MLS, Saudi Pro League)
+    const dynamicComps: DiscoverCompetition[] = globalSearchResults
+      .filter(r => r.type === 'competition')
+      .map(r => ({
+        id: r.id,
+        name: r.name,
+        shortName: r.name.split(' ').map(w => w[0]).join('').substring(0, 4).toUpperCase(),
+        country: r.category || 'Global',
+        region: 'International',
+        logoUrl: r.logo,
+        accentColor: '#7952FC',
+        season: '2025/2026',
+        teamsCount: 20,
+        sport: (r.sport as any) || 'soccer',
+      }));
+
+    const combined = [...base];
+    dynamicComps.forEach(dc => {
+      if (!combined.some(existing => existing.name.toLowerCase() === dc.name.toLowerCase())) {
+        combined.push(dc);
+      }
+    });
+
+    return combined;
+  }, [query, globalSearchResults]);
 
   const filteredLeagues = useMemo(() => {
-    if (!query) return POPULAR_LEAGUES;
-    return POPULAR_LEAGUES.filter(
-      l =>
-        l.name.toLowerCase().includes(query) ||
-        l.country.toLowerCase().includes(query) ||
-        l.description.toLowerCase().includes(query)
-    );
-  }, [query]);
+    const base = !query
+      ? POPULAR_LEAGUES
+      : POPULAR_LEAGUES.filter(
+          l =>
+            l.name.toLowerCase().includes(query) ||
+            l.country.toLowerCase().includes(query) ||
+            l.description.toLowerCase().includes(query)
+        );
+
+    const dynamicLeagues: PopularLeague[] = globalSearchResults
+      .filter(r => r.type === 'competition')
+      .map(r => ({
+        id: r.id,
+        name: r.name,
+        country: r.category || 'Global',
+        description: `${r.name} Championship`,
+        logoUrl: r.logo,
+        currentMatchweek: 'Season 2025/26',
+        sport: (r.sport as any) || 'soccer',
+      }));
+
+    const combined = [...base];
+    dynamicLeagues.forEach(dl => {
+      if (!combined.some(existing => existing.name.toLowerCase() === dl.name.toLowerCase())) {
+        combined.push(dl);
+      }
+    });
+
+    return combined;
+  }, [query, globalSearchResults]);
 
   const filteredTeams = useMemo(() => {
-    if (!query) return POPULAR_TEAMS;
-    return POPULAR_TEAMS.filter(
-      t =>
-        t.name.toLowerCase().includes(query) ||
-        t.country.toLowerCase().includes(query) ||
-        t.shortName.toLowerCase().includes(query) ||
-        t.domesticTitle.toLowerCase().includes(query)
-    );
-  }, [query]);
+    const base = !query
+      ? POPULAR_TEAMS
+      : POPULAR_TEAMS.filter(
+          t =>
+            t.name.toLowerCase().includes(query) ||
+            t.country.toLowerCase().includes(query) ||
+            t.shortName.toLowerCase().includes(query) ||
+            t.domesticTitle.toLowerCase().includes(query)
+        );
+
+    // Merge dynamically discovered global teams (e.g. Al Nassr, Inter Miami, Boca Juniors)
+    const dynamicTeams: PopularTeam[] = globalSearchResults
+      .filter(r => r.type === 'team')
+      .map(r => ({
+        id: r.id,
+        name: r.name,
+        shortName: r.name.substring(0, 3).toUpperCase(),
+        country: r.category || 'Global',
+        crestUrl: r.logo,
+        stadium: `${r.name} Stadium`,
+        domesticTitle: r.category || 'Professional Club',
+        sport: (r.sport as any) || 'soccer',
+      }));
+
+    const combined = [...base];
+    dynamicTeams.forEach(dt => {
+      if (!combined.some(existing => existing.name.toLowerCase() === dt.name.toLowerCase())) {
+        combined.push(dt);
+      }
+    });
+
+    return combined;
+  }, [query, globalSearchResults]);
 
   const filteredMatchups = useMemo(() => {
     const list = liveHighlights.length > 0 ? liveHighlights : UPCOMING_HIGHLIGHTS;

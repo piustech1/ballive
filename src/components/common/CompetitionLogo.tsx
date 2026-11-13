@@ -93,6 +93,17 @@ export function resolveCompetitionLogo(competitionIdOrName?: string): string {
   return LEAGUE_EMBLEMS['all'];
 }
 
+const LOCAL_CATEGORY_BADGES: Record<string, any> = {
+  'all': require('../../../assets/badges/all.png'),
+  'football': require('../../../assets/badges/football.png'),
+  'soccer': require('../../../assets/badges/football.png'),
+  'ufc': require('../../../assets/badges/ufc.png'),
+  'mma': require('../../../assets/badges/ufc.png'),
+  'combat': require('../../../assets/badges/ufc.png'),
+  'wwe': require('../../../assets/badges/wwe.png'),
+  'tennis': require('../../../assets/badges/tennis.png'),
+};
+
 /**
  * BALLIVE Official Competition Logo
  * Renders the competition emblem inside a circular white container
@@ -104,6 +115,8 @@ export const CompetitionLogo: React.FC<CompetitionLogoProps> = ({
   size = 44,
   containerStyle,
 }) => {
+  const cleanKey = (competitionId || '').toLowerCase().trim().replace(/\s+/g, '-');
+  const localSource = !uri && LOCAL_CATEGORY_BADGES[cleanKey] ? LOCAL_CATEGORY_BADGES[cleanKey] : null;
   const sourceUri = uri || resolveCompetitionLogo(competitionId);
   const imagePadding = Math.round(size * 0.16);
 
@@ -121,7 +134,7 @@ export const CompetitionLogo: React.FC<CompetitionLogoProps> = ({
       ]}
     >
       <Image
-        source={{ uri: sourceUri }}
+        source={localSource || { uri: sourceUri }}
         style={styles.logoImage}
         resizeMode="contain"
       />

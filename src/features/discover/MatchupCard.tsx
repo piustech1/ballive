@@ -4,11 +4,13 @@ import {
   Text,
   TouchableOpacity,
   Image,
+  ImageBackground,
   StyleSheet,
 } from 'react-native';
 import { Bell, BellRing, Play, Info } from 'lucide-react-native';
 import Colors from '../../theme/colors';
 import { DiscoverMatchup } from '../../constants/discoverData';
+import { SPORT_BACKDROPS } from '../../services/streamingApiService';
 
 interface MatchupCardProps {
   matchup: DiscoverMatchup;
@@ -37,10 +39,22 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({
   const isUpcoming = matchup.status === 'UPCOMING';
   const isFinished = matchup.status === 'FT';
 
+  const sportKey = matchup.sport?.toLowerCase() || 'soccer';
+  const backdropUri = matchup.matchBannerUrl && matchup.matchBannerUrl.startsWith('http')
+    ? matchup.matchBannerUrl
+    : (SPORT_BACKDROPS[sportKey] || SPORT_BACKDROPS.soccer);
+
   return (
     <View style={styles.cardContainer}>
-      {/* ── 1. CARD TOP: Competition Label & Status Badge ── */}
-      <View style={styles.headerRow}>
+      <ImageBackground
+        source={{ uri: backdropUri }}
+        style={styles.imageBackground}
+        imageStyle={styles.imageBackgroundInner}
+        resizeMode="cover"
+      >
+        <View style={styles.frostedOverlay}>
+          {/* ── 1. CARD TOP: Competition Label & Status Badge ── */}
+          <View style={styles.headerRow}>
         <View style={styles.competitionBox}>
           {matchup.competitionLogo ? (
             <Image
@@ -183,16 +197,36 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({
           </TouchableOpacity>
         )}
       </View>
+        </View>
+      </ImageBackground>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   cardContainer: {
-    backgroundColor: Colors.surfaceCard,
     borderRadius: 20,
-    padding: 16,
     marginBottom: 14,
+    overflow: 'hidden',
+    backgroundColor: '#1E1730',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  imageBackground: {
+    width: '100%',
+  },
+  imageBackgroundInner: {
+    borderRadius: 20,
+  },
+  frostedOverlay: {
+    backgroundColor: 'rgba(15, 12, 28, 0.78)',
+    padding: 16,
+    borderRadius: 20,
   },
   headerRow: {
     flexDirection: 'row',
@@ -275,7 +309,9 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 7,

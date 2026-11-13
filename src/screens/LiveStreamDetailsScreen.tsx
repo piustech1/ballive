@@ -29,6 +29,7 @@ import {
   Info,
   Share2,
   Clock,
+  Calendar,
   Sparkles,
   ShieldAlert,
   ArrowLeft,
@@ -81,8 +82,9 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
       : undefined,
   });
 
-  // Dynamic real other live matches from catalog
+  // Dynamic real other live matches and upcoming fixtures from catalog
   const [liveRelatedStreams, setLiveRelatedStreams] = useState<DiscoverMatchup[]>([]);
+  const [upcomingRelatedMatches, setUpcomingRelatedMatches] = useState<DiscoverMatchup[]>([]);
 
   useEffect(() => {
     let isMounted = true;
@@ -119,6 +121,18 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
           .map(resolveLiveMatchToMatchup);
         if (others.length > 0) {
           setLiveRelatedStreams(others.slice(0, 5));
+        }
+      }
+    }).catch(() => {});
+
+    // Dynamic Upcoming Matches for context / recommendation
+    streamingApiService.getUpcomingMatches().then(upcoming => {
+      if (isMounted && upcoming && upcoming.length > 0) {
+        const others = upcoming
+          .filter(m => m.id !== match.id)
+          .map(resolveLiveMatchToMatchup);
+        if (others.length > 0) {
+          setUpcomingRelatedMatches(others.slice(0, 6));
         }
       }
     }).catch(() => {});
@@ -194,10 +208,8 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
   const isReminderSet = profile.matchReminderIds.includes(match.id);
   const isSaved = profile.savedMatchIds.includes(match.id);
 
-  const fallbackRelated = getAllLiveStreamMatches()
-    .filter(m => m.id !== match.id)
-    .slice(0, 4);
-  const relatedStreams = liveRelatedStreams.length > 0 ? liveRelatedStreams : fallbackRelated;
+  const relatedStreams = liveRelatedStreams;
+  const showUpcomingSection = !isLive || match.status === 'UPCOMING' || relatedStreams.length === 0;
 
   const handleShare = async () => {
     try {
@@ -399,68 +411,140 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             </View>
           ) : (
             <View style={styles.relatedSection}>
-              <Text style={styles.relatedSectionTitle}>OTHER LIVE MATCHES</Text>
+              {showUpcomingSection ? (
+                <>
+                  <Text style={styles.relatedSectionTitle}>OTHER UPCOMING FIXTURES</Text>
+                  {upcomingRelatedMatches.length > 0 ? (
+                    upcomingRelatedMatches.map(rel => {
+                      const relHomeCrest = rel.homeTeam.crestUrl || (rel as any).homeBadge || getTeamCrest(rel.homeTeam.name || rel.homeTeam.id);
+                      const relAwayCrest = rel.awayTeam.crestUrl || (rel as any).awayBadge || getTeamCrest(rel.awayTeam.name || rel.awayTeam.id);
+                      const isReminder = profile.matchReminderIds.includes(rel.id);
 
-            {relatedStreams.length > 0 ? (
-              relatedStreams.map(rel => {
-                const relHomeCrest = rel.homeTeam.crestUrl || (rel as any).homeBadge || getTeamCrest(rel.homeTeam.name || rel.homeTeam.id);
-                const relAwayCrest = rel.awayTeam.crestUrl || (rel as any).awayBadge || getTeamCrest(rel.awayTeam.name || rel.awayTeam.id);
-                const isRelLive = rel.status === 'LIVE' || (rel.minute && rel.minute > 0);
+                      return (
+                        <TouchableOpacity
+                          key={rel.id}
+                          activeOpacity={0.8}
+                          style={styles.relatedRow}
+                          onPress={() => {
+                            navigate({
+                              name: 'LiveStreamDetails',
+                              params: { match: rel },
+                            });
+                          }}
+                        >
+                          {/* Top Meta: Comp + Kickoff Pill */}
+                          <View style={styles.relatedMetaRow}>
+                            <Text style={styles.relatedComp} numberOfLines={1} ellipsizeMode="tail">
+                              {rel.competition}
+                            </Text>
+                            <View style={styles.relatedTimePill}>
+                              <Clock size={10} color="#93C5FD" strokeWidth={2.2} style={{ marginRight: 4 }} />
+                              <Text style={styles.relatedTimeText}>
+                                {rel.kickoffTime || 'UPCOMING'}
+                              </Text>
+                            </View>
+                          </View>
 
-                return (
-                  <TouchableOpacity
-                    key={rel.id}
-                    activeOpacity={0.8}
-                    style={styles.relatedRow}
-                    onPress={() => {
-                      navigate({
-                        name: 'LiveStreamDetails',
-                        params: { match: rel },
-                      });
-                    }}
-                  >
-                    {/* Top Meta: Comp + Live Badge */}
-                    <View style={styles.relatedMetaRow}>
-                      <Text style={styles.relatedComp} numberOfLines={1} ellipsizeMode="tail">
-                        {rel.competition}
-                      </Text>
-                      <View style={[styles.relatedLivePill, !isRelLive && styles.relatedTimePill]}>
-                        {isRelLive && <View style={styles.relatedLiveDot} />}
-                        <Text style={styles.relatedLiveText}>
-                          {isRelLive ? `${rel.minute || 45}' LIVE` : rel.kickoffTime}
-                        </Text>
-                      </View>
+                          {/* Matchup Content Row */}
+                          <View style={styles.relatedMatchupRow}>
+                            <View style={styles.relatedTeamsGroup}>
+                              <Image source={{ uri: relHomeCrest }} style={styles.relatedCrest} />
+                              <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
+                                {rel.homeTeam.name}
+                              </Text>
+                              <Text style={styles.relatedVs}>vs</Text>
+                              <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
+                                {rel.awayTeam.name}
+                              </Text>
+                              <Image source={{ uri: relAwayCrest }} style={styles.relatedCrest} />
+                            </View>
+
+                            <TouchableOpacity
+                              activeOpacity={0.7}
+                              style={[styles.remindMiniBtn, isReminder && styles.remindMiniBtnActive]}
+                              onPress={(e) => {
+                                e.stopPropagation?.();
+                                toggleMatchReminder(rel.id);
+                              }}
+                            >
+                              {isReminder ? (
+                                <BellRing size={12} color="#7952FC" strokeWidth={2.4} />
+                              ) : (
+                                <Bell size={12} color="#CBD5E1" strokeWidth={2} />
+                              )}
+                              <Text style={[styles.remindMiniText, isReminder && styles.remindMiniTextActive]}>
+                                {isReminder ? 'Set' : 'Remind'}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })
+                  ) : (
+                    <View style={styles.emptyOtherLive}>
+                      <Calendar size={22} color="#6D6A87" strokeWidth={2} />
+                      <Text style={styles.emptyOtherLiveText}>No upcoming fixtures scheduled right now</Text>
                     </View>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Text style={styles.relatedSectionTitle}>OTHER LIVE MATCHES</Text>
+                  {relatedStreams.map(rel => {
+                    const relHomeCrest = rel.homeTeam.crestUrl || (rel as any).homeBadge || getTeamCrest(rel.homeTeam.name || rel.homeTeam.id);
+                    const relAwayCrest = rel.awayTeam.crestUrl || (rel as any).awayBadge || getTeamCrest(rel.awayTeam.name || rel.awayTeam.id);
+                    const isRelLive = rel.status === 'LIVE' || (rel.minute && rel.minute > 0);
 
-                    {/* Matchup Content Row */}
-                    <View style={styles.relatedMatchupRow}>
-                      <View style={styles.relatedTeamsGroup}>
-                        <Image source={{ uri: relHomeCrest }} style={styles.relatedCrest} />
-                        <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
-                          {rel.homeTeam.name}
-                        </Text>
-                        <Text style={styles.relatedVs}>vs</Text>
-                        <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
-                          {rel.awayTeam.name}
-                        </Text>
-                        <Image source={{ uri: relAwayCrest }} style={styles.relatedCrest} />
-                      </View>
+                    return (
+                      <TouchableOpacity
+                        key={rel.id}
+                        activeOpacity={0.8}
+                        style={styles.relatedRow}
+                        onPress={() => {
+                          navigate({
+                            name: 'LiveStreamDetails',
+                            params: { match: rel },
+                          });
+                        }}
+                      >
+                        {/* Top Meta: Comp + Live Badge */}
+                        <View style={styles.relatedMetaRow}>
+                          <Text style={styles.relatedComp} numberOfLines={1} ellipsizeMode="tail">
+                            {rel.competition}
+                          </Text>
+                          <View style={[styles.relatedLivePill, !isRelLive && styles.relatedTimePill]}>
+                            {isRelLive && <View style={styles.relatedLiveDot} />}
+                            <Text style={styles.relatedLiveText}>
+                              {isRelLive ? `${rel.minute || 45}' LIVE` : rel.kickoffTime}
+                            </Text>
+                          </View>
+                        </View>
 
-                      <View style={styles.watchMiniBtn}>
-                        <Tv size={12} color="#FFFFFF" strokeWidth={2.2} />
-                        <Text style={styles.watchMiniText}>Switch</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-            ) : (
-              <View style={styles.emptyOtherLive}>
-                <Tv size={22} color="#6D6A87" strokeWidth={2} />
-                <Text style={styles.emptyOtherLiveText}>No other live streams right now</Text>
-              </View>
-            )}
-          </View>
+                        {/* Matchup Content Row */}
+                        <View style={styles.relatedMatchupRow}>
+                          <View style={styles.relatedTeamsGroup}>
+                            <Image source={{ uri: relHomeCrest }} style={styles.relatedCrest} />
+                            <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
+                              {rel.homeTeam.name}
+                            </Text>
+                            <Text style={styles.relatedVs}>vs</Text>
+                            <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
+                              {rel.awayTeam.name}
+                            </Text>
+                            <Image source={{ uri: relAwayCrest }} style={styles.relatedCrest} />
+                          </View>
+
+                          <View style={styles.watchMiniBtn}>
+                            <Tv size={12} color="#FFFFFF" strokeWidth={2.2} />
+                            <Text style={styles.watchMiniText}>Switch</Text>
+                          </View>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </>
+              )}
+            </View>
         )}
         </ScrollView>
       )}
@@ -920,6 +1004,34 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  remindMiniBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  remindMiniBtnActive: {
+    backgroundColor: 'rgba(121, 82, 252, 0.25)',
+    borderColor: '#7952FC',
+  },
+  remindMiniText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#CBD5E1',
+  },
+  remindMiniTextActive: {
+    color: '#A78BFA',
+  },
+  relatedTimeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#93C5FD',
   },
   emptyOtherLive: {
     alignItems: 'center',

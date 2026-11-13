@@ -80,6 +80,7 @@ export interface DiscoverMatchup {
   streamUrl?: string;
   streams?: Array<{ id: string; name: string; url: string }>;
   poster?: string;
+  matchBannerUrl?: string;
   fighter1?: FighterProfile;
   fighter2?: FighterProfile;
 }

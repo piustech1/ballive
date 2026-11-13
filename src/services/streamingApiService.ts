@@ -51,8 +51,19 @@ function extractPosterParam(url: string | undefined, param: string): string | nu
   }
 }
 
+export const SPORT_BACKDROPS: Record<string, string> = {
+  soccer: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80',
+  basketball: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=800&q=80',
+  hockey: 'https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?auto=format&fit=crop&w=800&q=80',
+  american_football: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80',
+  mma: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
+  motorsport: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
+  tennis: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=800&q=80',
+};
+
 class StreamingApiService {
   private cachedLiveMatches: LiveMatch[] = [];
+  private cachedUpcomingMatches: LiveMatch[] = [];
   private lastFetchTime = 0;
   private readonly CACHE_TTL = 30000; // 30 seconds
 
@@ -67,6 +78,7 @@ class StreamingApiService {
     }
 
     const fetchedMatches: LiveMatch[] = [];
+    const fetchedUpcoming: LiveMatch[] = [];
     const seenMatchIds = new Set<string>();
 
     // Timeout controller for resilient multi-source fetch
@@ -218,30 +230,50 @@ class StreamingApiService {
               const b1 = rawLogo1 || posterLogo1 || (isCombat ? combatLogo : getTeamCrest(home));
               const b2 = rawLogo2 || posterLogo2 || (isCombat ? combatLogo : getTeamCrest(away));
 
-              // Check live status and cross-reference with genuine scoreboard data
-              const isLiveNow = m.releaseInfo === 'LIVE' || m.name?.includes('🔴 LIVE') || m.description?.includes('LIVE NOW');
-              const matchedEspn = findMatchedEspn(home, away);
+              // Deduplicate against existing authentic matches (e.g. ESPN scoreboards)
+              const cleanHome = cleanName(home);
+              const cleanAway = cleanName(away);
+              const hToks = cleanHome.split(/\s+/).filter(w => w.length >= 3);
+              const aToks = cleanAway.split(/\s+/).filter(w => w.length >= 3);
 
-              let scoreHome = 0;
-              let scoreAway = 0;
-              let minute = 0;
-              let playTime: string | undefined = undefined;
-              let kickoffTime = m.releaseInfo || 'Today';
+              const existingMatch = fetchedMatches.find(em => {
+                const emH = cleanName(em.homeTeam);
+                const emA = cleanName(em.awayTeam);
+                const hHit = hToks.some(t => emH.includes(t) || emA.includes(t));
+                const aHit = aToks.some(t => emH.includes(t) || emA.includes(t));
+                return (hHit && aHit) || (emH === cleanHome && emA === cleanAway);
+              });
 
-              if (matchedEspn) {
-                scoreHome = matchedEspn.score.home;
-                scoreAway = matchedEspn.score.away;
-                minute = matchedEspn.minute;
-                playTime = matchedEspn.playTime;
-                kickoffTime = matchedEspn.kickoffTime || (matchedEspn.playTime ? `${matchedEspn.playTime} Live` : 'Live In-Play');
-              } else if (isLiveNow) {
-                // Default genuine zero score when match is live but not yet in scoreboard
-                scoreHome = 0;
-                scoreAway = 0;
-                minute = 0;
-                playTime = 'Live';
-                kickoffTime = 'Live In-Play';
+              if (existingMatch) {
+                // Merge direct stream URL into the existing authentic match and discard duplicate generic card
+                const directUrl = `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`;
+                if (!existingMatch.streams) {
+                  existingMatch.streams = [];
+                }
+                if (!existingMatch.streams.some(s => s.url === directUrl)) {
+                  existingMatch.streams.unshift({
+                    id: `srv-direct-${m.id}`,
+                    name: 'Server 1 (Direct Match Broadcast)',
+                    url: directUrl,
+                  });
+                  existingMatch.streamUrl = directUrl;
+                }
+                return;
               }
+
+              // Check live status strictly - ignore scheduled upcoming games with future times
+              const isReleaseLive = m.releaseInfo === 'LIVE' || cleanTitle.includes('🔴 LIVE') || Boolean(m.description && m.description.includes('LIVE NOW'));
+              const isTimeUpcoming = typeof m.releaseInfo === 'string' && (m.releaseInfo.includes('AM') || m.releaseInfo.includes('PM') || m.releaseInfo.includes(':') || cleanTitle.startsWith('⏱️'));
+              const matchedEspn = findMatchedEspn(home, away);
+              const isEspnLive = Boolean(matchedEspn && matchedEspn.isLive && matchedEspn.minute > 0);
+              const isTrulyLive = !isTimeUpcoming && (isReleaseLive || isEspnLive);
+
+              // Select authentic unique artwork or sport backdrop (never generic placeholder)
+              const backdrop = (m.poster && !m.poster.includes('null') && !m.poster.includes('undefined'))
+                ? m.poster
+                : (m.background && !m.background.includes('null'))
+                ? m.background
+                : (SPORT_BACKDROPS[sport] || SPORT_BACKDROPS.soccer);
 
               // Generate sport-specific secondary server mirrors
               const streams: Array<{ id: string; name: string; url: string }> = [
@@ -288,20 +320,64 @@ class StreamingApiService {
                 });
               }
 
+              if (!isTrulyLive) {
+                // Route upcoming fixtures to upcoming collection with clean scheduled kickoff
+                const cleanKickoff = m.releaseInfo ? m.releaseInfo.replace(/^⏱️\s*/, '') : 'Upcoming Today';
+                fetchedUpcoming.push({
+                  id: m.id,
+                  title: cleanTitle.replace(/^⏱️\s*/, ''),
+                  homeTeam: home,
+                  awayTeam: away,
+                  competition: isCombat ? 'UFC / Combat' : (m.genres?.[0] || genre),
+                  score: { home: 0, away: 0 },
+                  minute: 0,
+                  playTime: undefined,
+                  status: 'UPCOMING',
+                  imageUrl: backdrop,
+                  hasLiveStream: false,
+                  homeBadge: b1,
+                  awayBadge: b2,
+                  streamUrl: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`,
+                  streams,
+                  sport,
+                  kickoffTime: cleanKickoff,
+                  venue: isCombat ? 'Championship Octagon' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
+                });
+                return;
+              }
+
+              // Active Live Game
+              let scoreHome = 0;
+              let scoreAway = 0;
+              let minute = 1;
+              let playTime: string | undefined = undefined;
+              let kickoffTime = 'Live In-Play';
+
+              if (matchedEspn && matchedEspn.isLive) {
+                scoreHome = matchedEspn.score.home;
+                scoreAway = matchedEspn.score.away;
+                minute = matchedEspn.minute;
+                playTime = matchedEspn.playTime;
+                kickoffTime = matchedEspn.kickoffTime || (matchedEspn.playTime ? `${matchedEspn.playTime} Live` : 'Live In-Play');
+              } else {
+                scoreHome = 0;
+                scoreAway = 0;
+                minute = 1;
+                playTime = 'Live';
+                kickoffTime = 'Live In-Play';
+              }
+
               fetchedMatches.push({
                 id: m.id,
-                title: cleanTitle,
+                title: cleanTitle.replace(/^🔴\s*LIVE:\s*/i, ''),
                 homeTeam: home,
                 awayTeam: away,
                 competition: isCombat ? 'UFC / Combat' : (m.genres?.[0] || genre),
                 score: { home: scoreHome, away: scoreAway },
                 minute,
                 playTime,
-                status: (isLiveNow || matchedEspn) ? 'LIVE' : 'UPCOMING',
-                imageUrl:
-                  m.poster ||
-                  m.background ||
-                  'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80',
+                status: 'LIVE',
+                imageUrl: backdrop,
                 hasLiveStream: true,
                 homeBadge: b1,
                 awayBadge: b2,
@@ -375,6 +451,9 @@ class StreamingApiService {
         this.cachedLiveMatches = fetchedMatches;
         this.lastFetchTime = now;
       }
+      if (fetchedUpcoming.length > 0) {
+        this.cachedUpcomingMatches = fetchedUpcoming;
+      }
     } catch (err) {
       console.warn('[StreamingApiService] Error fetching live sports:', err);
     } finally {
@@ -382,6 +461,17 @@ class StreamingApiService {
     }
 
     return this.cachedLiveMatches;
+  }
+
+  /**
+   * Returns authenticated upcoming fixtures across sports.
+   */
+  async getUpcomingMatches(forceRefresh = false): Promise<LiveMatch[]> {
+    if (!forceRefresh && this.cachedUpcomingMatches.length > 0) {
+      return this.cachedUpcomingMatches;
+    }
+    await this.getLiveMatches(forceRefresh);
+    return this.cachedUpcomingMatches;
   }
 
   /**

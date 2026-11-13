@@ -22,7 +22,7 @@ export const LiveBadge: React.FC<LiveBadgeProps> = ({
 }) => {
   const displayText = label
     ? label
-    : minute !== undefined && minute !== null
+    : minute !== undefined && minute !== null && minute !== 0 && minute !== '0'
     ? `${minute}' LIVE`
     : 'LIVE';
 

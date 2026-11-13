@@ -12,6 +12,7 @@ import { LiveMatch } from '../../constants/mockData';
 import { LiveBadge } from '../../components/common/LiveBadge';
 import { CompetitionLogo } from '../../components/common/CompetitionLogo';
 import { getTeamCrest } from '../../utils/teamCrestResolver';
+import { SPORT_BACKDROPS } from '../../services/streamingApiService';
 
 interface LiveMatchCardProps {
   match: LiveMatch;
@@ -21,17 +22,25 @@ interface LiveMatchCardProps {
 export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) => {
   const homeCrest = match.homeBadge || getTeamCrest(match.homeTeam);
   const awayCrest = match.awayBadge || getTeamCrest(match.awayTeam);
+  const isUpcoming = match.status === 'UPCOMING';
+
+  const rawImage = match.imageUrl;
+  const isGenericImage = !rawImage || rawImage.includes('photo-1574629810360-7efbbe195018');
+  const sportKey = match.sport?.toLowerCase() || 'soccer';
+  const effectiveImageUrl = isGenericImage
+    ? (SPORT_BACKDROPS[sportKey] || SPORT_BACKDROPS.soccer)
+    : rawImage;
 
   return (
     <TouchableOpacity
       style={styles.cardContainer}
       onPress={onPress}
       activeOpacity={0.88}
-      accessibilityLabel={`${match.homeTeam} vs ${match.awayTeam}, Live football stream`}
+      accessibilityLabel={`${match.homeTeam} vs ${match.awayTeam}, ${isUpcoming ? 'Upcoming fixture' : 'Live stream'}`}
       accessibilityRole="button"
     >
       <ImageBackground
-        source={{ uri: match.imageUrl }}
+        source={{ uri: effectiveImageUrl }}
         style={styles.imageBackground}
         imageStyle={styles.image}
         resizeMode="cover"
@@ -39,7 +48,7 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) 
         {/* Dark overlay for contrast */}
         <View style={styles.darkOverlay} />
 
-        {/* ── CARD TOP ROW: Competition + Solid Red LIVE Badge ── */}
+        {/* ── CARD TOP ROW: Competition + Badge ── */}
         <View style={styles.topRow}>
           <View style={styles.compBadge}>
             <CompetitionLogo competitionId={match.competition} size={18} containerStyle={{ marginRight: 6 }} />
@@ -48,7 +57,13 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) 
             </Text>
           </View>
 
-          <LiveBadge variant="solid" minute={match.minute} />
+          {isUpcoming ? (
+            <View style={styles.upcomingBadge}>
+              <Text style={styles.upcomingBadgeText}>UPCOMING</Text>
+            </View>
+          ) : (
+            <LiveBadge variant="solid" minute={match.minute} />
+          )}
         </View>
 
         {/* ── CARD BOTTOM MATCHUP CONTAINER: Contrast Surface with Club Crests ── */}
@@ -63,15 +78,24 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) 
             </Text>
           </View>
 
-          {/* Center Score / VS */}
-          <View style={styles.centerScoreBox}>
-            <View style={styles.scoreRow}>
-              <Text style={styles.scoreNumber}>{match.score?.home ?? 0}</Text>
-              <Text style={styles.scoreDivider}>-</Text>
-              <Text style={styles.scoreNumber}>{match.score?.away ?? 0}</Text>
+          {/* Center Score / Kickoff Time */}
+          {isUpcoming ? (
+            <View style={styles.centerScoreBox}>
+              <Text style={styles.vsText}>VS</Text>
+              <Text style={styles.kickoffText} numberOfLines={1}>
+                {match.time || 'SOON'}
+              </Text>
             </View>
-            <Text style={styles.inPlayText}>LIVE</Text>
-          </View>
+          ) : (
+            <View style={styles.centerScoreBox}>
+              <View style={styles.scoreRow}>
+                <Text style={styles.scoreNumber}>{match.score?.home ?? 0}</Text>
+                <Text style={styles.scoreDivider}>-</Text>
+                <Text style={styles.scoreNumber}>{match.score?.away ?? 0}</Text>
+              </View>
+              <Text style={styles.inPlayText}>LIVE</Text>
+            </View>
+          )}
 
           {/* Away Club */}
           <View style={styles.teamCol}>
@@ -204,6 +228,34 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     letterSpacing: 0.5,
     marginTop: 1,
+  },
+  upcomingBadge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upcomingBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  vsText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#7952FC',
+    letterSpacing: 0.5,
+  },
+  kickoffText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#A5B4FC',
+    marginTop: 2,
+    maxWidth: 70,
+    textAlign: 'center',
   },
 });
 
