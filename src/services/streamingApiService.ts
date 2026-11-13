@@ -4,6 +4,8 @@ import { DiscoverMatchup } from '../constants/discoverData';
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { LEAGUE_EMBLEMS, CLUB_CRESTS } from '../constants/crests';
 import { sportsApiService } from './sportsApiService';
+import { resolveSportBackground, SPORT_ARTWORK } from '../utils/sportBackgroundResolver';
+import { formatKickoffEAT, normalizeMatchStatus } from '../utils/matchStatus';
 
 export interface RawStreamSource {
   id: string;
@@ -51,15 +53,7 @@ function extractPosterParam(url: string | undefined, param: string): string | nu
   }
 }
 
-export const SPORT_BACKDROPS: Record<string, string> = {
-  soccer: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800&q=80',
-  basketball: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=800&q=80',
-  hockey: 'https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?auto=format&fit=crop&w=800&q=80',
-  american_football: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80',
-  mma: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
-  motorsport: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
-  tennis: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=800&q=80',
-};
+export const SPORT_BACKDROPS: Record<string, string> = SPORT_ARTWORK;
 
 class StreamingApiService {
   private cachedLiveMatches: LiveMatch[] = [];
@@ -272,61 +266,20 @@ class StreamingApiService {
               const isEspnLive = Boolean(matchedEspn && matchedEspn.isLive && matchedEspn.minute > 0);
               const isTrulyLive = !isTimeUpcoming && (isReleaseLive || isEspnLive);
 
-              // Select authentic unique artwork or sport backdrop (never generic placeholder)
-              const backdrop = (m.poster && !m.poster.includes('null') && !m.poster.includes('undefined'))
-                ? m.poster
-                : (m.background && !m.background.includes('null'))
-                ? m.background
-                : (SPORT_BACKDROPS[sport] || SPORT_BACKDROPS.soccer);
-
-              // Generate sport-specific secondary server mirrors
-              const streams: Array<{ id: string; name: string; url: string }> = [
-                {
-                  id: 'srv-direct',
-                  name: 'Server 1 (Direct Match Broadcast)',
-                  url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`,
-                },
-              ];
-
-              if (sport === 'basketball') {
-                streams.push({
-                  id: 'srv-nba',
-                  name: 'Server 2 (NBA TV FHD)',
-                  url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.NBA}.json`,
-                });
-                streams.push({
-                  id: 'srv-nba-2',
-                  name: 'Server 3 (NBA TV USA)',
-                  url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.NBA_BACKUP}.json`,
-                });
-              } else if (sport === 'hockey') {
-                streams.push({
-                  id: 'srv-nhl',
-                  name: 'Server 2 (NHL Network HD)',
-                  url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.NHL}.json`,
-                });
-              } else if (sport === 'motorsport') {
-                streams.push({
-                  id: 'srv-f1',
-                  name: 'Server 2 (Sky Sports F1 FHD)',
-                  url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.F1}.json`,
-                });
-              } else {
-                streams.push({
-                  id: 'srv-pl',
-                  name: 'Server 2 (Sky Sports PL 1080p)',
-                  url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.PL}.json`,
-                });
-                streams.push({
-                  id: 'srv-tnt',
-                  name: 'Server 3 (TNT Sports 1 HD)',
-                  url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.UCL}.json`,
-                });
-              }
+              // Select authentic unique artwork with multi-sport detection (never generic placeholder)
+              const backdrop = resolveSportBackground(
+                sport,
+                m.genres?.[0] || genre,
+                m.poster || m.background,
+                home,
+                away
+              );
 
               if (!isTrulyLive) {
-                // Route upcoming fixtures to upcoming collection with clean scheduled kickoff
-                const cleanKickoff = m.releaseInfo ? m.releaseInfo.replace(/^⏱️\s*/, '') : 'Upcoming Today';
+                // Route upcoming fixtures to upcoming collection with clean scheduled kickoff in EAT
+                const cleanKickoff = m.releaseInfo ? m.releaseInfo.replace(/^⏱️\s*/, '') : 'Upcoming';
+                const eatKickoff = cleanKickoff.includes('EAT') ? cleanKickoff : formatKickoffEAT(cleanKickoff);
+
                 fetchedUpcoming.push({
                   id: m.id,
                   title: cleanTitle.replace(/^⏱️\s*/, ''),
@@ -342,17 +295,26 @@ class StreamingApiService {
                   hasLiveStream: false,
                   homeBadge: b1,
                   awayBadge: b2,
-                  streamUrl: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`,
-                  streams,
+                  streamUrl: undefined,
+                  streams: [],
                   sport,
-                  kickoffTime: cleanKickoff,
-                  time: cleanKickoff,
+                  kickoffTime: eatKickoff,
+                  time: eatKickoff,
                   venue: isCombat ? 'Championship Octagon' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
                 });
                 return;
               }
 
-              // Active Live Game
+              // Active Live Game: Only attach direct fixture-specific stream
+              const directStreamUrl = `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`;
+              const directStreams: Array<{ id: string; name: string; url: string }> = [
+                {
+                  id: `srv-direct-${m.id}`,
+                  name: 'Server 1 (Direct Match Broadcast)',
+                  url: directStreamUrl,
+                },
+              ];
+
               let scoreHome = 0;
               let scoreAway = 0;
               let minute = 1;
@@ -387,8 +349,8 @@ class StreamingApiService {
                 hasLiveStream: true,
                 homeBadge: b1,
                 awayBadge: b2,
-                streamUrl: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`,
-                streams,
+                streamUrl: directStreamUrl,
+                streams: directStreams,
                 sport,
                 kickoffTime,
                 venue: isCombat ? 'Championship Octagon' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
@@ -417,6 +379,7 @@ class StreamingApiService {
             const scoreHome = m.score?.fullTime?.home ?? (m.score?.halfTime?.home ?? 0);
             const scoreAway = m.score?.fullTime?.away ?? (m.score?.halfTime?.away ?? 0);
             const minute = m.minute || 45;
+            const bgImage = resolveSportBackground('soccer', m.competition?.name || 'Premier League', null, home, away);
 
             fetchedMatches.push({
               id: matchId,
@@ -426,17 +389,12 @@ class StreamingApiService {
               competition: m.competition?.name || 'Premier League',
               score: { home: scoreHome, away: scoreAway },
               minute,
-              imageUrl:
-                'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=800&q=80',
-              hasLiveStream: true,
+              imageUrl: bgImage,
+              hasLiveStream: false,
               homeBadge: m.homeTeam?.crest || getTeamCrest(home),
               awayBadge: m.awayTeam?.crest || getTeamCrest(away),
-              streamUrl: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.PL}.json`,
-              streams: [
-                { id: 'srv-pl', name: 'Server 1 (Sky Sports PL 1080p)', url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.PL}.json` },
-                { id: 'srv-tnt', name: 'Server 2 (TNT Sports HD)', url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.UCL}.json` },
-                { id: 'srv-supersport', name: 'Server 3 (SuperSport PL)', url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.SUPERSPORT}.json` },
-              ],
+              streamUrl: undefined,
+              streams: [],
               sport: 'soccer',
               kickoffTime: `${minute}' Live`,
             });
@@ -500,11 +458,15 @@ class StreamingApiService {
    * If it's a DAG item, resolves both stream.url and stream.externalUrl.
    * Attaches sport-appropriate guaranteed working mirrors.
    */
+  /**
+   * Resolves playable HLS stream manifests or responsive web embeds specifically for any fixture ID.
+   * Never injects unrelated 24/7 TV channels as fake fallbacks.
+   */
   async resolveStreamMirrors(itemId: string, competitionOrSport: string = ''): Promise<RawStreamSource[]> {
     const mirrors: RawStreamSource[] = [];
     const cleanId = itemId.replace(/\.json$/, '');
 
-    // 1. If itemId is a direct DAG item ID, resolve its native playable manifests and web embeds
+    // Only resolve authentic streams belonging specifically to this fixture ID
     if (itemId.startsWith('moviebay_')) {
       try {
         const res = await fetch(`${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${cleanId}.json`, {
@@ -524,67 +486,11 @@ class StreamingApiService {
           });
         }
       } catch {
-        // continue to backup channels
+        // stream unavailable
       }
     }
 
-    // 2. Select sport-appropriate guaranteed backup channels
-    const compLower = competitionOrSport.toLowerCase();
-    const isBasketball = compLower.includes('basketball') || compLower.includes('nba');
-    const isHockey = compLower.includes('hockey') || compLower.includes('nhl');
-    const isMotorsport = compLower.includes('motorsport') || compLower.includes('f1');
-
-    let fallbackChannels = [
-      { name: 'Server (Sky Sports PL 1080p)', id: API_CONFIG.PRIORITY_CHANNELS.PL },
-      { name: 'Server (TNT Sports 1 HD)', id: API_CONFIG.PRIORITY_CHANNELS.UCL },
-      { name: 'Server (LaLiga TV HD)', id: API_CONFIG.PRIORITY_CHANNELS.LALIGA },
-    ];
-
-    if (isBasketball) {
-      fallbackChannels = [
-        { name: 'Server (NBA TV FHD 1080p)', id: API_CONFIG.PRIORITY_CHANNELS.NBA },
-        { name: 'Server (NBA TV USA HD)', id: API_CONFIG.PRIORITY_CHANNELS.NBA_BACKUP },
-      ];
-    } else if (isHockey) {
-      fallbackChannels = [
-        { name: 'Server (NHL Network HD)', id: API_CONFIG.PRIORITY_CHANNELS.NHL },
-        { name: 'Server (Sky Sports Event HD)', id: API_CONFIG.PRIORITY_CHANNELS.PL },
-      ];
-    } else if (isMotorsport) {
-      fallbackChannels = [
-        { name: 'Server (Sky Sports F1 FHD)', id: API_CONFIG.PRIORITY_CHANNELS.F1 },
-      ];
-    }
-
-    const channelResolutions = await Promise.allSettled(
-      fallbackChannels.map(async ch => {
-        const res = await fetch(`${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${ch.id}.json`, {
-          headers: API_CONFIG.DAG_HEADERS,
-        });
-        if (res.ok) {
-          const data = await res.json();
-          const first = data.streams?.[0];
-          const playUrl = first?.url || first?.externalUrl;
-          if (playUrl) {
-            return {
-              id: ch.id,
-              name: ch.name,
-              url: playUrl,
-            };
-          }
-        }
-        return null;
-      })
-    );
-
-    channelResolutions.forEach(r => {
-      if (r.status === 'fulfilled' && r.value) {
-        if (!mirrors.some(m => m.url === r.value!.url)) {
-          mirrors.push(r.value);
-        }
-      }
-    });
-
+    // Strictly never fabricate or attach unrelated TV channels as match stream fallbacks!
     return mirrors;
   }
 
@@ -609,41 +515,61 @@ class StreamingApiService {
     else if (compLower.includes('nfl') || compLower.includes('american football')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
     else if (compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png';
 
-    const isLive = live.status === 'LIVE' || (live.isLive ?? false) || (live.minute > 0 && live.minute < 90);
-    const isFinished = live.status === 'FT' || live.minute >= 90;
-    const matchStatus = live.status || (isLive ? 'LIVE' : isFinished ? 'FT' : 'UPCOMING');
+    // Authoritative Match Status Normalization
+    const statusInfo = normalizeMatchStatus({
+      rawStatus: live.status,
+      minute: live.minute,
+      playTime: live.playTime,
+      completed: live.status === 'FT' || live.minute === 90,
+    });
+
+    const { status, isLive, isUpcoming, isFinished } = statusInfo;
+    const homeScore = isUpcoming ? 0 : (live.score?.home ?? 0);
+    const awayScore = isUpcoming ? 0 : (live.score?.away ?? 0);
+
     const kickoffTime = isLive
-      ? (live.playTime ? `${live.playTime} Live` : `${live.minute || 0}' Live`)
+      ? (live.playTime ? `${live.playTime} Live` : (live.minute > 0 ? `${live.minute}' Live` : 'Live In-Play'))
       : isFinished
       ? 'Full Time'
-      : (live.kickoffTime || live.time || 'Today');
+      : (live.kickoffTime?.includes('EAT') ? live.kickoffTime : formatKickoffEAT(live.kickoffTime || live.time));
+
+    const hasLiveStream = isLive && Boolean(live.streamUrl || (live.streams && live.streams.length > 0));
+
+    const poster = resolveSportBackground(
+      live.sport,
+      live.competition,
+      live.imageUrl,
+      live.homeTeam,
+      live.awayTeam
+    );
 
     return {
       id: live.id,
       competition: live.competition,
       competitionLogo: compLogo,
-      status: matchStatus,
+      status,
       kickoffDate: 'Today',
       kickoffTime,
-      minute: live.minute,
+      minute: isLive ? live.minute : 0,
+      playTime: isLive ? live.playTime : undefined,
       sport: live.sport,
       homeTeam: {
-        id: `team-${live.homeTeam.toLowerCase().replace(/\s+/g, '-')}`,
+        id: `team-${live.homeTeam.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
         name: live.homeTeam,
         crestUrl: homeCrest,
-        score: live.score.home,
+        score: homeScore,
       },
       awayTeam: {
-        id: `team-${live.awayTeam.toLowerCase().replace(/\s+/g, '-')}`,
+        id: `team-${live.awayTeam.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
         name: live.awayTeam,
         crestUrl: awayCrest,
-        score: live.score.away,
+        score: awayScore,
       },
       venue: live.venue || (compLower.includes('nba') ? 'NBA Arena' : compLower.includes('nhl') ? 'NHL Ice Arena' : 'Stadium Broadcast'),
-      hasLiveBroadcast: true,
-      streamUrl: live.streamUrl,
-      streams: live.streams,
-      poster: live.imageUrl,
+      hasLiveBroadcast: hasLiveStream,
+      streamUrl: isLive ? live.streamUrl : undefined,
+      streams: isLive ? live.streams : undefined,
+      poster,
     };
   }
 }

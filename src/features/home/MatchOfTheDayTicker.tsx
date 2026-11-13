@@ -33,10 +33,17 @@ export const MatchOfTheDayTicker: React.FC<MatchOfTheDayTickerProps> = ({ match 
         match={match}
         layout="featured"
         onPress={() => {
-          navigate({
-            name: 'LiveStreamDetails',
-            params: { match },
-          });
+          if (match.status === 'UPCOMING' || !match.hasLiveBroadcast) {
+            navigate({
+              name: 'MatchDetails',
+              params: { matchup: match },
+            });
+          } else {
+            navigate({
+              name: 'LiveStreamDetails',
+              params: { match },
+            });
+          }
         }}
       />
     </View>

@@ -30,6 +30,7 @@ import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { streamingApiService } from '../services/streamingApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
+import { normalizeMatchStatus } from '../utils/matchStatus';
 
 export type NormalizedSport =
   | 'football'
@@ -79,8 +80,13 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     null;
 
   const heroArtworkUrl = useMemo(() => {
-    return resolveSportBackground(matchup.sport, matchup.competition, rawImage);
-  }, [matchup.sport, matchup.competition, rawImage]);
+    return resolveSportBackground(
+      matchup.sport,
+      matchup.competition,
+      rawImage,
+      `${matchup.homeTeam.name} vs ${matchup.awayTeam.name}`
+    );
+  }, [matchup.sport, matchup.competition, rawImage, matchup.homeTeam.name, matchup.awayTeam.name]);
 
   // Team crests
   const homeCrest =
@@ -97,8 +103,10 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
 
   const isReminderSet = profile.matchReminderIds.includes(matchup.id);
   const isSaved = profile.savedMatchIds.includes(matchup.id);
-  const isLive = matchup.status === 'LIVE' || Boolean(matchup.minute && matchup.minute > 0);
-  const isFinished = matchup.status === 'FT';
+  const normalizedStatus = normalizeMatchStatus({ rawStatus: matchup.status, playTime: matchup.playTime, minute: matchup.minute });
+  const isLive = normalizedStatus.isLive;
+  const isFinished = normalizedStatus.isFinished;
+  const hasLiveStream = isLive && Boolean(matchup.streamUrl || matchup.hasLiveBroadcast || (matchup.streams && matchup.streams.length > 0));
 
   const homeScore = matchup.homeTeam.score ?? 0;
   const awayScore = matchup.awayTeam.score ?? 0;
@@ -252,8 +260,8 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
 
         {/* ── 4. PRIMARY & SECONDARY ACTIONS ── */}
         <View style={styles.actionsContainer}>
-          {/* If Live Broadcast is available: Watch Live Stream button */}
-          {(matchup.hasLiveBroadcast || isLive) && (
+          {/* If Live Broadcast is genuinely available: Watch Live Stream button */}
+          {hasLiveStream && (
             <TouchableOpacity
               style={styles.watchLiveButton}
               activeOpacity={0.85}
@@ -336,7 +344,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   match={item}
                   layout="full"
                   onPress={() => {
-                    if (item.status === 'LIVE' || item.hasLiveBroadcast) {
+                    if (item.status === 'LIVE' && (item.hasLiveBroadcast || item.streamUrl)) {
                       navigate({ name: 'LiveStreamDetails', params: { match: item } });
                     } else {
                       navigate({ name: 'MatchDetails', params: { matchup: item } });

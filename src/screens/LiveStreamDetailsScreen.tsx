@@ -47,6 +47,7 @@ import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { InlineMatchDetailsModule } from '../components/player/InlineMatchDetailsModule';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
+import { normalizeMatchStatus } from '../utils/matchStatus';
 
 interface LiveStreamDetailsScreenProps {
   match: DiscoverMatchup;
@@ -216,7 +217,9 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     setIsFullscreen(false);
   };
 
-  const isLive = activeMatch.status === 'LIVE' || Boolean(activeMatch.minute && activeMatch.minute > 0);
+  const normalizedStatus = normalizeMatchStatus({ rawStatus: activeMatch.status, playTime: activeMatch.playTime, minute: activeMatch.minute });
+  const isLive = normalizedStatus.isLive;
+  const hasPlayableStream = Boolean(activeStreamUrl || (activeStreams && activeStreams.length > 0));
   const isReminderSet = profile.matchReminderIds.includes(activeMatch.id);
   const isSaved = profile.savedMatchIds.includes(activeMatch.id);
 
@@ -262,7 +265,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
       {/* ── 1. WIDESCREEN / FULLSCREEN STREAM PLAYER CONTAINER ── */}
       <View style={isFullscreen ? styles.fullscreenPlayerWrapper : styles.playerContainer}>
-        {isLive ? (
+        {isLive && hasPlayableStream ? (
           <LiveStreamPlayer
             key={`player-${activeMatch.id}`}
             streamUrl={activeStreamUrl || activeMatch.streamUrl}
@@ -282,9 +285,13 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             <View style={styles.upcomingCountdownIcon}>
               <Clock size={32} color="#7952FC" strokeWidth={2.2} />
             </View>
-            <Text style={styles.upcomingPlayerTitle}>Broadcast Starts Before Kickoff</Text>
+            <Text style={styles.upcomingPlayerTitle}>
+              {isLive ? 'Satellite Broadcast Connecting' : 'Broadcast Starts Before Kickoff'}
+            </Text>
             <Text style={styles.upcomingPlayerSubtitle}>
-              Live satellite coverage begins 15 minutes before {activeMatch.kickoffTime}. Set an alert to be notified when the feed connects!
+              {isLive
+                ? 'Live feed is establishing connection. Tap below to receive an alert or refresh when active.'
+                : `Live satellite coverage begins 15 minutes before ${activeMatch.kickoffTime || 'kickoff'}. Set an alert to be notified when the feed connects!`}
             </Text>
             <TouchableOpacity
               activeOpacity={0.85}

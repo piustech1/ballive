@@ -1,7 +1,9 @@
 import { API_CONFIG } from '../config/api';
 import { getPlayerPhoto } from '../utils/playerResolver';
 import { getTeamCrest } from '../utils/teamCrestResolver';
-import { LEAGUE_EMBLEMS, SPORT_BACKDROPS } from '../constants/crests';
+import { LEAGUE_EMBLEMS } from '../constants/crests';
+import { resolveSportBackground } from '../utils/sportBackgroundResolver';
+import { formatKickoffEAT, normalizeMatchStatus } from '../utils/matchStatus';
 import { StandingsRow } from '../constants/standingsData';
 import {
   TacticalPlayer,
@@ -443,54 +445,21 @@ class SportsApiService {
                 ? `https://a.espncdn.com/i/teamlogos/${cfg.league}/500/scoreboard/${away.team.abbreviation.toLowerCase()}.png`
                 : getTeamCrest(awayName));
 
-            const scoreHome = parseInt(home?.score || '0', 10) || 0;
-            const scoreAway = parseInt(away?.score || '0', 10) || 0;
-
-            // Build sport-specific stream mirrors
-            const streams: Array<{ id: string; name: string; url: string }> = [];
-            if (cfg.sport === 'basketball') {
-              streams.push({
-                id: 'srv-nba-1',
-                name: 'Server 1 (NBA TV FHD 1080p)',
-                url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.NBA}.json`,
-              });
-              streams.push({
-                id: 'srv-nba-2',
-                name: 'Server 2 (NBA TV USA HD)',
-                url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.NBA_BACKUP}.json`,
-              });
-            } else if (cfg.sport === 'hockey') {
-              streams.push({
-                id: 'srv-nhl-1',
-                name: 'Server 1 (NHL Network HD)',
-                url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.NHL}.json`,
-              });
-              streams.push({
-                id: 'srv-nhl-2',
-                name: 'Server 2 (Sky Sports Event HD)',
-                url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.PL}.json`,
-              });
-            } else {
-              streams.push({
-                id: 'srv-pl-1',
-                name: 'Server 1 (Sky Sports PL 1080p)',
-                url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.PL}.json`,
-              });
-              streams.push({
-                id: 'srv-ucl-2',
-                name: 'Server 2 (TNT Sports 1 HD)',
-                url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.UCL}.json`,
-              });
-              streams.push({
-                id: 'srv-laliga-3',
-                name: 'Server 3 (LaLiga TV HD)',
-                url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${API_CONFIG.PRIORITY_CHANNELS.LALIGA}.json`,
-              });
-            }
+            const isLive = clockInfo.isLive;
+            const scoreHome = isLive ? (parseInt(home?.score || '0', 10) || 0) : 0;
+            const scoreAway = isLive ? (parseInt(away?.score || '0', 10) || 0) : 0;
 
             const sportKey = cfg.sport === 'soccer' ? 'soccer' : cfg.sport === 'basketball' ? 'basketball' : cfg.sport === 'hockey' ? 'hockey' : cfg.sport === 'football' ? 'american_football' : 'other';
-            const scheduledKickoff = ev.status?.type?.shortDetail || ev.date || 'Upcoming';
-            const displayTime = clockInfo.isLive ? `${clockInfo.playTime} Live` : scheduledKickoff;
+            const scheduledKickoff = formatKickoffEAT(ev.date);
+            const displayTime = isLive ? `${clockInfo.playTime} Live` : scheduledKickoff;
+
+            const bgImage = resolveSportBackground(
+              sportKey,
+              ev.league?.name || cfg.name,
+              comp?.venue?.images?.[0]?.href,
+              homeName,
+              awayName
+            );
 
             return {
               id: `espn-${cfg.league}-${ev.id}`,
@@ -504,13 +473,13 @@ class SportsApiService {
               status: clockInfo.status,
               kickoffTime: displayTime,
               time: displayTime,
-              isLive: clockInfo.isLive,
-              imageUrl: comp?.venue?.images?.[0]?.href || SPORT_BACKDROPS[sportKey] || SPORT_BACKDROPS.soccer,
-              hasLiveStream: true,
+              isLive,
+              imageUrl: bgImage,
+              hasLiveStream: false, // Only set to true if an authentic stream is confirmed
               homeBadge: homeLogo,
               awayBadge: awayLogo,
-              streamUrl: streams[0]?.url,
-              streams,
+              streamUrl: undefined,
+              streams: [],
               sport: sportKey as any,
               venue: comp?.venue?.fullName || 'Arena',
             };
@@ -560,7 +529,7 @@ class SportsApiService {
             const awayName = m.awayTeam?.name || 'Away Club';
             const dateObj = new Date(m.utcDate);
             const dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-            const timeStr = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            const eatTime = formatKickoffEAT(m.utcDate);
 
             matchups.push({
               id: `sched-fd-${m.id}`,
@@ -568,7 +537,7 @@ class SportsApiService {
               competitionLogo: LEAGUE_EMBLEMS[cleanId] || LEAGUE_EMBLEMS['ucl'],
               status: 'UPCOMING',
               kickoffDate: dateStr,
-              kickoffTime: `${timeStr} GMT`,
+              kickoffTime: eatTime,
               homeTeam: {
                 id: `team-${homeName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
                 name: homeName,
@@ -582,7 +551,8 @@ class SportsApiService {
                 score: 0,
               },
               venue: 'Stadium Arena',
-              hasLiveBroadcast: true,
+              hasLiveBroadcast: false,
+              poster: resolveSportBackground('soccer', m.competition?.name || cleanId, null, homeName, awayName),
             });
           });
           if (matchups.length > 0) return matchups;
@@ -610,32 +580,43 @@ class SportsApiService {
             const homeLogo = home?.team?.logo || getTeamCrest(homeName);
             const awayLogo = away?.team?.logo || getTeamCrest(awayName);
 
+            const isLive = ev.status?.type?.state === 'in';
+            const isCompleted = Boolean(ev.status?.type?.completed || ev.status?.type?.state === 'post');
+            const matchStatus = isLive ? 'LIVE' : (isCompleted ? 'FT' : 'UPCOMING');
+
             const dateObj = new Date(ev.date || Date.now());
             const dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-            const timeStr = dateObj.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+            const eatTime = formatKickoffEAT(ev.date);
 
             matchups.push({
               id: `sched-espn-${ev.id}`,
               competition: espnCfg.name,
               competitionLogo: espnCfg.logo,
-              status: ev.status?.type?.state === 'in' ? 'LIVE' : (ev.status?.type?.completed ? 'FT' : 'UPCOMING'),
+              status: matchStatus,
               kickoffDate: dateStr,
-              kickoffTime: ev.status?.type?.state === 'in' ? `${ev.status?.period * 15}' Live` : `${timeStr} GMT`,
-              minute: ev.status?.type?.state === 'in' ? 45 : 0,
+              kickoffTime: isLive ? `${ev.status?.period * 15}' Live` : eatTime,
+              minute: isLive ? 45 : 0,
               homeTeam: {
                 id: `team-${homeName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
                 name: homeName,
                 crestUrl: homeLogo,
-                score: parseInt(home?.score || '0', 10) || 0,
+                score: isLive || isCompleted ? (parseInt(home?.score || '0', 10) || 0) : 0,
               },
               awayTeam: {
                 id: `team-${awayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
                 name: awayName,
                 crestUrl: awayLogo,
-                score: parseInt(away?.score || '0', 10) || 0,
+                score: isLive || isCompleted ? (parseInt(away?.score || '0', 10) || 0) : 0,
               },
               venue: comp?.venue?.fullName || 'Arena',
-              hasLiveBroadcast: true,
+              hasLiveBroadcast: isLive,
+              poster: resolveSportBackground(
+                espnCfg.sport,
+                espnCfg.name,
+                comp?.venue?.images?.[0]?.href,
+                homeName,
+                awayName
+              ),
             });
           });
         }

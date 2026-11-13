@@ -185,7 +185,7 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
                     match={fixture}
                     layout="full"
                     onPress={() => {
-                      if (fixture.status === 'LIVE' || fixture.hasLiveBroadcast) {
+                      if (fixture.status === 'LIVE' && (fixture.hasLiveBroadcast || fixture.streamUrl)) {
                         navigate({
                           name: 'LiveStreamDetails',
                           params: { match: fixture },

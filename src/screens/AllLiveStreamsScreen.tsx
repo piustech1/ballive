@@ -262,10 +262,17 @@ export const AllLiveStreamsScreen: React.FC = () => {
             match={item}
             layout="grid"
             onPress={() => {
-              navigate({
-                name: 'LiveStreamDetails',
-                params: { match: item },
-              });
+              if (item.status === 'UPCOMING' || !item.hasLiveBroadcast) {
+                navigate({
+                  name: 'MatchDetails',
+                  params: { matchup: item },
+                });
+              } else {
+                navigate({
+                  name: 'LiveStreamDetails',
+                  params: { match: item },
+                });
+              }
             }}
           />
         )}

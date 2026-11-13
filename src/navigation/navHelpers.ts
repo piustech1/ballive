@@ -12,6 +12,8 @@ import { LIVE_MATCHES, LiveMatch, FEATURED_COMPETITIONS, FeaturedCompetition } f
 import { CLUB_CRESTS, LEAGUE_EMBLEMS } from '../constants/crests';
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { API_CONFIG } from '../config/api';
+import { resolveSportBackground } from '../utils/sportBackgroundResolver';
+import { normalizeMatchStatus, formatKickoffEAT } from '../utils/matchStatus';
 
 /**
  * Resolves any LiveMatch from the Home screen into a full DiscoverMatchup.
@@ -22,22 +24,30 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     m => m.id === live.id || (m.homeTeam.name.toLowerCase() === live.homeTeam.toLowerCase() && m.awayTeam.name.toLowerCase() === live.awayTeam.toLowerCase())
   );
   if (existing) {
+    const statusInfo = normalizeMatchStatus({
+      rawStatus: live.status || existing.status,
+      minute: live.minute ?? existing.minute,
+      playTime: live.playTime ?? existing.playTime,
+      completed: (live.status || existing.status) === 'FT',
+    });
     return {
       ...existing,
-      minute: live.minute,
+      minute: statusInfo.isLive ? statusInfo.minute : 0,
+      playTime: statusInfo.playTime,
       homeTeam: {
         ...existing.homeTeam,
         crestUrl: live.homeBadge || existing.homeTeam.crestUrl || getTeamCrest(live.homeTeam),
-        score: live.score.home,
+        score: statusInfo.isUpcoming ? 0 : live.score.home,
       },
       awayTeam: {
         ...existing.awayTeam,
         crestUrl: live.awayBadge || existing.awayTeam.crestUrl || getTeamCrest(live.awayTeam),
-        score: live.score.away,
+        score: statusInfo.isUpcoming ? 0 : live.score.away,
       },
-      status: live.status || (live.minute > 0 ? 'LIVE' : existing.status),
-      streamUrl: live.streamUrl || existing.streamUrl,
-      streams: live.streams || existing.streams,
+      status: statusInfo.status,
+      hasLiveBroadcast: statusInfo.isLive && Boolean(live.streamUrl || existing.streamUrl),
+      streamUrl: statusInfo.isLive ? (live.streamUrl || existing.streamUrl) : undefined,
+      streams: statusInfo.isLive ? (live.streams || existing.streams) : undefined,
     };
   }
 
@@ -70,40 +80,61 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
 
   const venue = compLower.includes('nba') ? 'NBA Arena' : compLower.includes('nhl') ? 'NHL Ice Arena' : compLower.includes('ufc') || compLower.includes('mma') ? 'Championship Octagon' : 'Premier Sports Stadium';
 
-  const isLive = live.status === 'LIVE' || (live.isLive ?? false) || (live.minute > 0 && live.minute < 90);
-  const isFinished = live.status === 'FT' || live.minute >= 90;
-  const matchStatus = live.status || (isLive ? 'LIVE' : isFinished ? 'FT' : 'UPCOMING');
+  const statusInfo = normalizeMatchStatus({
+    rawStatus: live.status,
+    minute: live.minute,
+    playTime: live.playTime,
+    completed: live.status === 'FT' || live.minute === 90,
+  });
+
+  const { status, isLive, isUpcoming, isFinished } = statusInfo;
+  const homeScore = isUpcoming ? 0 : (live.score?.home ?? 0);
+  const awayScore = isUpcoming ? 0 : (live.score?.away ?? 0);
+
+  const rawKickoff = live.kickoffTime || live.time || 'Today';
   const kickoffTime = isLive
     ? (live.playTime ? `${live.playTime} Live` : (live.minute ? `${live.minute}' Live` : 'Live In-Play'))
-    : isFinished ? 'Full Time' : (live.kickoffTime || live.time || 'Today');
+    : isFinished
+    ? 'Full Time'
+    : (rawKickoff.includes('EAT') ? rawKickoff : formatKickoffEAT(rawKickoff));
+
+  const hasLiveStream = isLive && Boolean(live.streamUrl || (live.streams && live.streams.length > 0));
+
+  const poster = resolveSportBackground(
+    sport,
+    live.competition,
+    live.imageUrl,
+    live.homeTeam,
+    live.awayTeam
+  );
 
   return {
     id: live.id,
     competition: live.competition,
     competitionLogo: compLogo,
-    status: matchStatus,
+    status,
     kickoffDate: 'Today',
     kickoffTime,
-    playTime: live.playTime,
-    minute: live.minute,
+    playTime: isLive ? live.playTime : undefined,
+    minute: isLive ? live.minute : 0,
     sport,
     homeTeam: {
       id: `team-${live.homeTeam.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
       name: live.homeTeam,
       crestUrl: homeCrest,
-      score: live.score.home,
+      score: homeScore,
     },
     awayTeam: {
       id: `team-${live.awayTeam.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
       name: live.awayTeam,
       crestUrl: awayCrest,
-      score: live.score.away,
+      score: awayScore,
     },
     venue,
-    hasLiveBroadcast: live.hasLiveStream,
-    streamUrl: live.streamUrl,
-    streams: live.streams,
-    poster: live.imageUrl,
+    hasLiveBroadcast: hasLiveStream,
+    streamUrl: isLive ? live.streamUrl : undefined,
+    streams: isLive ? live.streams : undefined,
+    poster,
   };
 }
 

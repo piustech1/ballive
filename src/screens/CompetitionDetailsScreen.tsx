@@ -345,7 +345,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                   match={displayFixtures[0]}
                   layout="featured"
                   onPress={() => {
-                    if (displayFixtures[0].status === 'LIVE' || displayFixtures[0].hasLiveBroadcast) {
+                    if (displayFixtures[0].status === 'LIVE' && (displayFixtures[0].hasLiveBroadcast || displayFixtures[0].streamUrl)) {
                       navigate({
                         name: 'LiveStreamDetails',
                         params: { match: displayFixtures[0] },
@@ -407,7 +407,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                         match={fixture}
                         layout="full"
                         onPress={() => {
-                          if (fixture.status === 'LIVE' || fixture.hasLiveBroadcast) {
+                          if (fixture.status === 'LIVE' && (fixture.hasLiveBroadcast || fixture.streamUrl)) {
                             navigate({
                               name: 'LiveStreamDetails',
                               params: { match: fixture },

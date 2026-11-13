@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { BookmarkCheck, Info, Play, Trash2 } from 'lucide-react-native';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { UniversalMatchCard } from '../../components/common/UniversalMatchCard';
+import { normalizeMatchStatus } from '../../utils/matchStatus';
 
 export interface SavedMatchCardProps {
   matchup: DiscoverMatchup;
@@ -17,10 +18,11 @@ export const SavedMatchCard: React.FC<SavedMatchCardProps> = ({
   onRemovePress,
   onWatchPress,
 }) => {
-  const isLive = matchup.status === 'LIVE' || Boolean(matchup.minute && matchup.minute > 0);
+  const isLive = normalizeMatchStatus({ rawStatus: matchup.status, playTime: matchup.playTime, minute: matchup.minute }).isLive;
+  const hasLiveBroadcast = isLive && Boolean(matchup.hasLiveBroadcast || matchup.streamUrl || (matchup.streams && matchup.streams.length > 0));
 
   const handleCardPress = () => {
-    if (isLive && onWatchPress) {
+    if (hasLiveBroadcast && onWatchPress) {
       onWatchPress(matchup);
     } else {
       onMatchDetailsPress(matchup);
@@ -48,7 +50,7 @@ export const SavedMatchCard: React.FC<SavedMatchCardProps> = ({
           <Text style={styles.actionBtnText}>Details</Text>
         </TouchableOpacity>
 
-        {isLive && onWatchPress && (
+        {hasLiveBroadcast && onWatchPress && (
           <TouchableOpacity
             style={[styles.actionBtn, styles.actionBtnWatch]}
             activeOpacity={0.8}

@@ -15,6 +15,7 @@ import { DiscoverMatchup } from '../../constants/discoverData';
 import { CompetitionLogo } from './CompetitionLogo';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import { resolveSportBackground } from '../../utils/sportBackgroundResolver';
+import { normalizeMatchStatus, formatKickoffEAT } from '../../utils/matchStatus';
 
 export type UniversalMatchItem = LiveMatch | DiscoverMatchup;
 
@@ -27,7 +28,7 @@ export interface UniversalMatchCardProps {
 }
 
 /**
- * Normalizes any match item into a consistent view model.
+ * Normalizes any match item into a consistent, authoritative view model.
  */
 function normalizeMatchItem(item: UniversalMatchItem) {
   const isDiscover = typeof item.homeTeam === 'object';
@@ -48,25 +49,28 @@ function normalizeMatchItem(item: UniversalMatchItem) {
     ? (item.awayTeam as any).crestUrl || (item as any).awayBadge || getTeamCrest(awayTeamName)
     : (item as any).awayBadge || getTeamCrest(awayTeamName);
 
-  const homeScore = isDiscover
+  const rawHomeScore = isDiscover
     ? (item.homeTeam as any).score
     : (item as LiveMatch).score?.home;
 
-  const awayScore = isDiscover
+  const rawAwayScore = isDiscover
     ? (item.awayTeam as any).score
     : (item as LiveMatch).score?.away;
 
-  const rawStatus = (item.status || '').toUpperCase();
-  const minute = item.minute ?? 0;
-  const isLive =
-    rawStatus === 'LIVE' ||
-    (item as any).isLive === true ||
-    (minute > 0 && minute < 90 && rawStatus !== 'FT' && rawStatus !== 'UPCOMING');
+  // Authoritative Match Status Normalization
+  const statusInfo = normalizeMatchStatus({
+    rawStatus: item.status,
+    minute: item.minute,
+    playTime: item.playTime,
+    shortDetail: (item as any).kickoffTime || (item as any).time,
+    completed: item.status === 'FT' || item.minute === 90,
+  });
 
-  const isFinished = rawStatus === 'FT' || minute >= 90;
-  const isUpcoming = rawStatus === 'UPCOMING' || (!isLive && !isFinished);
+  const { status, isLive, isUpcoming, isFinished, minute, playTime, displayStatus } = statusInfo;
 
-  const status: 'LIVE' | 'UPCOMING' | 'FT' = isLive ? 'LIVE' : isFinished ? 'FT' : 'UPCOMING';
+  // Real scores: zero if upcoming, authoritative score if live or completed
+  const homeScore = isUpcoming ? 0 : (rawHomeScore ?? 0);
+  const awayScore = isUpcoming ? 0 : (rawAwayScore ?? 0);
 
   const competition = item.competition || 'Sports Match';
   const competitionLogo = (item as any).competitionLogo || undefined;
@@ -78,15 +82,24 @@ function normalizeMatchItem(item: UniversalMatchItem) {
     null;
 
   const sport = item.sport;
-  const backdropUrl = resolveSportBackground(sport, competition, rawImage);
+  // Resolve authentic sport backdrop with multi-sport and team detection
+  const backdropUrl = resolveSportBackground(
+    sport,
+    competition,
+    rawImage,
+    homeTeamName,
+    awayTeamName
+  );
 
-  const kickoffTime =
+  const rawKickoff =
     item.kickoffTime ||
     (item as any).time ||
     (item as any).kickoffDate ||
     'Upcoming';
 
-  const playTime = item.playTime;
+  const kickoffTime = isUpcoming
+    ? (rawKickoff.includes('EAT') ? rawKickoff : formatKickoffEAT(rawKickoff))
+    : rawKickoff;
 
   return {
     id: item.id,
@@ -97,13 +110,14 @@ function normalizeMatchItem(item: UniversalMatchItem) {
     isUpcoming,
     isFinished,
     minute,
-    playTime,
+    playTime: playTime || (isLive ? (minute > 0 ? `${minute}'` : 'LIVE') : undefined),
+    displayStatus,
     homeTeamName,
     awayTeamName,
     homeCrest: homeCrest || DEFAULT_CREST,
     awayCrest: awayCrest || DEFAULT_CREST,
-    homeScore: homeScore ?? 0,
-    awayScore: awayScore ?? 0,
+    homeScore,
+    awayScore,
     kickoffTime,
     backdropUrl,
     sport,
@@ -145,8 +159,12 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
         imageStyle={styles.imageBackgroundInner}
         resizeMode="cover"
       >
-        {/* Solid dark contrast overlay for readability */}
-        <View style={styles.darkOverlay} />
+        {/*
+          100% ORIGINAL IMAGE CLARITY
+          Notice: No full-card darkOverlay or blur layer.
+          The background image retains its natural brightness, clarity, and vibrancy.
+          Text readability is achieved via the solid surfaces below.
+        */}
 
         {/* ── CARD TOP ROW: Competition Identity & Status Badge ── */}
         <View style={styles.topRow}>
@@ -282,11 +300,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   imageBackgroundInner: {
-    borderRadius: 18,
-  },
-  darkOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(10, 8, 18, 0.48)',
     borderRadius: 18,
   },
   topRow: {
@@ -447,7 +460,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#A5B4FC',
     marginTop: 2,
-    maxWidth: 70,
+    maxWidth: 75,
     textAlign: 'center',
   },
 });

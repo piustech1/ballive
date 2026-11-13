@@ -134,10 +134,18 @@ export const HomeScreen: React.FC = () => {
   }, [searchQuery]);
 
   const handleMatchPress = (match: LiveMatch) => {
-    navigate({
-      name: 'LiveStreamDetails',
-      params: { match: resolveLiveMatchToMatchup(match) },
-    });
+    const matchup = resolveLiveMatchToMatchup(match);
+    if (matchup.status === 'UPCOMING' || !matchup.hasLiveBroadcast) {
+      navigate({
+        name: 'MatchDetails',
+        params: { matchup },
+      });
+    } else {
+      navigate({
+        name: 'LiveStreamDetails',
+        params: { match: matchup },
+      });
+    }
   };
 
   const handleCompetitionPress = (comp: FeaturedCompetition) => {
