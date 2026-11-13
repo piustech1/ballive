@@ -16,6 +16,9 @@ import { AllTeamsScreen } from './src/screens/AllTeamsScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { AllLiveStreamsScreen } from './src/screens/AllLiveStreamsScreen';
 import { LiveStreamDetailsScreen } from './src/screens/LiveStreamDetailsScreen';
+import { AboutScreen } from './src/screens/AboutScreen';
+import { HelpSupportScreen } from './src/screens/HelpSupportScreen';
+import { PrivacySecurityScreen } from './src/screens/PrivacySecurityScreen';
 import {
   NavigationProvider,
   useAppNavigation,
@@ -58,6 +61,12 @@ const AppContent: React.FC = () => {
         return <AllTeamsScreen />;
       case 'Notifications':
         return <NotificationsScreen />;
+      case 'About':
+        return <AboutScreen />;
+      case 'HelpSupport':
+        return <HelpSupportScreen />;
+      case 'PrivacySecurity':
+        return <PrivacySecurityScreen />;
       case 'Main':
       default:
         switch (activeTab) {
