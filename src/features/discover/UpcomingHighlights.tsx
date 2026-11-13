@@ -73,6 +73,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cardsList: {
-    gap: 2,
+    gap: 12,
   },
 });

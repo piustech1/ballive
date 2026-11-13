@@ -109,14 +109,16 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
 
 /**
  * Returns the marquee Match of the Day dynamically derived from active live matches or marquee fixtures.
+ * Strictly uses authentic match data and never fabricates scores or in-play clocks.
  */
-export function getMarqueeMatchOfTheDay(liveMatches?: LiveMatch[]): DiscoverMatchup {
+export function getMarqueeMatchOfTheDay(liveMatches?: LiveMatch[]): DiscoverMatchup | null {
   if (liveMatches && liveMatches.length > 0) {
     // 1. Pick the best active live match
-    const active = liveMatches.find(m => m.minute > 0 && m.minute < 90);
+    const active = liveMatches.find(m => m.status === 'LIVE' || (m.minute > 0 && m.minute < 90));
     if (active) {
       return resolveLiveMatchToMatchup(active);
     }
+    // 2. Or the primary scheduled upcoming match
     return resolveLiveMatchToMatchup(liveMatches[0]);
   }
 
@@ -124,35 +126,7 @@ export function getMarqueeMatchOfTheDay(liveMatches?: LiveMatch[]): DiscoverMatc
     return UPCOMING_HIGHLIGHTS[0];
   }
 
-  // Authentic marquee default fixture
-  return {
-    id: 'marquee-motd-live',
-    competition: 'Premier League',
-    competitionLogo: LEAGUE_EMBLEMS['premier-league'],
-    status: 'LIVE',
-    kickoffDate: 'Today',
-    kickoffTime: "35' Live",
-    minute: 35,
-    homeTeam: {
-      id: 'team-man-city',
-      name: 'Manchester City',
-      crestUrl: getTeamCrest('Manchester City'),
-      score: 1,
-    },
-    awayTeam: {
-      id: 'team-liverpool',
-      name: 'Liverpool',
-      crestUrl: getTeamCrest('Liverpool'),
-      score: 1,
-    },
-    venue: 'Etihad Stadium, Manchester',
-    hasLiveBroadcast: true,
-    streamUrl: `https://dag.s-u.in/stream/tv/moviebay_sport_cdn_ch_xx_sky-sports-premier-league-fhd-uk.json`,
-    streams: [
-      { id: 'srv-pl', name: 'Server 1 (Sky Sports PL 1080p)', url: `https://dag.s-u.in/stream/tv/moviebay_sport_cdn_ch_xx_sky-sports-premier-league-fhd-uk.json` },
-      { id: 'srv-tnt', name: 'Server 2 (TNT Sports HD)', url: `https://dag.s-u.in/stream/tv/moviebay_sport_cdn_ch_xx_tnt-sports-1-fhd-uk.json` },
-    ],
-  };
+  return null;
 }
 
 /**

@@ -23,6 +23,7 @@ import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeade
 import { PopularTeam, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
+import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
 
 interface TeamDetailsScreenProps {
   team: PopularTeam;
@@ -179,31 +180,25 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
             <View style={styles.sectionCard}>
               <Text style={styles.cardHeaderTitle}>Upcoming & Live Fixtures</Text>
               {fallbackFixtures.map(fixture => (
-                <TouchableOpacity
-                  key={fixture.id}
-                  activeOpacity={0.75}
-                  style={styles.fixtureItem}
-                  onPress={() => {
-                    navigate({
-                      name: 'MatchDetails',
-                      params: { matchup: fixture },
-                    });
-                  }}
-                >
-                  <View style={styles.fixtureMetaLeft}>
-                    <Text style={styles.fixtureCompName}>{fixture.competition}</Text>
-                    <Text style={styles.fixtureVersusText} numberOfLines={1}>
-                      {fixture.homeTeam.name} vs {fixture.awayTeam.name}
-                    </Text>
-                    <Text style={styles.fixtureDateText}>
-                      {fixture.kickoffDate} • {fixture.kickoffTime}
-                    </Text>
-                  </View>
-
-                  <View style={styles.fixtureRightArrow}>
-                    <ChevronRight size={18} color="#7952FC" strokeWidth={2.4} />
-                  </View>
-                </TouchableOpacity>
+                <View key={fixture.id} style={{ marginBottom: 12 }}>
+                  <UniversalMatchCard
+                    match={fixture}
+                    layout="full"
+                    onPress={() => {
+                      if (fixture.status === 'LIVE' || fixture.hasLiveBroadcast) {
+                        navigate({
+                          name: 'LiveStreamDetails',
+                          params: { match: fixture },
+                        });
+                      } else {
+                        navigate({
+                          name: 'MatchDetails',
+                          params: { matchup: fixture },
+                        });
+                      }
+                    }}
+                  />
+                </View>
               ))}
             </View>
           </View>

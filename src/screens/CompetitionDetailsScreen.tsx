@@ -21,6 +21,7 @@ import {
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
 import { CompetitionLogo } from '../components/common/CompetitionLogo';
+import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
 import {
   DiscoverCompetition,
   PopularLeague,
@@ -340,27 +341,23 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             <View style={styles.sectionCard}>
               <Text style={styles.cardHeaderTitle}>{isCombat ? 'Main Event' : 'Featured Match'}</Text>
               {displayFixtures[0] && (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.featuredMatchItem}
+                <UniversalMatchCard
+                  match={displayFixtures[0]}
+                  layout="featured"
                   onPress={() => {
-                    navigate({
-                      name: 'MatchDetails',
-                      params: { matchup: displayFixtures[0] },
-                    });
+                    if (displayFixtures[0].status === 'LIVE' || displayFixtures[0].hasLiveBroadcast) {
+                      navigate({
+                        name: 'LiveStreamDetails',
+                        params: { match: displayFixtures[0] },
+                      });
+                    } else {
+                      navigate({
+                        name: 'MatchDetails',
+                        params: { matchup: displayFixtures[0] },
+                      });
+                    }
                   }}
-                >
-                  <View style={styles.featuredMatchTeamsRow}>
-                    <Text style={styles.featuredMatchTeamName}>{displayFixtures[0].homeTeam.name}</Text>
-                    <View style={styles.vsBadge}>
-                      <Text style={styles.vsBadgeText}>VS</Text>
-                    </View>
-                    <Text style={styles.featuredMatchTeamName}>{displayFixtures[0].awayTeam.name}</Text>
-                  </View>
-                  <Text style={styles.featuredMatchSub}>
-                    {displayFixtures[0].kickoffDate} • {displayFixtures[0].kickoffTime} • {displayFixtures[0].venue}
-                  </Text>
-                </TouchableOpacity>
+                />
               )}
             </View>
 
@@ -404,78 +401,28 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                     </Text>
                   </View>
                 ) : (
-                  displayFixtures.map(fixture => {
-                    const homeCrest = fixture.homeTeam.crestUrl || getTeamCrest(fixture.homeTeam.name || fixture.homeTeam.id);
-                    const awayCrest = fixture.awayTeam.crestUrl || getTeamCrest(fixture.awayTeam.name || fixture.awayTeam.id);
-
-                  return (
-                    <TouchableOpacity
-                      key={fixture.id}
-                      activeOpacity={0.85}
-                      style={styles.fixtureCard}
-                      onPress={() => {
-                        navigate({
-                          name: 'MatchDetails',
-                          params: { matchup: fixture },
-                        });
-                      }}
-                    >
-                      {/* Top Info Strip */}
-                      <View style={styles.fixtureHeaderRow}>
-                        <View style={styles.fixtureDatePill}>
-                          <Calendar size={11} color="#A098B5" strokeWidth={2.2} />
-                          <Text style={styles.fixtureDateText}>{fixture.kickoffDate}</Text>
-                        </View>
-                        <View style={styles.fixtureTimePill}>
-                          <Clock size={11} color="#7952FC" strokeWidth={2.2} />
-                          <Text style={styles.fixtureTimePillText}>{fixture.kickoffTime}</Text>
-                        </View>
-                      </View>
-
-                      {/* Main Matchup with Big Club Badges */}
-                      <View style={styles.fixtureTeamsRow}>
-                        {/* Home Club */}
-                        <View style={styles.fixtureTeamCol}>
-                          <View style={styles.fixtureCrestCircle}>
-                            <Image source={{ uri: homeCrest }} style={styles.fixtureCrestImg} />
-                          </View>
-                          <Text style={styles.fixtureTeamName} numberOfLines={1}>
-                            {fixture.homeTeam.name}
-                          </Text>
-                        </View>
-
-                        {/* Center VS */}
-                        <View style={styles.fixtureVsBox}>
-                          <View style={styles.fixtureVsPill}>
-                            <Text style={styles.fixtureVsLabel}>VS</Text>
-                          </View>
-                          <Text style={styles.fixtureVenueText} numberOfLines={1}>
-                            {fixture.venue}
-                          </Text>
-                        </View>
-
-                        {/* Away Club */}
-                        <View style={styles.fixtureTeamCol}>
-                          <View style={styles.fixtureCrestCircle}>
-                            <Image source={{ uri: awayCrest }} style={styles.fixtureCrestImg} />
-                          </View>
-                          <Text style={styles.fixtureTeamName} numberOfLines={1}>
-                            {fixture.awayTeam.name}
-                          </Text>
-                        </View>
-                      </View>
-
-                      {/* Bottom Action Footer */}
-                      <View style={styles.fixtureFooter}>
-                        <Text style={styles.fixtureWatchStreamLabel}>Full HD Stream • Live Coverage</Text>
-                        <View style={styles.fixtureArrowPill}>
-                          <Text style={styles.fixtureArrowPillText}>Match Details</Text>
-                          <ChevronRight size={13} color="#FFFFFF" strokeWidth={2.5} />
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                }))}
+                  displayFixtures.map(fixture => (
+                    <View key={fixture.id} style={{ marginBottom: 12 }}>
+                      <UniversalMatchCard
+                        match={fixture}
+                        layout="full"
+                        onPress={() => {
+                          if (fixture.status === 'LIVE' || fixture.hasLiveBroadcast) {
+                            navigate({
+                              name: 'LiveStreamDetails',
+                              params: { match: fixture },
+                            });
+                          } else {
+                            navigate({
+                              name: 'MatchDetails',
+                              params: { matchup: fixture },
+                            });
+                          }
+                        }}
+                      />
+                    </View>
+                  ))
+                )}
               </View>
             </View>
           </View>

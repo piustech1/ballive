@@ -38,7 +38,7 @@ interface InlineMatchDetailsModuleProps {
   liveStreamCount?: number;
 }
 
-type TabKey = 'overview' | 'stats' | 'lineups' | 'events';
+type TabKey = 'overview' | 'lineups' | 'events';
 
 export const InlineMatchDetailsModule: React.FC<InlineMatchDetailsModuleProps> = ({
   matchup,
@@ -105,35 +105,30 @@ export const InlineMatchDetailsModule: React.FC<InlineMatchDetailsModuleProps> =
       case 'boxing':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Fight Stats' },
           { key: 'lineups' as TabKey, label: 'Tale of Tape' },
           { key: 'events' as TabKey, label: 'Rounds' },
         ];
       case 'basketball':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Box Score' },
           { key: 'lineups' as TabKey, label: 'Starting 5' },
           { key: 'events' as TabKey, label: 'Periods' },
         ];
       case 'hockey':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Stats' },
           { key: 'lineups' as TabKey, label: 'Lines' },
           { key: 'events' as TabKey, label: 'Periods' },
         ];
       case 'motorsport':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Timing' },
           { key: 'lineups' as TabKey, label: 'Grid' },
           { key: 'events' as TabKey, label: 'Laps' },
         ];
       default:
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Statistics' },
           { key: 'lineups' as TabKey, label: 'Lineups' },
           { key: 'events' as TabKey, label: 'Events' },
         ];
@@ -232,80 +227,7 @@ export const InlineMatchDetailsModule: React.FC<InlineMatchDetailsModuleProps> =
           </View>
         )}
 
-        {/* ── TAB 2: STATISTICS ── */}
-        {activeTab === 'stats' && (
-          <View style={styles.tabSection}>
-            <View style={styles.solidCard}>
-              <Text style={styles.cardHeaderTitle}>
-                {sport === 'basketball'
-                  ? 'BOX SCORE COMPARISON'
-                  : sport === 'hockey'
-                  ? 'GAME STATISTICS'
-                  : sport === 'mma' || sport === 'boxing'
-                  ? 'FIGHT METRICS'
-                  : 'MATCH STATISTICS'}
-              </Text>
-
-              {sport === 'mma' || sport === 'boxing' ? (
-                <>
-                  <StatBar label="Significant Strikes" homeVal={intel?.combatStats?.sigStrikes?.[0] ?? 58} awayVal={intel?.combatStats?.sigStrikes?.[1] ?? 42} />
-                  <StatBar label="Striking Accuracy" homeVal={parseInt(intel?.combatStats?.sigStrikesAccuracy?.[0] || '54', 10)} awayVal={parseInt(intel?.combatStats?.sigStrikesAccuracy?.[1] || '46', 10)} unit="%" />
-                  <StatBar label="Takedowns Landed" homeVal={intel?.combatStats?.takedowns?.[0] ?? 3} awayVal={intel?.combatStats?.takedowns?.[1] ?? 1} />
-                  <StatBar label="Submission Attempts" homeVal={intel?.combatStats?.submissionAttempts?.[0] ?? 2} awayVal={intel?.combatStats?.submissionAttempts?.[1] ?? 0} />
-                  <StatBar label="Octagon Control" homeVal={65} awayVal={35} unit="%" />
-                </>
-              ) : sport === 'basketball' ? (
-                <>
-                  <StatBar label="Field Goal %" homeVal={parseInt(intel?.basketballStats?.fgPct?.[0] || '48', 10)} awayVal={parseInt(intel?.basketballStats?.fgPct?.[1] || '44', 10)} unit="%" />
-                  <StatBar label="3-Point %" homeVal={parseInt(intel?.basketballStats?.threePtPct?.[0] || '38', 10)} awayVal={parseInt(intel?.basketballStats?.threePtPct?.[1] || '32', 10)} unit="%" />
-                  <StatBar label="Free Throw %" homeVal={parseInt(intel?.basketballStats?.ftPct?.[0] || '85', 10)} awayVal={parseInt(intel?.basketballStats?.ftPct?.[1] || '78', 10)} unit="%" />
-                  <StatBar label="Total Rebounds" homeVal={intel?.basketballStats?.rebounds?.[0] ?? 44} awayVal={intel?.basketballStats?.rebounds?.[1] ?? 40} />
-                  <StatBar label="Assists" homeVal={intel?.basketballStats?.assists?.[0] ?? 26} awayVal={intel?.basketballStats?.assists?.[1] ?? 22} />
-                  <StatBar label="Fastbreak Points" homeVal={18} awayVal={12} />
-                </>
-              ) : sport === 'hockey' ? (
-                <>
-                  <StatBar label="Shots on Goal" homeVal={intel?.hockeyStats?.shotsOnGoal?.[0] ?? 34} awayVal={intel?.hockeyStats?.shotsOnGoal?.[1] ?? 28} />
-                  <StatBar label="Power Play %" homeVal={parseInt(intel?.hockeyStats?.powerPlay?.[0] || '33', 10)} awayVal={parseInt(intel?.hockeyStats?.powerPlay?.[1] || '20', 10)} unit="%" />
-                  <StatBar label="Faceoff Win %" homeVal={parseInt(intel?.hockeyStats?.faceoffPct?.[0] || '56', 10)} awayVal={parseInt(intel?.hockeyStats?.faceoffPct?.[1] || '44', 10)} unit="%" />
-                  <StatBar label="Hits" homeVal={intel?.hockeyStats?.hits?.[0] ?? 24} awayVal={intel?.hockeyStats?.hits?.[1] ?? 29} />
-                  <StatBar label="Penalty Minutes" homeVal={intel?.hockeyStats?.penaltyMinutes?.[0] ?? 6} awayVal={intel?.hockeyStats?.penaltyMinutes?.[1] ?? 8} />
-                </>
-              ) : (
-                <>
-                  <StatBar
-                    label="Possession %"
-                    homeVal={intel?.stats?.possession?.[0] ?? 54}
-                    awayVal={intel?.stats?.possession?.[1] ?? 46}
-                    unit="%"
-                  />
-                  <StatBar
-                    label="Total Shots"
-                    homeVal={intel?.stats?.shotsTotal?.[0] ?? 14}
-                    awayVal={intel?.stats?.shotsTotal?.[1] ?? 10}
-                  />
-                  <StatBar
-                    label="Shots on Target"
-                    homeVal={intel?.stats?.shotsOnTarget?.[0] ?? 6}
-                    awayVal={intel?.stats?.shotsOnTarget?.[1] ?? 4}
-                  />
-                  <StatBar
-                    label="Corner Kicks"
-                    homeVal={intel?.stats?.corners?.[0] ?? 7}
-                    awayVal={intel?.stats?.corners?.[1] ?? 3}
-                  />
-                  <StatBar
-                    label="Fouls Committed"
-                    homeVal={intel?.stats?.fouls?.[0] ?? 8}
-                    awayVal={intel?.stats?.fouls?.[1] ?? 11}
-                  />
-                </>
-              )}
-            </View>
-          </View>
-        )}
-
-        {/* ── TAB 3: LINEUPS ── */}
+        {/* ── TAB 2: LINEUPS ── */}
         {activeTab === 'lineups' && (
           <View style={styles.tabSection}>
             {sport === 'mma' || sport === 'boxing' ? (
@@ -479,30 +401,6 @@ export const InlineMatchDetailsModule: React.FC<InlineMatchDetailsModuleProps> =
 };
 
 // ── INTERNAL SUBCOMPONENTS ──
-
-const StatBar: React.FC<{ label: string; homeVal: number; awayVal: number; unit?: string }> = ({
-  label,
-  homeVal,
-  awayVal,
-  unit = '',
-}) => {
-  const total = homeVal + awayVal || 100;
-  const homePct = Math.round((homeVal / total) * 100);
-
-  return (
-    <View style={styles.statBarWrapper}>
-      <View style={styles.statLabelRow}>
-        <Text style={styles.statNumText}>{homeVal}{unit}</Text>
-        <Text style={styles.statLabelText}>{label}</Text>
-        <Text style={styles.statNumText}>{awayVal}{unit}</Text>
-      </View>
-      <View style={styles.statTrack}>
-        <View style={[styles.statFillHome, { width: `${homePct}%` }]} />
-        <View style={[styles.statFillAway, { width: `${100 - homePct}%` }]} />
-      </View>
-    </View>
-  );
-};
 
 const TapeMetric: React.FC<{ left: string; label: string; right: string }> = ({
   left,
@@ -697,44 +595,6 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '700',
     color: '#22C55E',
-  },
-  statBarWrapper: {
-    marginBottom: 10,
-  },
-  statLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  statNumText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    width: 32,
-    textAlign: 'center',
-  },
-  statLabelText: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: '#A098B5',
-    flex: 1,
-    textAlign: 'center',
-  },
-  statTrack: {
-    height: 6,
-    backgroundColor: '#261C3D',
-    borderRadius: 3,
-    flexDirection: 'row',
-    overflow: 'hidden',
-  },
-  statFillHome: {
-    backgroundColor: '#7952FC',
-    height: '100%',
-  },
-  statFillAway: {
-    backgroundColor: '#2A2045',
-    height: '100%',
   },
   tapeRow: {
     flexDirection: 'row',

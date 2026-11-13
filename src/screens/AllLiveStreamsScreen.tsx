@@ -4,18 +4,16 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
   TouchableOpacity,
   TouchableWithoutFeedback,
   Modal,
-  Image,
   RefreshControl,
 } from 'react-native';
 import {
   Tv,
-  Info,
   ChevronDown,
   Check,
-  Signal,
   Flame,
   Trophy,
   Activity,
@@ -24,8 +22,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
-import { CompetitionLogo } from '../components/common/CompetitionLogo';
-import { getTeamCrest, DEFAULT_CREST } from '../utils/teamCrestResolver';
+import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
 import { DiscoverMatchup } from '../constants/discoverData';
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { streamingApiService } from '../services/streamingApiService';
@@ -66,52 +63,15 @@ const SPORT_TABS: SportTab[] = [
   { id: 'hockey', label: 'Hockey', icon: Shield },
 ];
 
-/**
- * Resilient team crest component with automatic neutral shield fallback.
- * Prevents any accidental assignment of Arsenal or club crests to unrelated teams.
- */
-const TeamCrestImage: React.FC<{
-  uri?: string | null;
-  teamName?: string;
-  size?: number;
-}> = ({ uri, teamName, size = 24 }) => {
-  const [hasError, setHasError] = useState(false);
-  const resolvedUri = useMemo(() => {
-    if (uri && typeof uri === 'string' && uri.trim().length > 10 && !uri.includes('null')) {
-      return uri.trim();
-    }
-    return getTeamCrest(teamName);
-  }, [uri, teamName]);
-
-  const [currentUri, setCurrentUri] = useState<string>(resolvedUri);
-
-  useEffect(() => {
-    setCurrentUri(resolvedUri);
-    setHasError(false);
-  }, [resolvedUri]);
-
-  return (
-    <Image
-      source={{ uri: hasError ? DEFAULT_CREST : currentUri }}
-      style={{ width: size, height: size, resizeMode: 'contain' }}
-      onError={() => {
-        if (!hasError) {
-          setHasError(true);
-          setCurrentUri(DEFAULT_CREST);
-        }
-      }}
-    />
-  );
-};
-
 export const AllLiveStreamsScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
-  const [selectedFilter, setSelectedFilter] = useState<StreamFilter>('all');
-  const [selectedSport, setSelectedSport] = useState<SportFilter>('all');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   const [allStreamMatches, setAllStreamMatches] = useState<DiscoverMatchup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedFilter, setSelectedFilter] = useState<StreamFilter>('all');
+  const [selectedSport, setSelectedSport] = useState<SportFilter>('all');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const loadMatches = useCallback(async () => {
     try {
@@ -281,10 +241,13 @@ export const AllLiveStreamsScreen: React.FC = () => {
         </ScrollView>
       </View>
 
-      {/* ── MAIN VERTICAL MATCH LIST ── */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+      {/* ── MAIN RESPONSIVE TWO-COLUMN MATCH-CARD GRID ── */}
+      <FlatList
+        data={filteredMatches}
+        keyExtractor={item => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
+        contentContainerStyle={styles.flatListContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -294,173 +257,41 @@ export const AllLiveStreamsScreen: React.FC = () => {
             colors={['#7952FC']}
           />
         }
-      >
-        {isLoading && allStreamMatches.length === 0 ? (
-          <>
-            <MatchCardSkeleton />
-            <MatchCardSkeleton />
-            <MatchCardSkeleton />
-          </>
-        ) : filteredMatches.length > 0 ? (
-          filteredMatches.map(matchup => {
-            const isLive = matchup.status === 'LIVE';
-
-            return (
-              <TouchableOpacity
-                key={matchup.id}
-                activeOpacity={0.9}
-                style={styles.matchCard}
-                onPress={() => {
-                  navigate({
-                    name: 'LiveStreamDetails',
-                    params: { match: matchup },
-                  });
-                }}
-              >
-                {/* 1. TOP HEADER ROW: Competition Logo & Name + Compact Solid LIVE Minute Pill */}
-                <View style={styles.cardHeaderRow}>
-                  <View style={styles.compInfoLeft}>
-                    {Boolean(matchup.competitionLogo) && (
-                      <CompetitionLogo
-                        uri={matchup.competitionLogo}
-                        size={17}
-                        containerStyle={{ marginRight: 6 }}
-                      />
-                    )}
-                    <Text style={styles.compName} numberOfLines={1}>
-                      {matchup.competition}
-                    </Text>
-                  </View>
-
-                  {isLive ? (
-                    <View style={styles.liveMinuteBadge}>
-                      <View style={styles.liveDot} />
-                      <Text style={styles.liveMinuteText}>{matchup.minute}' LIVE</Text>
-                    </View>
-                  ) : matchup.status === 'FT' ? (
-                    <View style={styles.ftBadge}>
-                      <Text style={styles.ftBadgeText}>FT</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.upcomingBadge}>
-                      <Text style={styles.upcomingBadgeText}>
-                        {matchup.kickoffDate} • {matchup.kickoffTime.replace(' GMT', '')}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* 2. MATCH CENTRE: Symmetrical 3-Part Layout (HOME TEAM | SCORE | AWAY TEAM) */}
-                <View style={styles.matchCentre}>
-                  {/* Home Team */}
-                  <View style={styles.teamHome}>
-                    <View style={styles.crestCircle}>
-                      <TeamCrestImage
-                        uri={matchup.homeTeam.crestUrl}
-                        teamName={matchup.homeTeam.name || matchup.homeTeam.id}
-                        size={22}
-                      />
-                    </View>
-                    <Text style={styles.teamNameLeft} numberOfLines={1}>
-                      {matchup.homeTeam.name}
-                    </Text>
-                  </View>
-
-                  {/* Center Score / VS */}
-                  <View style={styles.scoreCenter}>
-                    {isLive || matchup.status === 'FT' ? (
-                      <View style={styles.scoreRow}>
-                        <Text style={styles.scoreDigit}>{matchup.homeTeam.score ?? 0}</Text>
-                        <Text style={styles.scoreColon}>:</Text>
-                        <Text style={styles.scoreDigit}>{matchup.awayTeam.score ?? 0}</Text>
-                      </View>
-                    ) : (
-                      <View style={styles.vsPill}>
-                        <Text style={styles.vsText}>VS</Text>
-                      </View>
-                    )}
-                    <Text style={styles.venueSubtext} numberOfLines={1}>
-                      {isLive ? `${matchup.minute}' In-Play` : matchup.venue || 'Live Stadium'}
-                    </Text>
-                  </View>
-
-                  {/* Away Team */}
-                  <View style={styles.teamAway}>
-                    <Text style={styles.teamNameRight} numberOfLines={1}>
-                      {matchup.awayTeam.name}
-                    </Text>
-                    <View style={styles.crestCircle}>
-                      <TeamCrestImage
-                        uri={matchup.awayTeam.crestUrl}
-                        teamName={matchup.awayTeam.name || matchup.awayTeam.id}
-                        size={22}
-                      />
-                    </View>
-                  </View>
-                </View>
-
-                {/* 3. CARD FOOTER: Stream Metadata + Secondary Details + Primary Watch Live */}
-                <View style={styles.cardFooter}>
-                  <View style={styles.streamMetaRow}>
-                    <Signal size={12} color="#22C55E" strokeWidth={2.4} />
-                    <Text style={styles.streamMetaText} numberOfLines={1}>
-                      {isLive ? 'HD 1080p • Satellite Feed' : 'Broadcast Feed Scheduled'}
-                    </Text>
-                  </View>
-
-                  <View style={styles.actionButtons}>
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      style={styles.detailsBtn}
-                      onPress={e => {
-                        e.stopPropagation();
-                        navigate({
-                          name: 'MatchDetails',
-                          params: { matchup },
-                        });
-                      }}
-                      accessibilityLabel={`Details for ${matchup.homeTeam.name} vs ${matchup.awayTeam.name}`}
-                    >
-                      <Info size={12} color="#A098B5" strokeWidth={2.2} />
-                      <Text style={styles.detailsBtnText}>Details</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      style={styles.watchBtn}
-                      onPress={e => {
-                        e.stopPropagation();
-                        navigate({
-                          name: 'LiveStreamDetails',
-                          params: { match: matchup },
-                        });
-                      }}
-                      accessibilityLabel={`Watch live stream of ${matchup.homeTeam.name} vs ${matchup.awayTeam.name}`}
-                    >
-                      <Tv size={12} color="#FFFFFF" strokeWidth={2.4} />
-                      <Text style={styles.watchBtnText}>
-                        {isLive ? 'Watch Live' : 'Stream Feed'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        ) : (
-          <View style={styles.emptyContainer}>
-            <View style={styles.emptyCircle}>
-              <Tv size={32} color="#7952FC" strokeWidth={2} />
-            </View>
-            <Text style={styles.emptyTitle}>No Streams Found</Text>
-            <Text style={styles.emptySubtitle}>
-              {selectedFilter === 'live'
-                ? 'There are currently no live matches in this category. Check back shortly for kickoff!'
-                : 'No match feeds matching this filter. Switch categories or pull down to refresh.'}
-            </Text>
-          </View>
+        renderItem={({ item }) => (
+          <UniversalMatchCard
+            match={item}
+            layout="grid"
+            onPress={() => {
+              navigate({
+                name: 'LiveStreamDetails',
+                params: { match: item },
+              });
+            }}
+          />
         )}
-      </ScrollView>
+        ListEmptyComponent={
+          isLoading && allStreamMatches.length === 0 ? (
+            <View style={styles.skeletonGrid}>
+              <View style={styles.skeletonCol}>
+                <MatchCardSkeleton />
+                <MatchCardSkeleton />
+              </View>
+              <View style={styles.skeletonCol}>
+                <MatchCardSkeleton />
+                <MatchCardSkeleton />
+              </View>
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Tv size={36} color="#453866" strokeWidth={1.8} style={{ marginBottom: 12 }} />
+              <Text style={styles.emptyTitle}>No Streams Found</Text>
+              <Text style={styles.emptySubtitle}>
+                No matches currently match the selected sport and status filters. Pull down to refresh or try another category.
+              </Text>
+            </View>
+          )
+        }
+      />
     </View>
   );
 };
@@ -473,27 +304,29 @@ const styles = StyleSheet.create({
   headerDropdownTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2A2045',
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 5.5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.25)',
   },
   headerLiveDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
     backgroundColor: '#EF4444',
-    marginRight: 6,
+    marginRight: 5,
   },
   headerDropdownText: {
     fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
-    letterSpacing: 0.1,
+    letterSpacing: -0.2,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: 'rgba(5, 4, 10, 0.65)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     justifyContent: 'flex-start',
     alignItems: 'flex-end',
     paddingTop: 80,
@@ -584,247 +417,42 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 14,
-    paddingBottom: 100, // Clearance for anchored bottom navigation
-    gap: 10,
-  },
-  matchCard: {
-    backgroundColor: '#1E1730',
-    borderRadius: 16,
-    padding: 12,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  gridRow: {
+    paddingHorizontal: 12,
     marginBottom: 8,
-  },
-  compInfoLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 8,
-  },
-  compName: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8E75FF',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-  },
-  liveMinuteBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: 6,
-    gap: 4,
-  },
-  liveDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#FFFFFF',
-  },
-  liveMinuteText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
-  ftBadge: {
-    backgroundColor: '#2A2045',
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: 6,
-  },
-  ftBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#A098B5',
-  },
-  upcomingBadge: {
-    backgroundColor: '#2A2045',
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: 6,
-  },
-  upcomingBadgeText: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#F8BE38',
-  },
-  matchCentre: {
-    flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 4,
   },
-  teamHome: {
+  flatListContent: {
+    paddingTop: 10,
+    paddingBottom: 110,
+  },
+  skeletonGrid: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    gap: 10,
+    paddingTop: 10,
+  },
+  skeletonCol: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  teamAway: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 8,
-  },
-  crestCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#181524',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  teamNameLeft: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    flex: 1,
-  },
-  teamNameRight: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'right',
-    flex: 1,
-  },
-  scoreCenter: {
-    width: 76,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreDigit: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    minWidth: 16,
-    textAlign: 'center',
-  },
-  scoreColon: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#7952FC',
-    marginHorizontal: 3,
-  },
-  vsPill: {
-    backgroundColor: '#2A2045',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  vsText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#7952FC',
-  },
-  venueSubtext: {
-    fontSize: 9.5,
-    fontWeight: '500',
-    color: '#A098B5',
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#261C3D',
-  },
-  streamMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    flex: 1,
-    marginRight: 8,
-  },
-  streamMetaText: {
-    fontSize: 10.5,
-    fontWeight: '500',
-    color: '#A098B5',
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  detailsBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 28,
-    paddingHorizontal: 9,
-    borderRadius: 8,
-    backgroundColor: '#2A2045',
-    gap: 4,
-  },
-  detailsBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#A098B5',
-  },
-  watchBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 28,
-    paddingHorizontal: 11,
-    borderRadius: 8,
-    backgroundColor: '#7952FC',
-    gap: 4,
-  },
-  watchBtnText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    gap: 10,
   },
   emptyContainer: {
     alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 24,
-  },
-  emptyCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#1E1730',
-    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    paddingVertical: 60,
+    paddingHorizontal: 32,
   },
   emptyTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#ECE9FA',
     marginBottom: 6,
   },
   emptySubtitle: {
-    fontSize: 12,
-    color: '#A098B5',
+    fontSize: 12.5,
+    color: '#8E82A8',
     textAlign: 'center',
-    lineHeight: 17,
+    lineHeight: 18,
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -46,6 +46,7 @@ import { LiveStreamPlayer } from '../components/player/LiveStreamPlayer';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { InlineMatchDetailsModule } from '../components/player/InlineMatchDetailsModule';
+import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
 
 interface LiveStreamDetailsScreenProps {
   match: DiscoverMatchup;
@@ -60,10 +61,15 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
   const { navigate } = useAppNavigation();
   const { profile, toggleMatchReminder, toggleSaveMatch } = useProfile();
 
-  const [activeStreamUrl, setActiveStreamUrl] = useState<string | undefined>(match.streamUrl);
-  const [activeStreams, setActiveStreams] = useState<any[] | undefined>(match.streams);
+  const [activeMatch, setActiveMatch] = useState<DiscoverMatchup>(match);
+
+  useEffect(() => {
+    setActiveMatch(match);
+  }, [match.id]);
+
+  const [activeStreamUrl, setActiveStreamUrl] = useState<string | undefined>(activeMatch.streamUrl);
+  const [activeStreams, setActiveStreams] = useState<any[] | undefined>(activeMatch.streams);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [activeBottomView, setActiveBottomView] = useState<'streams' | 'details'>('streams');
 
   // Live real-time scores and clock
   const [liveScore, setLiveScore] = useState<{
@@ -72,13 +78,13 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     minute?: number;
     statusText?: string;
   }>({
-    home: match.homeTeam.score ?? 0,
-    away: match.awayTeam.score ?? 0,
-    minute: match.minute,
-    statusText: match.playTime
-      ? `${match.playTime} LIVE`
-      : match.minute && match.minute > 0
-      ? `${match.minute}' LIVE`
+    home: activeMatch.homeTeam.score ?? 0,
+    away: activeMatch.awayTeam.score ?? 0,
+    minute: activeMatch.minute,
+    statusText: activeMatch.playTime
+      ? `${activeMatch.playTime} LIVE`
+      : activeMatch.minute && activeMatch.minute > 0
+      ? `${activeMatch.minute}' LIVE`
       : undefined,
   });
 
@@ -88,22 +94,22 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
   useEffect(() => {
     let isMounted = true;
-    setActiveStreamUrl(match.streamUrl);
-    setActiveStreams(match.streams);
+    setActiveStreamUrl(activeMatch.streamUrl);
+    setActiveStreams(activeMatch.streams);
     setLiveScore({
-      home: match.homeTeam.score ?? 0,
-      away: match.awayTeam.score ?? 0,
-      minute: match.minute,
-      statusText: match.playTime
-        ? `${match.playTime} LIVE`
-        : match.minute && match.minute > 0
-        ? `${match.minute}' LIVE`
+      home: activeMatch.homeTeam.score ?? 0,
+      away: activeMatch.awayTeam.score ?? 0,
+      minute: activeMatch.minute,
+      statusText: activeMatch.playTime
+        ? `${activeMatch.playTime} LIVE`
+        : activeMatch.minute && activeMatch.minute > 0
+        ? `${activeMatch.minute}' LIVE`
         : undefined,
     });
 
-    if (match.id) {
+    if (activeMatch.id) {
       streamingApiService
-        .resolveStreamMirrors(match.id, match.competition)
+        .resolveStreamMirrors(activeMatch.id, activeMatch.competition)
         .then(mirrors => {
           if (isMounted && mirrors.length > 0) {
             setActiveStreams(mirrors);
@@ -114,33 +120,39 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     }
 
     // Dynamic Live Matches for Related Streams
-    streamingApiService.getLiveMatches().then(matches => {
-      if (isMounted && matches && matches.length > 0) {
-        const others = matches
-          .filter(m => m.id !== match.id && (m.status === 'LIVE' || m.minute > 0))
-          .map(resolveLiveMatchToMatchup);
-        if (others.length > 0) {
-          setLiveRelatedStreams(others.slice(0, 5));
+    streamingApiService
+      .getLiveMatches()
+      .then(matches => {
+        if (isMounted && matches && matches.length > 0) {
+          const others = matches
+            .filter(m => m.id !== activeMatch.id && (m.status === 'LIVE' || m.minute > 0))
+            .map(resolveLiveMatchToMatchup);
+          if (others.length > 0) {
+            setLiveRelatedStreams(others.slice(0, 10));
+          }
         }
-      }
-    }).catch(() => {});
+      })
+      .catch(() => {});
 
     // Dynamic Upcoming Matches for context / recommendation
-    streamingApiService.getUpcomingMatches().then(upcoming => {
-      if (isMounted && upcoming && upcoming.length > 0) {
-        const others = upcoming
-          .filter(m => m.id !== match.id)
-          .map(resolveLiveMatchToMatchup);
-        if (others.length > 0) {
-          setUpcomingRelatedMatches(others.slice(0, 6));
+    streamingApiService
+      .getUpcomingMatches()
+      .then(upcoming => {
+        if (isMounted && upcoming && upcoming.length > 0) {
+          const others = upcoming
+            .filter(m => m.id !== activeMatch.id)
+            .map(resolveLiveMatchToMatchup);
+          if (others.length > 0) {
+            setUpcomingRelatedMatches(others.slice(0, 10));
+          }
         }
-      }
-    }).catch(() => {});
+      })
+      .catch(() => {});
 
     // Real-time score and play-time sync from ESPN Scoreboard via findEspnEvent
     const syncLiveScore = () => {
       sportsApiService
-        .findEspnEvent(match.homeTeam.name, match.awayTeam.name, match.sport)
+        .findEspnEvent(activeMatch.homeTeam.name, activeMatch.awayTeam.name, activeMatch.sport)
         .then(found => {
           if (!isMounted || !found) return;
           setLiveScore({
@@ -165,7 +177,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
       isMounted = false;
       clearInterval(pollInterval);
     };
-  }, [match.id, match.streamUrl, match.homeTeam.name, match.awayTeam.name, match.sport]);
+  }, [activeMatch.id, activeMatch.streamUrl, activeMatch.homeTeam.name, activeMatch.awayTeam.name, activeMatch.sport]);
 
   // Fullscreen orientation and hardware back button management
   useEffect(() => {
@@ -204,18 +216,28 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     setIsFullscreen(false);
   };
 
-  const isLive = match.status === 'LIVE';
-  const isReminderSet = profile.matchReminderIds.includes(match.id);
-  const isSaved = profile.savedMatchIds.includes(match.id);
+  const isLive = activeMatch.status === 'LIVE' || Boolean(activeMatch.minute && activeMatch.minute > 0);
+  const isReminderSet = profile.matchReminderIds.includes(activeMatch.id);
+  const isSaved = profile.savedMatchIds.includes(activeMatch.id);
 
-  const relatedStreams = liveRelatedStreams;
-  const showUpcomingSection = !isLive || match.status === 'UPCOMING' || relatedStreams.length === 0;
+  const otherMatches = useMemo(() => {
+    const combined = [...liveRelatedStreams, ...upcomingRelatedMatches];
+    const seen = new Set<string>();
+    const result: DiscoverMatchup[] = [];
+    for (const m of combined) {
+      if (m.id !== activeMatch.id && !seen.has(m.id)) {
+        seen.add(m.id);
+        result.push(m);
+      }
+    }
+    return result;
+  }, [liveRelatedStreams, upcomingRelatedMatches, activeMatch.id]);
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `Watch ${match.homeTeam.name} vs ${match.awayTeam.name} live in Full HD on BALLIVE!`,
-        title: `${match.homeTeam.name} vs ${match.awayTeam.name}`,
+        message: `Watch ${activeMatch.homeTeam.name} vs ${activeMatch.awayTeam.name} live in Full HD on BALLIVE!`,
+        title: `${activeMatch.homeTeam.name} vs ${activeMatch.awayTeam.name}`,
       });
     } catch {
       // User cancelled
@@ -228,8 +250,8 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
       {!isFullscreen && (
         <SecondaryScreenHeader
-          title={match.competition}
-          subtitle={`${match.homeTeam.name} vs ${match.awayTeam.name}`}
+          title={activeMatch.competition}
+          subtitle={`${activeMatch.homeTeam.name} vs ${activeMatch.awayTeam.name}`}
           rightAction={{
             icon: Share2,
             onPress: handleShare,
@@ -242,15 +264,15 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
       <View style={isFullscreen ? styles.fullscreenPlayerWrapper : styles.playerContainer}>
         {isLive ? (
           <LiveStreamPlayer
-            key={`player-${match.id}`}
-            streamUrl={activeStreamUrl || match.streamUrl}
-            streams={activeStreams || match.streams}
+            key={`player-${activeMatch.id}`}
+            streamUrl={activeStreamUrl || activeMatch.streamUrl}
+            streams={activeStreams || activeMatch.streams}
             isLive={isLive}
             isFullscreen={isFullscreen}
-            poster={match.homeTeam.crestUrl || (match as any).homeBadge || getTeamCrest(match.homeTeam.name || match.homeTeam.id)}
-            homeTeamName={match.homeTeam.name}
-            awayTeamName={match.awayTeam.name}
-            title={`${match.homeTeam.name} vs ${match.awayTeam.name}`}
+            poster={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)}
+            homeTeamName={activeMatch.homeTeam.name}
+            awayTeamName={activeMatch.awayTeam.name}
+            title={`${activeMatch.homeTeam.name} vs ${activeMatch.awayTeam.name}`}
             onToggleFullscreen={isFullscreen ? handleExitFullscreen : handleEnterFullscreen}
             style={isFullscreen ? { width: '100%', height: '100%' } : undefined}
           />
@@ -262,12 +284,12 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             </View>
             <Text style={styles.upcomingPlayerTitle}>Broadcast Starts Before Kickoff</Text>
             <Text style={styles.upcomingPlayerSubtitle}>
-              Live satellite coverage begins 15 minutes before {match.kickoffTime}. Set an alert to be notified when the feed connects!
+              Live satellite coverage begins 15 minutes before {activeMatch.kickoffTime}. Set an alert to be notified when the feed connects!
             </Text>
             <TouchableOpacity
               activeOpacity={0.85}
               style={[styles.remindMePill, isReminderSet && styles.remindMePillActive]}
-              onPress={() => toggleMatchReminder(match.id)}
+              onPress={() => toggleMatchReminder(activeMatch.id)}
             >
               {isReminderSet ? (
                 <BellRing size={15} color="#FFFFFF" strokeWidth={2.4} />
@@ -295,18 +317,18 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
               <View style={styles.matchTeamSide}>
                 <View style={styles.crestContainer}>
                   <Image
-                    source={{ uri: match.homeTeam.crestUrl || (match as any).homeBadge || getTeamCrest(match.homeTeam.name || match.homeTeam.id) }}
+                    source={{ uri: activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id) }}
                     style={styles.crestImage}
                   />
                 </View>
                 <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
-                  {match.homeTeam.name}
+                  {activeMatch.homeTeam.name}
                 </Text>
               </View>
 
               {/* Score / Match State Center */}
               <View style={styles.matchScoreCenter}>
-                {isLive || match.status === 'FT' ? (
+                {isLive || activeMatch.status === 'FT' ? (
                   <>
                     <View style={styles.scoreRow}>
                       <Text style={styles.scoreNumber}>{liveScore.home}</Text>
@@ -316,7 +338,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                     <View style={[styles.statusBadgePill, isLive ? styles.statusBadgeLive : styles.statusBadgeFT]}>
                       {isLive && <View style={styles.liveClockDot} />}
                       <Text style={styles.statusBadgeText}>
-                        {liveScore.statusText || (isLive ? `${liveScore.minute || match.minute || 45}' LIVE` : 'FULL TIME')}
+                        {liveScore.statusText || (isLive ? `${liveScore.minute || activeMatch.minute || 45}' LIVE` : 'FULL TIME')}
                       </Text>
                     </View>
                   </>
@@ -326,7 +348,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                       <Text style={styles.vsText}>VS</Text>
                     </View>
                     <Text style={styles.matchStatusSub}>
-                      {match.kickoffTime || '17:30'} • Today
+                      {activeMatch.kickoffTime || '17:30'} • Today
                     </Text>
                   </>
                 )}
@@ -336,12 +358,12 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
               <View style={styles.matchTeamSide}>
                 <View style={styles.crestContainer}>
                   <Image
-                    source={{ uri: match.awayTeam.crestUrl || (match as any).awayBadge || getTeamCrest(match.awayTeam.name || match.awayTeam.id) }}
+                    source={{ uri: activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id) }}
                     style={styles.crestImage}
                   />
                 </View>
                 <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
-                  {match.awayTeam.name}
+                  {activeMatch.awayTeam.name}
                 </Text>
               </View>
             </View>
@@ -351,44 +373,23 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
           <View style={styles.actionsBar}>
             <TouchableOpacity
               activeOpacity={0.8}
-              style={[
-                styles.matchDetailsActionBtn,
-                activeBottomView === 'details' && styles.matchDetailsActionBtnActive,
-              ]}
-              onPress={() => {
-                setActiveBottomView(prev => prev === 'details' ? 'streams' : 'details');
-              }}
-            >
-              {activeBottomView === 'details' ? (
-                <>
-                  <Tv size={15} color="#ECE9FA" strokeWidth={2.4} />
-                  <Text style={styles.matchDetailsActionText}>Show Other Live Streams</Text>
-                </>
-              ) : (
-                <>
-                  <Info size={15} color="#FFFFFF" strokeWidth={2.4} />
-                  <Text style={styles.matchDetailsActionText}>Match Details & Lineups</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.iconActionBtn, isReminderSet && styles.iconActionBtnActive]}
-              onPress={() => toggleMatchReminder(match.id)}
-              accessibilityLabel="Toggle kickoff reminder"
+              style={[styles.actionPrimaryBtn, isReminderSet && styles.actionPrimaryBtnActive]}
+              onPress={() => toggleMatchReminder(activeMatch.id)}
             >
               {isReminderSet ? (
-                <BellRing size={18} color="#7952FC" strokeWidth={2.4} />
+                <BellRing size={16} color="#FFFFFF" strokeWidth={2.4} />
               ) : (
-                <Bell size={18} color="#A098B5" strokeWidth={2} />
+                <Bell size={16} color="#FFFFFF" strokeWidth={2.2} />
               )}
+              <Text style={styles.actionPrimaryBtnText}>
+                {isReminderSet ? 'Alert Enabled' : 'Notify Kickoff'}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               activeOpacity={0.8}
               style={[styles.iconActionBtn, isSaved && styles.iconActionBtnActive]}
-              onPress={() => toggleSaveMatch(match.id)}
+              onPress={() => toggleSaveMatch(activeMatch.id)}
               accessibilityLabel="Bookmark match"
             >
               {isSaved ? (
@@ -397,155 +398,54 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                 <Bookmark size={18} color="#A098B5" strokeWidth={2} />
               )}
             </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.iconActionBtn}
+              onPress={handleShare}
+              accessibilityLabel="Share match"
+            >
+              <Share2 size={18} color="#A098B5" strokeWidth={2} />
+            </TouchableOpacity>
           </View>
 
-          {/* ── 4. CONTENT AREA: INLINE MATCH DETAILS OR OTHER LIVE MATCHES ── */}
-          {activeBottomView === 'details' ? (
-            <View style={styles.inlineDetailsWrapper}>
-              <InlineMatchDetailsModule
-                matchup={match}
-                liveScore={liveScore}
-                onSwitchToLiveStreams={() => setActiveBottomView('streams')}
-                liveStreamCount={relatedStreams.length}
-              />
-            </View>
-          ) : (
+          {/* ── 4. INLINE MATCH DETAILS MODULE (OVERVIEW, LINEUPS, EVENTS) ── */}
+          <View style={styles.inlineDetailsWrapper}>
+            <InlineMatchDetailsModule
+              matchup={activeMatch}
+              liveScore={liveScore}
+            />
+          </View>
+
+          {/* ── 5. OTHER LIVE & UPCOMING FIXTURES CAROUSEL (IN-PLACE SWITCHING) ── */}
+          {otherMatches.length > 0 && (
             <View style={styles.relatedSection}>
-              {showUpcomingSection ? (
-                <>
-                  <Text style={styles.relatedSectionTitle}>OTHER UPCOMING FIXTURES</Text>
-                  {upcomingRelatedMatches.length > 0 ? (
-                    upcomingRelatedMatches.map(rel => {
-                      const relHomeCrest = rel.homeTeam.crestUrl || (rel as any).homeBadge || getTeamCrest(rel.homeTeam.name || rel.homeTeam.id);
-                      const relAwayCrest = rel.awayTeam.crestUrl || (rel as any).awayBadge || getTeamCrest(rel.awayTeam.name || rel.awayTeam.id);
-                      const isReminder = profile.matchReminderIds.includes(rel.id);
+              <View style={styles.relatedSectionHeader}>
+                <Text style={styles.relatedSectionTitle}>
+                  {liveRelatedStreams.length > 0 ? 'MORE LIVE & UPCOMING MATCHES' : 'UPCOMING FIXTURES'}
+                </Text>
+                <View style={styles.relatedCountPill}>
+                  <Text style={styles.relatedCountText}>{otherMatches.length}</Text>
+                </View>
+              </View>
 
-                      return (
-                        <TouchableOpacity
-                          key={rel.id}
-                          activeOpacity={0.8}
-                          style={styles.relatedRow}
-                          onPress={() => {
-                            navigate({
-                              name: 'LiveStreamDetails',
-                              params: { match: rel },
-                            });
-                          }}
-                        >
-                          {/* Top Meta: Comp + Kickoff Pill */}
-                          <View style={styles.relatedMetaRow}>
-                            <Text style={styles.relatedComp} numberOfLines={1} ellipsizeMode="tail">
-                              {rel.competition}
-                            </Text>
-                            <View style={styles.relatedTimePill}>
-                              <Clock size={10} color="#93C5FD" strokeWidth={2.2} style={{ marginRight: 4 }} />
-                              <Text style={styles.relatedTimeText}>
-                                {rel.kickoffTime || 'UPCOMING'}
-                              </Text>
-                            </View>
-                          </View>
-
-                          {/* Matchup Content Row */}
-                          <View style={styles.relatedMatchupRow}>
-                            <View style={styles.relatedTeamsGroup}>
-                              <Image source={{ uri: relHomeCrest }} style={styles.relatedCrest} />
-                              <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
-                                {rel.homeTeam.name}
-                              </Text>
-                              <Text style={styles.relatedVs}>vs</Text>
-                              <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
-                                {rel.awayTeam.name}
-                              </Text>
-                              <Image source={{ uri: relAwayCrest }} style={styles.relatedCrest} />
-                            </View>
-
-                            <TouchableOpacity
-                              activeOpacity={0.7}
-                              style={[styles.remindMiniBtn, isReminder && styles.remindMiniBtnActive]}
-                              onPress={(e) => {
-                                e.stopPropagation?.();
-                                toggleMatchReminder(rel.id);
-                              }}
-                            >
-                              {isReminder ? (
-                                <BellRing size={12} color="#7952FC" strokeWidth={2.4} />
-                              ) : (
-                                <Bell size={12} color="#CBD5E1" strokeWidth={2} />
-                              )}
-                              <Text style={[styles.remindMiniText, isReminder && styles.remindMiniTextActive]}>
-                                {isReminder ? 'Set' : 'Remind'}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })
-                  ) : (
-                    <View style={styles.emptyOtherLive}>
-                      <Calendar size={22} color="#6D6A87" strokeWidth={2} />
-                      <Text style={styles.emptyOtherLiveText}>No upcoming fixtures scheduled right now</Text>
-                    </View>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Text style={styles.relatedSectionTitle}>OTHER LIVE MATCHES</Text>
-                  {relatedStreams.map(rel => {
-                    const relHomeCrest = rel.homeTeam.crestUrl || (rel as any).homeBadge || getTeamCrest(rel.homeTeam.name || rel.homeTeam.id);
-                    const relAwayCrest = rel.awayTeam.crestUrl || (rel as any).awayBadge || getTeamCrest(rel.awayTeam.name || rel.awayTeam.id);
-                    const isRelLive = rel.status === 'LIVE' || (rel.minute && rel.minute > 0);
-
-                    return (
-                      <TouchableOpacity
-                        key={rel.id}
-                        activeOpacity={0.8}
-                        style={styles.relatedRow}
-                        onPress={() => {
-                          navigate({
-                            name: 'LiveStreamDetails',
-                            params: { match: rel },
-                          });
-                        }}
-                      >
-                        {/* Top Meta: Comp + Live Badge */}
-                        <View style={styles.relatedMetaRow}>
-                          <Text style={styles.relatedComp} numberOfLines={1} ellipsizeMode="tail">
-                            {rel.competition}
-                          </Text>
-                          <View style={[styles.relatedLivePill, !isRelLive && styles.relatedTimePill]}>
-                            {isRelLive && <View style={styles.relatedLiveDot} />}
-                            <Text style={styles.relatedLiveText}>
-                              {isRelLive ? `${rel.minute || 45}' LIVE` : rel.kickoffTime}
-                            </Text>
-                          </View>
-                        </View>
-
-                        {/* Matchup Content Row */}
-                        <View style={styles.relatedMatchupRow}>
-                          <View style={styles.relatedTeamsGroup}>
-                            <Image source={{ uri: relHomeCrest }} style={styles.relatedCrest} />
-                            <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
-                              {rel.homeTeam.name}
-                            </Text>
-                            <Text style={styles.relatedVs}>vs</Text>
-                            <Text style={styles.relatedTeamName} numberOfLines={1} ellipsizeMode="tail">
-                              {rel.awayTeam.name}
-                            </Text>
-                            <Image source={{ uri: relAwayCrest }} style={styles.relatedCrest} />
-                          </View>
-
-                          <View style={styles.watchMiniBtn}>
-                            <Tv size={12} color="#FFFFFF" strokeWidth={2.2} />
-                            <Text style={styles.watchMiniText}>Switch</Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </>
-              )}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.relatedCarouselContent}
+              >
+                {otherMatches.map(rel => (
+                  <View key={rel.id} style={styles.relatedCardWrapper}>
+                    <UniversalMatchCard
+                      match={rel}
+                      layout="carousel"
+                      onPress={() => setActiveMatch(rel)}
+                    />
+                  </View>
+                ))}
+              </ScrollView>
             </View>
-        )}
+          )}
         </ScrollView>
       )}
     </View>
@@ -846,7 +746,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 10,
   },
-  matchDetailsActionBtn: {
+  actionPrimaryBtn: {
     flex: 1,
     height: 42,
     borderRadius: 12,
@@ -854,18 +754,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
   },
-  matchDetailsActionBtnActive: {
+  actionPrimaryBtnActive: {
     backgroundColor: '#2A2045',
   },
-  inlineDetailsWrapper: {
-    marginHorizontal: 16,
-  },
-  matchDetailsActionText: {
+  actionPrimaryBtnText: {
     fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  inlineDetailsWrapper: {
+    marginHorizontal: 16,
+    marginBottom: 20,
   },
   iconActionBtn: {
     width: 42,
@@ -878,36 +779,16 @@ const styles = StyleSheet.create({
   iconActionBtnActive: {
     backgroundColor: '#352558',
   },
-  metaCard: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#1E1730',
-    gap: 10,
-  },
-  metaCardTitle: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 4,
-  },
-  metaLabel: {
-    fontSize: 12,
-    color: '#A098B5',
-  },
-  metaVal: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
   relatedSection: {
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  relatedSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 16,
+    marginBottom: 12,
   },
   relatedSectionTitle: {
     fontSize: 11,
@@ -915,136 +796,25 @@ const styles = StyleSheet.create({
     color: '#A098B5',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginBottom: 10,
-    paddingLeft: 2,
   },
-  relatedRow: {
-    backgroundColor: '#1E1730',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 8,
-  },
-  relatedMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  relatedComp: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#7952FC',
-    textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    flex: 1,
-    marginRight: 8,
-  },
-  relatedLivePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FF2E56',
-    paddingHorizontal: 7,
+  relatedCountPill: {
+    backgroundColor: '#261C3D',
+    paddingHorizontal: 8,
     paddingVertical: 2.5,
-    borderRadius: 5,
+    borderRadius: 6,
   },
-  relatedTimePill: {
-    backgroundColor: '#2A2045',
-  },
-  relatedLiveDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: '#FFFFFF',
-  },
-  relatedLiveText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  relatedMatchupRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  relatedTeamsGroup: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginRight: 10,
-  },
-  relatedCrest: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
-  },
-  relatedTeamName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    flexShrink: 1,
-  },
-  relatedVs: {
+  relatedCountText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#7952FC',
-    marginHorizontal: 2,
   },
-  watchMiniBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#2A2045',
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 8,
+  relatedCarouselContent: {
+    paddingLeft: 16,
+    paddingRight: 8,
+    gap: 12,
   },
-  watchMiniText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  remindMiniBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  remindMiniBtnActive: {
-    backgroundColor: 'rgba(121, 82, 252, 0.25)',
-    borderColor: '#7952FC',
-  },
-  remindMiniText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#CBD5E1',
-  },
-  remindMiniTextActive: {
-    color: '#A78BFA',
-  },
-  relatedTimeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#93C5FD',
-  },
-  emptyOtherLive: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 24,
-    gap: 6,
-    backgroundColor: '#1E1730',
-    borderRadius: 14,
-  },
-  emptyOtherLiveText: {
-    fontSize: 12,
-    color: '#A098B5',
-    fontWeight: '500',
+  relatedCardWrapper: {
+    width: 250,
   },
   // Fullscreen Landscape Video Player
   fullscreenContainer: {

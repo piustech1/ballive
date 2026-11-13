@@ -81,7 +81,7 @@ export function normalizeSport(rawSport?: string, competitionName?: string): Nor
   return 'football';
 }
 
-type TabKey = 'overview' | 'stats' | 'lineups' | 'events';
+type TabKey = 'overview' | 'lineups' | 'events';
 
 export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup }) => {
   const { navigate } = useAppNavigation();
@@ -194,70 +194,60 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       case 'mma':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Fight Stats' },
           { key: 'lineups' as TabKey, label: 'Tale of Tape' },
           { key: 'events' as TabKey, label: 'Rounds' },
         ];
       case 'boxing':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Scorecard' },
           { key: 'lineups' as TabKey, label: 'Fighters' },
           { key: 'events' as TabKey, label: 'Results' },
         ];
       case 'basketball':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Box Score' },
           { key: 'lineups' as TabKey, label: 'Starting 5' },
           { key: 'events' as TabKey, label: 'Play-by-Play' },
         ];
       case 'hockey':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Stats' },
           { key: 'lineups' as TabKey, label: 'Lines' },
           { key: 'events' as TabKey, label: 'Periods' },
         ];
       case 'nfl':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Box Score' },
           { key: 'lineups' as TabKey, label: 'Rosters' },
           { key: 'events' as TabKey, label: 'Drives' },
         ];
       case 'motorsport':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Timing' },
           { key: 'lineups' as TabKey, label: 'Grid' },
           { key: 'events' as TabKey, label: 'Results' },
         ];
       case 'wrestling':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Stipulation' },
           { key: 'lineups' as TabKey, label: 'Match Card' },
           { key: 'events' as TabKey, label: 'Results' },
         ];
       case 'tennis':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Match Stats' },
           { key: 'lineups' as TabKey, label: 'Players' },
           { key: 'events' as TabKey, label: 'Sets' },
         ];
       case 'cricket':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Scorecard' },
           { key: 'lineups' as TabKey, label: 'XI' },
           { key: 'events' as TabKey, label: 'Overs' },
         ];
       default:
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'stats' as TabKey, label: 'Statistics' },
           { key: 'lineups' as TabKey, label: 'Lineups' },
           { key: 'events' as TabKey, label: 'Events' },
         ];
@@ -552,51 +542,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             </View>
           )}
 
-          {/* TAB 2: STATISTICS / STATS / BOX SCORE */}
-          {activeTab === 'stats' && (
-            <View style={styles.statsPanel}>
-              {sport === 'mma' || sport === 'boxing' ? (
-                /* COMBAT STATS */
-                <View style={styles.statsContainer}>
-                  <StatBar label="Significant Strikes" homeVal={58} awayVal={42} />
-                  <StatBar label="Striking Accuracy" homeVal={54} awayVal={46} unit="%" />
-                  <StatBar label="Takedowns Landed" homeVal={3} awayVal={1} />
-                  <StatBar label="Submission Attempts" homeVal={2} awayVal={0} />
-                  <StatBar label="Octagon Control Time" homeVal={65} awayVal={35} unit="%" />
-                </View>
-              ) : sport === 'basketball' ? (
-                /* BASKETBALL STATS */
-                <View style={styles.statsContainer}>
-                  <StatBar label="Field Goal %" homeVal={48} awayVal={44} unit="%" />
-                  <StatBar label="3-Point %" homeVal={38} awayVal={32} unit="%" />
-                  <StatBar label="Free Throw %" homeVal={85} awayVal={78} unit="%" />
-                  <StatBar label="Total Rebounds" homeVal={44} awayVal={40} />
-                  <StatBar label="Assists" homeVal={26} awayVal={22} />
-                  <StatBar label="Fastbreak Points" homeVal={18} awayVal={12} />
-                </View>
-              ) : sport === 'hockey' ? (
-                /* HOCKEY STATS */
-                <View style={styles.statsContainer}>
-                  <StatBar label="Shots on Goal (SOG)" homeVal={34} awayVal={28} />
-                  <StatBar label="Power Play %" homeVal={33} awayVal={20} unit="%" />
-                  <StatBar label="Faceoff Win %" homeVal={56} awayVal={44} unit="%" />
-                  <StatBar label="Hits" homeVal={24} awayVal={29} />
-                  <StatBar label="Penalty Minutes" homeVal={6} awayVal={8} />
-                </View>
-              ) : (
-                /* FOOTBALL STATS */
-                <View style={styles.statsContainer}>
-                  <StatBar label="Possession %" homeVal={54} awayVal={46} unit="%" />
-                  <StatBar label="Total Shots" homeVal={15} awayVal={11} />
-                  <StatBar label="Shots on Target" homeVal={6} awayVal={4} />
-                  <StatBar label="Corner Kicks" homeVal={7} awayVal={3} />
-                  <StatBar label="Fouls" homeVal={9} awayVal={12} />
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* TAB 3: LINEUPS / SQUAD SHEETS (LINE VIEW) */}
+          {/* TAB 2: LINEUPS / SQUAD SHEETS (LINE VIEW) */}
           {activeTab === 'lineups' && (
             <View style={styles.lineupsPanel}>
               {sport === 'mma' || sport === 'boxing' ? (
@@ -790,30 +736,6 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
 };
 
 // ── SUBCOMPONENTS ──
-const StatBar: React.FC<{ label: string; homeVal: number; awayVal: number; unit?: string }> = ({
-  label,
-  homeVal,
-  awayVal,
-  unit = '',
-}) => {
-  const total = homeVal + awayVal || 100;
-  const homePct = Math.round((homeVal / total) * 100);
-
-  return (
-    <View style={styles.statBarWrapper}>
-      <View style={styles.statLabelRow}>
-        <Text style={styles.statNumText}>{homeVal}{unit}</Text>
-        <Text style={styles.statLabelText}>{label}</Text>
-        <Text style={styles.statNumText}>{awayVal}{unit}</Text>
-      </View>
-      <View style={styles.statTrack}>
-        <View style={[styles.statFillHome, { width: `${homePct}%` }]} />
-        <View style={[styles.statFillAway, { width: `${100 - homePct}%` }]} />
-      </View>
-    </View>
-  );
-};
-
 const TapeRow: React.FC<{ left: string; metric: string; right: string }> = ({ left, metric, right }) => (
   <View style={styles.tapeRow}>
     <Text style={styles.tapeValLeft}>{left}</Text>
@@ -1276,52 +1198,6 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: '#F8BE38',
-  },
-
-  /* STATS */
-  statsPanel: {
-    flex: 1,
-    justifyContent: 'space-around',
-  },
-  statsContainer: {
-    flex: 1,
-    justifyContent: 'space-around',
-  },
-  statBarWrapper: {
-    marginVertical: 2,
-  },
-  statLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 3,
-  },
-  statNumText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    width: 32,
-    textAlign: 'center',
-  },
-  statLabelText: {
-    fontSize: 10.5,
-    fontWeight: '600',
-    color: '#A098B5',
-  },
-  statTrack: {
-    height: 5,
-    backgroundColor: '#2A2045',
-    borderRadius: 3,
-    flexDirection: 'row',
-    overflow: 'hidden',
-  },
-  statFillHome: {
-    height: '100%',
-    backgroundColor: '#7952FC',
-  },
-  statFillAway: {
-    height: '100%',
-    backgroundColor: '#EF4444',
   },
 
   /* LINEUPS / TALE OF TAPE */
