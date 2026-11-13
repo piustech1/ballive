@@ -12,7 +12,7 @@ import { SearchX, RotateCcw } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { DiscoverHeader } from '../features/discover/DiscoverHeader';
 import { ExploreCompetitions } from '../features/discover/ExploreCompetitions';
-import { PopularLeagues } from '../features/discover/PopularLeagues';
+import { CommunityPromoBanner } from '../features/discover/CommunityPromoBanner';
 import { PopularTeams } from '../features/discover/PopularTeams';
 import { UpcomingHighlights } from '../features/discover/UpcomingHighlights';
 import {
@@ -284,14 +284,8 @@ export const DiscoverScreen: React.FC = () => {
               />
             )}
 
-            {/* ── C. POPULAR LEAGUES (Vertical Rows) ── */}
-            {filteredLeagues.length > 0 && (
-              <PopularLeagues
-                leagues={filteredLeagues}
-                onViewAllPress={() => navigate({ name: 'AllLeagues' })}
-                onLeaguePress={handleLeaguePress}
-              />
-            )}
+            {/* ── C. COMMUNITY PROMOTIONAL BANNER ── */}
+            {!isSearchActive && <CommunityPromoBanner />}
 
             {/* ── D. POPULAR TEAMS (Horizontally Scrollable) ── */}
             {filteredTeams.length > 0 && (
