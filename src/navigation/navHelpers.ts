@@ -35,7 +35,7 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
         crestUrl: live.awayBadge || existing.awayTeam.crestUrl || getTeamCrest(live.awayTeam),
         score: live.score.away,
       },
-      status: 'LIVE',
+      status: live.status || (live.minute > 0 ? 'LIVE' : existing.status),
       streamUrl: live.streamUrl || existing.streamUrl,
       streams: live.streams || existing.streams,
     };
@@ -70,12 +70,12 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
 
   const venue = compLower.includes('nba') ? 'NBA Arena' : compLower.includes('nhl') ? 'NHL Ice Arena' : compLower.includes('ufc') || compLower.includes('mma') ? 'Championship Octagon' : 'Premier Sports Stadium';
 
-  const isLive = live.status === 'LIVE' || (live.minute > 0 && live.minute < 90);
+  const isLive = live.status === 'LIVE' || (live.isLive ?? false) || (live.minute > 0 && live.minute < 90);
   const isFinished = live.status === 'FT' || live.minute >= 90;
-  const matchStatus = isLive ? 'LIVE' : isFinished ? 'FT' : 'UPCOMING';
+  const matchStatus = live.status || (isLive ? 'LIVE' : isFinished ? 'FT' : 'UPCOMING');
   const kickoffTime = isLive
     ? (live.playTime ? `${live.playTime} Live` : (live.minute ? `${live.minute}' Live` : 'Live In-Play'))
-    : isFinished ? 'Full Time' : (live.kickoffTime || 'Today');
+    : isFinished ? 'Full Time' : (live.kickoffTime || live.time || 'Today');
 
   return {
     id: live.id,

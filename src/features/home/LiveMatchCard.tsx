@@ -22,7 +22,7 @@ interface LiveMatchCardProps {
 export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) => {
   const homeCrest = match.homeBadge || getTeamCrest(match.homeTeam);
   const awayCrest = match.awayBadge || getTeamCrest(match.awayTeam);
-  const isUpcoming = match.status === 'UPCOMING';
+  const isUpcoming = match.status === 'UPCOMING' || (!match.isLive && match.minute === 0 && match.status !== 'LIVE');
 
   const rawImage = match.imageUrl;
   const isGenericImage = !rawImage || rawImage.includes('photo-1574629810360-7efbbe195018');
@@ -83,7 +83,7 @@ export const LiveMatchCard: React.FC<LiveMatchCardProps> = ({ match, onPress }) 
             <View style={styles.centerScoreBox}>
               <Text style={styles.vsText}>VS</Text>
               <Text style={styles.kickoffText} numberOfLines={1}>
-                {match.time || 'SOON'}
+                {match.kickoffTime || match.time || 'SOON'}
               </Text>
             </View>
           ) : (

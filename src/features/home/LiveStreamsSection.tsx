@@ -15,6 +15,7 @@ import { MatchCardSkeleton } from '../../components/common/SkeletonLoader';
 interface LiveStreamsSectionProps {
   matches: LiveMatch[];
   isLoading?: boolean;
+  title?: string;
   onViewAllPress?: () => void;
   onMatchPress?: (match: LiveMatch) => void;
 }
@@ -22,14 +23,15 @@ interface LiveStreamsSectionProps {
 export const LiveStreamsSection: React.FC<LiveStreamsSectionProps> = ({
   matches,
   isLoading = false,
+  title = 'Live & Upcoming streams',
   onViewAllPress,
   onMatchPress,
 }) => {
   return (
     <View style={styles.container}>
-      {/* ── SECTION HEADER: Live streams (Left) + View all (Right) ── */}
+      {/* ── SECTION HEADER: Live & Upcoming streams (Left) + View all (Right) ── */}
       <View style={styles.headerRow}>
-        <Text style={styles.sectionTitle}>Live streams</Text>
+        <Text style={styles.sectionTitle}>{title}</Text>
         <TouchableOpacity
           onPress={onViewAllPress}
           activeOpacity={0.7}

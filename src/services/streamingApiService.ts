@@ -101,7 +101,7 @@ class StreamingApiService {
     try {
       const [espnMatchesRes, fbLiveRes, ...dagResults] = await Promise.allSettled([
         // 1. ESPN Real-time Multi-sport scoreboards (NBA, NHL, EPL, LaLiga, UCL, Serie A, Bundesliga, UFC)
-        sportsApiService.getScoreboardMatches(),
+        sportsApiService.getScoreboardMatches(undefined, false),
 
         // 2. Football-Data.org In-Play Matches
         fetch(`${API_CONFIG.FOOTBALL_DATA_BASE_URL}/matches?status=IN_PLAY,PAUSED`, {
@@ -120,12 +120,16 @@ class StreamingApiService {
 
       clearTimeout(timer);
 
-      // ── Process Source 1: ESPN Multi-Sport Scoreboard (Strictly Live Events) ──
+      // ── Process Source 1: ESPN Multi-Sport Scoreboard (Live & Upcoming Events) ──
       if (espnMatchesRes.status === 'fulfilled' && Array.isArray(espnMatchesRes.value)) {
         espnMatchesRes.value.forEach(m => {
           if (!seenMatchIds.has(m.id)) {
             seenMatchIds.add(m.id);
-            fetchedMatches.push(m);
+            if (m.status === 'UPCOMING' || !m.isLive) {
+              fetchedUpcoming.push(m);
+            } else {
+              fetchedMatches.push(m);
+            }
           }
         });
       }
@@ -236,7 +240,7 @@ class StreamingApiService {
               const hToks = cleanHome.split(/\s+/).filter(w => w.length >= 3);
               const aToks = cleanAway.split(/\s+/).filter(w => w.length >= 3);
 
-              const existingMatch = fetchedMatches.find(em => {
+              const existingMatch = [...fetchedMatches, ...fetchedUpcoming].find(em => {
                 const emH = cleanName(em.homeTeam);
                 const emA = cleanName(em.awayTeam);
                 const hHit = hToks.some(t => emH.includes(t) || emA.includes(t));
@@ -333,6 +337,7 @@ class StreamingApiService {
                   minute: 0,
                   playTime: undefined,
                   status: 'UPCOMING',
+                  isLive: false,
                   imageUrl: backdrop,
                   hasLiveStream: false,
                   homeBadge: b1,
@@ -341,6 +346,7 @@ class StreamingApiService {
                   streams,
                   sport,
                   kickoffTime: cleanKickoff,
+                  time: cleanKickoff,
                   venue: isCombat ? 'Championship Octagon' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
                 });
                 return;
@@ -440,19 +446,34 @@ class StreamingApiService {
         }
       }
 
-      // Sort: Live in-play games first, then scheduled games
+      // Sort: Live in-play games first
       fetchedMatches.sort((a, b) => {
         const aLive = a.minute > 0 && a.minute < 90 ? 1 : 0;
         const bLive = b.minute > 0 && b.minute < 90 ? 1 : 0;
         return bLive - aLive;
       });
 
-      if (fetchedMatches.length > 0) {
-        this.cachedLiveMatches = fetchedMatches;
+      // Deduplicate upcoming fixtures by id and team matchup
+      const seenUpcomingKeys = new Set<string>();
+      const uniqueUpcoming: LiveMatch[] = [];
+      fetchedUpcoming.forEach(u => {
+        const uKey = `${cleanName(u.homeTeam)}-${cleanName(u.awayTeam)}`;
+        if (!seenUpcomingKeys.has(uKey) && !seenUpcomingKeys.has(u.id)) {
+          seenUpcomingKeys.add(uKey);
+          seenUpcomingKeys.add(u.id);
+          uniqueUpcoming.push(u);
+        }
+      });
+
+      // Combine: Live matches first, then scheduled upcoming fixtures
+      const combined = [...fetchedMatches, ...uniqueUpcoming];
+
+      if (combined.length > 0) {
+        this.cachedLiveMatches = combined;
         this.lastFetchTime = now;
       }
-      if (fetchedUpcoming.length > 0) {
-        this.cachedUpcomingMatches = fetchedUpcoming;
+      if (uniqueUpcoming.length > 0) {
+        this.cachedUpcomingMatches = uniqueUpcoming;
       }
     } catch (err) {
       console.warn('[StreamingApiService] Error fetching live sports:', err);
@@ -588,10 +609,14 @@ class StreamingApiService {
     else if (compLower.includes('nfl') || compLower.includes('american football')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
     else if (compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png';
 
-    const isLive = live.minute > 0 && live.minute < 90;
-    const isFinished = live.minute >= 90;
-    const matchStatus = isLive ? 'LIVE' : isFinished ? 'FT' : 'UPCOMING';
-    const kickoffTime = isLive ? `${live.minute}' Live` : isFinished ? 'Full Time' : (live.kickoffTime || 'Today');
+    const isLive = live.status === 'LIVE' || (live.isLive ?? false) || (live.minute > 0 && live.minute < 90);
+    const isFinished = live.status === 'FT' || live.minute >= 90;
+    const matchStatus = live.status || (isLive ? 'LIVE' : isFinished ? 'FT' : 'UPCOMING');
+    const kickoffTime = isLive
+      ? (live.playTime ? `${live.playTime} Live` : `${live.minute || 0}' Live`)
+      : isFinished
+      ? 'Full Time'
+      : (live.kickoffTime || live.time || 'Today');
 
     return {
       id: live.id,

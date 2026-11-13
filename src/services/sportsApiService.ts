@@ -1,7 +1,7 @@
 import { API_CONFIG } from '../config/api';
 import { getPlayerPhoto } from '../utils/playerResolver';
 import { getTeamCrest } from '../utils/teamCrestResolver';
-import { LEAGUE_EMBLEMS } from '../constants/crests';
+import { LEAGUE_EMBLEMS, SPORT_BACKDROPS } from '../constants/crests';
 import { StandingsRow } from '../constants/standingsData';
 import {
   TacticalPlayer,
@@ -394,7 +394,7 @@ class SportsApiService {
    * Fetches real live matches across all supported sports directly from ESPN scoreboard.
    * When liveOnly is true (default), strictly returns events that are currently in-play (in).
    */
-  async getScoreboardMatches(leagueKey?: string, liveOnly = true): Promise<LiveMatch[]> {
+  async getScoreboardMatches(leagueKey?: string, liveOnly = false): Promise<LiveMatch[]> {
     const resolvedKey = leagueKey ? resolveLeagueKey(leagueKey) : undefined;
     const leaguesToFetch = resolvedKey
       ? [SUPPORTED_LEAGUES[resolvedKey]].filter(Boolean)
@@ -418,7 +418,9 @@ class SportsApiService {
         return events
           .map((ev: any): LiveMatch | null => {
             const clockInfo = parseClockAndStatus(ev, cfg.sport);
-            // Strictly exclude completed or upcoming games when fetching live matches
+            // Always exclude finished matches
+            if (clockInfo.status === 'FT') return null;
+            // Exclude upcoming games only if liveOnly is strictly requested
             if (liveOnly && !clockInfo.isLive) return null;
 
             const comp = ev.competitions?.[0];
@@ -486,6 +488,10 @@ class SportsApiService {
               });
             }
 
+            const sportKey = cfg.sport === 'soccer' ? 'soccer' : cfg.sport === 'basketball' ? 'basketball' : cfg.sport === 'hockey' ? 'hockey' : cfg.sport === 'football' ? 'american_football' : 'other';
+            const scheduledKickoff = ev.status?.type?.shortDetail || ev.date || 'Upcoming';
+            const displayTime = clockInfo.isLive ? `${clockInfo.playTime} Live` : scheduledKickoff;
+
             return {
               id: `espn-${cfg.league}-${ev.id}`,
               title: `${homeName} vs ${awayName}`,
@@ -496,16 +502,16 @@ class SportsApiService {
               minute: clockInfo.minute,
               playTime: clockInfo.playTime,
               status: clockInfo.status,
-              kickoffTime: clockInfo.isLive ? `${clockInfo.playTime} Live` : clockInfo.playTime,
-              imageUrl:
-                comp?.venue?.images?.[0]?.href ||
-                'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=800&q=80',
+              kickoffTime: displayTime,
+              time: displayTime,
+              isLive: clockInfo.isLive,
+              imageUrl: comp?.venue?.images?.[0]?.href || SPORT_BACKDROPS[sportKey] || SPORT_BACKDROPS.soccer,
               hasLiveStream: true,
               homeBadge: homeLogo,
               awayBadge: awayLogo,
               streamUrl: streams[0]?.url,
               streams,
-              sport: cfg.sport === 'soccer' ? 'soccer' : cfg.sport === 'basketball' ? 'basketball' : cfg.sport === 'hockey' ? 'hockey' : cfg.sport === 'football' ? 'american_football' : 'other',
+              sport: sportKey as any,
               venue: comp?.venue?.fullName || 'Arena',
             };
           })
