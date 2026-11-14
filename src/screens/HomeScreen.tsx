@@ -20,7 +20,7 @@ import {
 } from '../constants/mockData';
 
 import { useAppNavigation } from '../navigation/NavigationContext';
-import { resolveLiveMatchToMatchup, findCompetitionById, getMarqueeMatchOfTheDay } from '../navigation/navHelpers';
+import { resolveLiveMatchToMatchup, findCompetitionById, getMarqueeMatchOfTheDay, navigateToMatch } from '../navigation/navHelpers';
 import { MatchOfTheDayTicker } from '../features/home/MatchOfTheDayTicker';
 import { FilterBottomSheet } from '../features/home/FilterBottomSheet';
 import { QuickAccessLauncher } from '../features/home/QuickAccessLauncher';
@@ -134,27 +134,7 @@ export const HomeScreen: React.FC = () => {
   }, [searchQuery]);
 
   const handleMatchPress = (match: LiveMatch) => {
-    const matchup = resolveLiveMatchToMatchup(match);
-    const isLive =
-      match.status === 'LIVE' ||
-      (match.minute !== undefined && match.minute > 0) ||
-      match.playTime === 'HT' ||
-      matchup.playTime === 'HT' ||
-      matchup.status === 'LIVE' ||
-      Boolean(matchup.isLive) ||
-      Boolean(matchup.streamUrl || match.streamUrl || match.hasLiveStream);
-
-    if (isLive) {
-      navigate({
-        name: 'LiveStreamDetails',
-        params: { match: matchup },
-      });
-    } else {
-      navigate({
-        name: 'MatchDetails',
-        params: { matchup },
-      });
-    }
+    navigateToMatch(navigate, match);
   };
 
   const handleCompetitionPress = (comp: FeaturedCompetition) => {

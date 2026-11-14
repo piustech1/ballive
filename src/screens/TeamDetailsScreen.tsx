@@ -23,6 +23,7 @@ import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeade
 import { PopularTeam, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
+import { navigateToMatch } from '../navigation/navHelpers';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
 
 interface TeamDetailsScreenProps {
@@ -184,25 +185,7 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
                   <UniversalMatchCard
                     match={fixture}
                     layout="full"
-                    onPress={() => {
-                      const isLive =
-                        fixture.status === 'LIVE' ||
-                        (fixture.minute !== undefined && fixture.minute > 0) ||
-                        Boolean(fixture.isLive) ||
-                        Boolean(fixture.hasLiveBroadcast || fixture.streamUrl);
-
-                      if (isLive) {
-                        navigate({
-                          name: 'LiveStreamDetails',
-                          params: { match: fixture },
-                        });
-                      } else {
-                        navigate({
-                          name: 'MatchDetails',
-                          params: { matchup: fixture },
-                        });
-                      }
-                    }}
+                    onPress={() => navigateToMatch(navigate, fixture)}
                   />
                 </View>
               ))}

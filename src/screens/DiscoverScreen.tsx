@@ -27,6 +27,7 @@ import {
 } from '../constants/discoverData';
 
 import { useAppNavigation } from '../navigation/NavigationContext';
+import { navigateToMatch } from '../navigation/navHelpers';
 import { useProfile } from '../hooks/useProfile';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService, GlobalSearchResult } from '../services/sportsApiService';
@@ -228,47 +229,11 @@ export const DiscoverScreen: React.FC = () => {
   };
 
   const handleMatchDetailsPress = (matchup: DiscoverMatchup) => {
-    const isLive =
-      matchup.status === 'LIVE' ||
-      (matchup.minute !== undefined && matchup.minute > 0) ||
-      Boolean(matchup.isLive) ||
-      matchup.playTime === 'HT' ||
-      Boolean(matchup.playTime && matchup.playTime.includes('LIVE')) ||
-      Boolean(matchup.streamUrl || matchup.hasLiveBroadcast);
-
-    if (isLive) {
-      navigate({
-        name: 'LiveStreamDetails',
-        params: { match: matchup },
-      });
-    } else {
-      navigate({
-        name: 'MatchDetails',
-        params: { matchup },
-      });
-    }
+    navigateToMatch(navigate, matchup);
   };
 
   const handleWatchPress = (matchup: DiscoverMatchup) => {
-    const isLive =
-      matchup.status === 'LIVE' ||
-      (matchup.minute !== undefined && matchup.minute > 0) ||
-      Boolean(matchup.isLive) ||
-      matchup.playTime === 'HT' ||
-      Boolean(matchup.playTime && matchup.playTime.includes('LIVE')) ||
-      Boolean(matchup.streamUrl || matchup.hasLiveBroadcast);
-
-    if (isLive) {
-      navigate({
-        name: 'LiveStreamDetails',
-        params: { match: matchup },
-      });
-    } else {
-      navigate({
-        name: 'MatchDetails',
-        params: { matchup },
-      });
-    }
+    navigateToMatch(navigate, matchup);
   };
 
   const handleReminderToggle = (matchup: DiscoverMatchup, isSet: boolean) => {

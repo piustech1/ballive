@@ -29,6 +29,7 @@ import { resolveSportBackground } from '../utils/sportBackgroundResolver';
 import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
+import { navigateToMatch } from '../navigation/navHelpers';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
@@ -83,7 +84,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   useEffect(() => {
     let isMounted = true;
 
-    // 1. Cross-reference with live scoreboards (e.g. ESPN)
+    // 1. Cross-reference with live scoreboards (e.g. ESPN) if active
     sportsApiService
       .findEspnEvent(activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, activeMatchup.sport)
       .then(found => {
@@ -98,13 +99,10 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             homeTeam: { ...prev.homeTeam, score: found.scoreHome },
             awayTeam: { ...prev.awayTeam, score: found.scoreAway },
           }));
-        } else if (found.statusText === 'FT' || (found as any).state === 'post') {
+        } else if (found.statusText && found.statusText.includes('FINAL')) {
           setActiveMatchup(prev => ({
             ...prev,
             status: 'FT',
-            isLive: false,
-            minute: 90,
-            playTime: 'FT',
             homeTeam: { ...prev.homeTeam, score: found.scoreHome },
             awayTeam: { ...prev.awayTeam, score: found.scoreAway },
           }));
@@ -161,27 +159,36 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       rawImage,
       activeMatchup.homeTeam.name,
       activeMatchup.awayTeam.name,
-      activeMatchup.id,
-      homeCrest,
-      awayCrest
+      activeMatchup.id
     );
-  }, [activeMatchup.sport, activeMatchup.competition, rawImage, activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, activeMatchup.id, homeCrest, awayCrest]);
+  }, [
+    activeMatchup.sport,
+    activeMatchup.competition,
+    rawImage,
+    activeMatchup.homeTeam.name,
+    activeMatchup.awayTeam.name,
+    activeMatchup.id,
+  ]);
 
   const isReminderSet = profile.matchReminderIds.includes(activeMatchup.id);
   const isSaved = profile.savedMatchIds.includes(activeMatchup.id);
+
+  // Authoritative match status resolution
   const normalizedStatus = normalizeMatchStatus({
     rawStatus: activeMatchup.status,
     playTime: activeMatchup.playTime,
     minute: activeMatchup.minute,
+    sport: activeMatchup.sport,
   });
+
   const isLive =
     normalizedStatus.isLive ||
     activeMatchup.status === 'LIVE' ||
     Boolean(activeMatchup.isLive) ||
     (activeMatchup.minute !== undefined && activeMatchup.minute > 0) ||
     activeMatchup.playTime === 'HT' ||
-    Boolean(activeMatchup.playTime && activeMatchup.playTime.includes('LIVE')) ||
-    Boolean(activeMatchup.hasLiveBroadcast || activeMatchup.streamUrl);
+    Boolean(activeMatchup.playTime && activeMatchup.playTime.includes('LIVE'));
+
   const isFinished = normalizedStatus.isFinished || activeMatchup.status === 'FT';
   const isUpcoming = !isLive && !isFinished;
   const hasLiveStream = isLive && Boolean(activeMatchup.streamUrl || activeMatchup.hasLiveBroadcast || (activeMatchup.streams && activeMatchup.streams.length > 0));
@@ -189,33 +196,43 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   const homeScore = activeMatchup.homeTeam.score ?? 0;
   const awayScore = activeMatchup.awayTeam.score ?? 0;
 
-  // Load other live & upcoming matches for discovery navigation
+  // Load real related live & upcoming matches for discovery navigation
   useEffect(() => {
     let isMounted = true;
-    streamingApiService
-      .getLiveMatches()
-      .then(matches => {
-        if (!isMounted) return;
-        const converted = matches
-          .map(m => streamingApiService.convertLiveMatchToMatchup(m))
-          .filter(m => m.id !== activeMatchup.id);
 
-        if (converted.length > 0) {
-          setMoreMatches(converted.slice(0, 6));
-        } else {
-          setMoreMatches(UPCOMING_HIGHLIGHTS.filter(m => m.id !== activeMatchup.id).slice(0, 6));
-        }
-      })
-      .catch(() => {
-        if (isMounted) {
-          setMoreMatches(UPCOMING_HIGHLIGHTS.filter(m => m.id !== activeMatchup.id).slice(0, 6));
-        }
-      });
+    Promise.allSettled([
+      streamingApiService.getUpcomingMatches(),
+      streamingApiService.getLiveMatches(),
+    ]).then(results => {
+      if (!isMounted) return;
+      const upcomingRes = results[0].status === 'fulfilled' ? results[0].value : [];
+      const liveRes = results[1].status === 'fulfilled' ? results[1].value : [];
+
+      const allFetched: DiscoverMatchup[] = [
+        ...upcomingRes.map(m => streamingApiService.convertLiveMatchToMatchup(m)),
+        ...liveRes.map(m => streamingApiService.convertLiveMatchToMatchup(m)),
+      ];
+
+      const pool = allFetched.length > 0 ? allFetched : UPCOMING_HIGHLIGHTS;
+      const filtered = pool.filter(m => m.id !== activeMatchup.id);
+
+      // Prioritize same competition, then same sport
+      const sameComp = filtered.filter(m => m.competition.toLowerCase() === activeMatchup.competition.toLowerCase());
+      const sameSport = filtered.filter(m => m.sport === activeMatchup.sport && m.competition.toLowerCase() !== activeMatchup.competition.toLowerCase());
+      const others = filtered.filter(m => m.sport !== activeMatchup.sport && m.competition.toLowerCase() !== activeMatchup.competition.toLowerCase());
+
+      const sorted = [...sameComp, ...sameSport, ...others];
+      setMoreMatches(sorted.slice(0, 6));
+    }).catch(() => {
+      if (isMounted) {
+        setMoreMatches(UPCOMING_HIGHLIGHTS.filter(m => m.id !== activeMatchup.id).slice(0, 6));
+      }
+    });
 
     return () => {
       isMounted = false;
     };
-  }, [activeMatchup.id]);
+  }, [activeMatchup.id, activeMatchup.competition, activeMatchup.sport]);
 
   const handleShare = async () => {
     try {
@@ -336,7 +353,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             </View>
           </View>
 
-          {/* Integrated Metadata Strip (No Empty Gaps) */}
+          {/* Integrated Metadata Strip */}
           <View style={styles.cardMetaStrip}>
             {activeMatchup.venue ? (
               <View style={styles.metaItem}>
@@ -451,70 +468,76 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
           </View>
         </View>
 
-        {/* ── 5. ESSENTIAL MATCH OVERVIEW CARD (SMART SPACE UTILIZATION) ── */}
+        {/* ── 5. MATCH INFORMATION PANEL (BALANCED TWO-COLUMN ARRANGEMENT) ── */}
         <View style={styles.overviewCard}>
           <View style={styles.overviewGrid}>
-            {/* Item 1: Venue */}
-            <View style={styles.overviewItem}>
-              <View style={styles.overviewIconCircle}>
-                <MapPin size={13} color="#A58BFC" strokeWidth={2.2} />
+            {/* Left Column: Venue & Competition */}
+            <View style={styles.overviewCol}>
+              {/* Item 1: Venue */}
+              <View style={styles.overviewItem}>
+                <View style={styles.overviewIconCircle}>
+                  <MapPin size={13} color="#A58BFC" strokeWidth={2.2} />
+                </View>
+                <View style={styles.overviewTextCol}>
+                  <Text style={styles.overviewLabel}>VENUE</Text>
+                  <Text style={styles.overviewValue} numberOfLines={1}>
+                    {activeMatchup.venue || 'Stadium'}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.overviewTextCol}>
-                <Text style={styles.overviewLabel}>VENUE</Text>
-                <Text style={styles.overviewValue} numberOfLines={1}>
-                  {matchup.venue || 'Stadium'}
-                </Text>
+
+              {/* Item 2: Competition */}
+              <View style={styles.overviewItem}>
+                <View style={styles.overviewIconCircle}>
+                  <Trophy size={13} color="#A58BFC" strokeWidth={2.2} />
+                </View>
+                <View style={styles.overviewTextCol}>
+                  <Text style={styles.overviewLabel}>COMPETITION</Text>
+                  <Text style={styles.overviewValue} numberOfLines={1}>
+                    {activeMatchup.competition}
+                  </Text>
+                </View>
               </View>
             </View>
 
-            {/* Item 2: Kickoff */}
-            <View style={styles.overviewItem}>
-              <View style={styles.overviewIconCircle}>
-                <Clock size={13} color="#A58BFC" strokeWidth={2.2} />
+            {/* Right Column: Kickoff & Broadcast */}
+            <View style={styles.overviewCol}>
+              {/* Item 3: Kickoff */}
+              <View style={styles.overviewItem}>
+                <View style={styles.overviewIconCircle}>
+                  <Clock size={13} color="#A58BFC" strokeWidth={2.2} />
+                </View>
+                <View style={styles.overviewTextCol}>
+                  <Text style={styles.overviewLabel}>KICKOFF</Text>
+                  <Text style={styles.overviewValue} numberOfLines={1}>
+                    {formattedKickoff}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.overviewTextCol}>
-                <Text style={styles.overviewLabel}>KICKOFF</Text>
-                <Text style={styles.overviewValue} numberOfLines={1}>
-                  {formattedKickoff}
-                </Text>
-              </View>
-            </View>
 
-            {/* Item 3: Competition */}
-            <View style={styles.overviewItem}>
-              <View style={styles.overviewIconCircle}>
-                <Trophy size={13} color="#A58BFC" strokeWidth={2.2} />
-              </View>
-              <View style={styles.overviewTextCol}>
-                <Text style={styles.overviewLabel}>COMPETITION</Text>
-                <Text style={styles.overviewValue} numberOfLines={1}>
-                  {matchup.competition}
-                </Text>
-              </View>
-            </View>
-
-            {/* Item 4: Coverage / Broadcast */}
-            <View style={styles.overviewItem}>
-              <View style={styles.overviewIconCircle}>
-                <Tv size={13} color="#A58BFC" strokeWidth={2.2} />
-              </View>
-              <View style={styles.overviewTextCol}>
-                <Text style={styles.overviewLabel}>BROADCAST</Text>
-                <Text
-                  style={[
-                    styles.overviewValue,
-                    hasLiveStream && { color: '#EF4444' },
-                  ]}
-                  numberOfLines={1}
-                >
-                  {hasLiveStream ? 'Live Stream Active' : 'BALLIVE Coverage'}
-                </Text>
+              {/* Item 4: Coverage / Broadcast */}
+              <View style={styles.overviewItem}>
+                <View style={styles.overviewIconCircle}>
+                  <Tv size={13} color="#A58BFC" strokeWidth={2.2} />
+                </View>
+                <View style={styles.overviewTextCol}>
+                  <Text style={styles.overviewLabel}>BROADCAST</Text>
+                  <Text
+                    style={[
+                      styles.overviewValue,
+                      hasLiveStream && { color: '#EF4444' },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {hasLiveStream ? 'BALLIVE Live Broadcast' : 'BALLIVE Coverage'}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
         </View>
 
-        {/* ── 6. MORE LIVE & UPCOMING FIXTURES ── */}
+        {/* ── 6. MORE LIVE & UPCOMING FIXTURES (REAL RELATED MATCHES) ── */}
         {moreMatches.length > 0 && (
           <View style={styles.moreSection}>
             <View style={styles.moreHeaderRow}>
@@ -527,19 +550,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   key={item.id}
                   match={item}
                   layout="full"
-                  onPress={() => {
-                    const isItemLive =
-                      item.status === 'LIVE' ||
-                      (item.minute !== undefined && item.minute > 0) ||
-                      Boolean(item.isLive) ||
-                      Boolean(item.hasLiveBroadcast || item.streamUrl);
-
-                    if (isItemLive) {
-                      navigate({ name: 'LiveStreamDetails', params: { match: item } });
-                    } else {
-                      navigate({ name: 'MatchDetails', params: { matchup: item } });
-                    }
-                  }}
+                  onPress={() => navigateToMatch(navigate, item)}
                 />
               ))}
             </View>
@@ -566,8 +577,8 @@ const styles = StyleSheet.create({
   heroContainer: {
     marginHorizontal: 16,
     marginTop: 8,
-    marginBottom: 8,
-    height: 160,
+    marginBottom: 10,
+    height: 170,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#1E1730',
@@ -582,9 +593,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E1730',
     borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingVertical: 14,
     marginHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   matchupRow: {
     flexDirection: 'row',
@@ -597,20 +608,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   crestCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: '#181524',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
   },
   crestImage: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
   },
   teamName: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
     color: Colors.textPrimary,
     textAlign: 'center',
@@ -723,7 +734,7 @@ const styles = StyleSheet.create({
   // ── Balanced Action Controls ──
   actionsContainer: {
     marginHorizontal: 16,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -766,28 +777,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#271D3E',
   },
 
-  // ── Essential Match Overview Card ──
+  // ── Match Information Panel (Balanced Two Columns) ──
   overviewCard: {
     backgroundColor: '#1E1730',
     borderRadius: 14,
-    padding: 12,
+    padding: 14,
     marginHorizontal: 16,
     marginBottom: 14,
   },
   overviewGrid: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
+  },
+  overviewCol: {
+    flex: 1,
+    gap: 12,
   },
   overviewItem: {
-    width: '48%',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
   overviewIconCircle: {
-    width: 30,
-    height: 30,
+    width: 32,
+    height: 32,
     borderRadius: 8,
     backgroundColor: '#181524',
     alignItems: 'center',
@@ -801,10 +814,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#A098B5',
     letterSpacing: 0.5,
-    marginBottom: 1,
+    marginBottom: 2,
   },
   overviewValue: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
   },

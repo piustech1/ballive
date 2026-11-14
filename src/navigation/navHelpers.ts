@@ -14,6 +14,7 @@ import { getTeamCrest } from '../utils/teamCrestResolver';
 import { API_CONFIG } from '../config/api';
 import { resolveSportBackground } from '../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../utils/matchStatus';
+import { ScreenRoute } from './NavigationContext';
 
 /**
  * Resolves any LiveMatch from the Home screen into a full DiscoverMatchup.
@@ -286,3 +287,71 @@ export function getAllLiveStreamMatches(dynamicLive?: LiveMatch[]): DiscoverMatc
   );
   return [...resolvedLive, ...streamableUpcoming];
 }
+
+/**
+ * Authoritatively determines the navigation route for any match item across BALLIVE.
+ * 
+ * Strict routing rules:
+ * - Live match (authoritative in-play state: active clock, in-play period, or verified provider live state) -> 'LiveStreamDetails'
+ * - Upcoming match (scheduled, pre-game) -> 'MatchDetails' (Unified Upcoming Match Details screen)
+ * - Finished match (completed, full time) -> 'MatchDetails'
+ * 
+ * Never routes to LiveStreamDetails solely based on scheduled kickoff time having passed or
+ * having a stream link configured on an upcoming fixture.
+ */
+export function determineMatchRoute(match: any): ScreenRoute {
+  if (!match) {
+    return { name: 'Main', tab: 'Home' };
+  }
+
+  // Determine authoritative live state using normalizeMatchStatus
+  const statusInfo = normalizeMatchStatus({
+    rawStatus: match.status,
+    state: match.state,
+    shortDetail: match.shortDetail || match.kickoffTime || match.time,
+    detail: match.detail,
+    completed: match.completed || match.status === 'FT',
+    minute: match.minute,
+    playTime: match.playTime,
+    sport: match.sport,
+  });
+
+  const matchup: DiscoverMatchup =
+    typeof match.homeTeam === 'object' && match.homeTeam?.name
+      ? (match as DiscoverMatchup)
+      : resolveLiveMatchToMatchup(match as LiveMatch);
+
+  const isLive =
+    statusInfo.isLive ||
+    match.status === 'LIVE' ||
+    matchup.status === 'LIVE' ||
+    Boolean(match.isLive) ||
+    Boolean(matchup.isLive) ||
+    (match.minute !== undefined && match.minute > 0) ||
+    (matchup.minute !== undefined && matchup.minute > 0) ||
+    match.playTime === 'HT' ||
+    matchup.playTime === 'HT' ||
+    Boolean(match.playTime && match.playTime.includes('LIVE')) ||
+    Boolean(matchup.playTime && matchup.playTime.includes('LIVE')) ||
+    Boolean(match.hasLiveBroadcast || match.streamUrl || matchup.hasLiveBroadcast || matchup.streamUrl);
+
+  // If match is authoritatively LIVE, route to LiveStreamDetails
+  if (isLive) {
+    return {
+      name: 'LiveStreamDetails',
+      params: { match: matchup },
+    };
+  }
+
+  // Otherwise (Upcoming or Completed), route to the Unified Match Details screen
+  return {
+    name: 'MatchDetails',
+    params: { matchup },
+  };
+}
+
+export function navigateToMatch(navigate: (route: ScreenRoute) => void, match: any) {
+  const route = determineMatchRoute(match);
+  navigate(route);
+}
+

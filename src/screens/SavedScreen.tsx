@@ -23,6 +23,7 @@ import {
 } from '../constants/discoverData';
 
 import { useAppNavigation } from '../navigation/NavigationContext';
+import { navigateToMatch } from '../navigation/navHelpers';
 
 interface SavedScreenProps {
   onNavigateToDiscover?: () => void;
@@ -57,47 +58,11 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({ onNavigateToDiscover }
 
   // ── INTERACTION HANDLERS ──
   const handleMatchDetails = (matchup: DiscoverMatchup) => {
-    const isLive =
-      matchup.status === 'LIVE' ||
-      (matchup.minute !== undefined && matchup.minute > 0) ||
-      matchup.playTime === 'HT' ||
-      Boolean(matchup.playTime && matchup.playTime.includes('LIVE')) ||
-      Boolean(matchup.isLive) ||
-      Boolean(matchup.streamUrl || matchup.hasLiveBroadcast);
-
-    if (isLive) {
-      navigate({
-        name: 'LiveStreamDetails',
-        params: { match: matchup },
-      });
-    } else {
-      navigate({
-        name: 'MatchDetails',
-        params: { matchup },
-      });
-    }
+    navigateToMatch(navigate, matchup);
   };
 
   const handleWatchPress = (matchup: DiscoverMatchup) => {
-    const isLive =
-      matchup.status === 'LIVE' ||
-      (matchup.minute !== undefined && matchup.minute > 0) ||
-      matchup.playTime === 'HT' ||
-      Boolean(matchup.playTime && matchup.playTime.includes('LIVE')) ||
-      Boolean(matchup.isLive) ||
-      Boolean(matchup.streamUrl || matchup.hasLiveBroadcast);
-
-    if (isLive) {
-      navigate({
-        name: 'LiveStreamDetails',
-        params: { match: matchup },
-      });
-    } else {
-      navigate({
-        name: 'MatchDetails',
-        params: { matchup },
-      });
-    }
+    navigateToMatch(navigate, matchup);
   };
 
   const handleTeamPress = (team: PopularTeam) => {

@@ -25,6 +25,7 @@ import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeade
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
 import { DiscoverMatchup } from '../constants/discoverData';
 import { useAppNavigation } from '../navigation/NavigationContext';
+import { navigateToMatch } from '../navigation/navHelpers';
 import { streamingApiService } from '../services/streamingApiService';
 import { MatchCardSkeleton } from '../components/common/SkeletonLoader';
 
@@ -261,27 +262,7 @@ export const AllLiveStreamsScreen: React.FC = () => {
           <UniversalMatchCard
             match={item}
             layout="grid"
-            onPress={() => {
-              const isLive =
-                item.status === 'LIVE' ||
-                (item.minute !== undefined && item.minute > 0) ||
-                item.playTime === 'HT' ||
-                Boolean(item.playTime && item.playTime.includes('LIVE')) ||
-                Boolean(item.isLive) ||
-                Boolean(item.streamUrl || item.hasLiveBroadcast);
-
-              if (isLive) {
-                navigate({
-                  name: 'LiveStreamDetails',
-                  params: { match: item },
-                });
-              } else {
-                navigate({
-                  name: 'MatchDetails',
-                  params: { matchup: item },
-                });
-              }
-            }}
+            onPress={() => navigateToMatch(navigate, item)}
           />
         )}
         ListEmptyComponent={

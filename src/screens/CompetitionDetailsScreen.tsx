@@ -33,6 +33,7 @@ import { getCompetitionStandings, StandingsRow } from '../constants/standingsDat
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
+import { navigateToMatch } from '../navigation/navHelpers';
 
 import {
   sportsApiService,
@@ -399,49 +400,13 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                 isCombat ? (
                   <MMAFightCard
                     match={displayFixtures[0]}
-                    onPress={() => {
-                      const isLive =
-                        displayFixtures[0].status === 'LIVE' ||
-                        (displayFixtures[0].minute !== undefined && displayFixtures[0].minute > 0) ||
-                        Boolean(displayFixtures[0].isLive) ||
-                        Boolean(displayFixtures[0].hasLiveBroadcast || displayFixtures[0].streamUrl);
-
-                      if (isLive) {
-                        navigate({
-                          name: 'LiveStreamDetails',
-                          params: { match: displayFixtures[0] },
-                        });
-                      } else {
-                        navigate({
-                          name: 'MatchDetails',
-                          params: { matchup: displayFixtures[0] },
-                        });
-                      }
-                    }}
+                    onPress={() => navigateToMatch(navigate, displayFixtures[0])}
                   />
                 ) : (
                   <UniversalMatchCard
                     match={displayFixtures[0]}
                     layout="featured"
-                    onPress={() => {
-                      const isLive =
-                        displayFixtures[0].status === 'LIVE' ||
-                        (displayFixtures[0].minute !== undefined && displayFixtures[0].minute > 0) ||
-                        Boolean(displayFixtures[0].isLive) ||
-                        Boolean(displayFixtures[0].hasLiveBroadcast || displayFixtures[0].streamUrl);
-
-                      if (isLive) {
-                        navigate({
-                          name: 'LiveStreamDetails',
-                          params: { match: displayFixtures[0] },
-                        });
-                      } else {
-                        navigate({
-                          name: 'MatchDetails',
-                          params: { matchup: displayFixtures[0] },
-                        });
-                      }
-                    }}
+                    onPress={() => navigateToMatch(navigate, displayFixtures[0])}
                   />
                 )
               )}
@@ -494,49 +459,13 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                       {isCombat ? (
                         <MMAFightCard
                           match={fixture}
-                          onPress={() => {
-                            const isLive =
-                              fixture.status === 'LIVE' ||
-                              (fixture.minute !== undefined && fixture.minute > 0) ||
-                              Boolean(fixture.isLive) ||
-                              Boolean(fixture.hasLiveBroadcast || fixture.streamUrl);
-
-                            if (isLive) {
-                              navigate({
-                                name: 'LiveStreamDetails',
-                                params: { match: fixture },
-                              });
-                            } else {
-                              navigate({
-                                name: 'MatchDetails',
-                                params: { matchup: fixture },
-                              });
-                            }
-                          }}
+                          onPress={() => navigateToMatch(navigate, fixture)}
                         />
                       ) : (
                         <UniversalMatchCard
                           match={fixture}
                           layout="full"
-                          onPress={() => {
-                            const isLive =
-                              fixture.status === 'LIVE' ||
-                              (fixture.minute !== undefined && fixture.minute > 0) ||
-                              Boolean(fixture.isLive) ||
-                              Boolean(fixture.hasLiveBroadcast || fixture.streamUrl);
-
-                            if (isLive) {
-                              navigate({
-                                name: 'LiveStreamDetails',
-                                params: { match: fixture },
-                              });
-                            } else {
-                              navigate({
-                                name: 'MatchDetails',
-                                params: { matchup: fixture },
-                              });
-                            }
-                          }}
+                          onPress={() => navigateToMatch(navigate, fixture)}
                         />
                       )}
                     </View>

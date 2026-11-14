@@ -40,7 +40,7 @@ import { LiveBadge } from '../components/common/LiveBadge';
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { DiscoverMatchup } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
-import { getAllLiveStreamMatches, resolveLiveMatchToMatchup } from '../navigation/navHelpers';
+import { getAllLiveStreamMatches, resolveLiveMatchToMatchup, determineMatchRoute } from '../navigation/navHelpers';
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { LiveStreamPlayer } from '../components/player/LiveStreamPlayer';
 import { streamingApiService } from '../services/streamingApiService';
@@ -437,7 +437,14 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                     <UniversalMatchCard
                       match={rel}
                       layout="carousel"
-                      onPress={() => setActiveMatch(rel)}
+                      onPress={() => {
+                        const target = determineMatchRoute(rel);
+                        if (target.routeName === 'MatchDetails') {
+                          navigate({ name: 'MatchDetails', params: target.params });
+                        } else {
+                          setActiveMatch(rel);
+                        }
+                      }}
                     />
                   </View>
                 ))}

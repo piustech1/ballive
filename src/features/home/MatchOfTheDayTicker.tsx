@@ -4,6 +4,7 @@ import { Sparkles } from 'lucide-react-native';
 import Colors from '../../theme/colors';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { useAppNavigation } from '../../navigation/NavigationContext';
+import { navigateToMatch } from '../../navigation/navHelpers';
 import { UniversalMatchCard } from '../../components/common/UniversalMatchCard';
 
 interface MatchOfTheDayTickerProps {
@@ -32,27 +33,7 @@ export const MatchOfTheDayTicker: React.FC<MatchOfTheDayTickerProps> = ({ match 
       <UniversalMatchCard
         match={match}
         layout="featured"
-        onPress={() => {
-          const isLive =
-            match.status === 'LIVE' ||
-            (match.minute !== undefined && match.minute > 0) ||
-            match.playTime === 'HT' ||
-            Boolean(match.playTime && match.playTime.includes('LIVE')) ||
-            Boolean(match.isLive) ||
-            Boolean(match.streamUrl || match.hasLiveBroadcast);
-
-          if (isLive) {
-            navigate({
-              name: 'LiveStreamDetails',
-              params: { match },
-            });
-          } else {
-            navigate({
-              name: 'MatchDetails',
-              params: { matchup: match },
-            });
-          }
-        }}
+        onPress={() => navigateToMatch(navigate, match)}
       />
     </View>
   );
