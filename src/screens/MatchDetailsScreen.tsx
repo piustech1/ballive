@@ -84,9 +84,11 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       matchup.sport,
       matchup.competition,
       rawImage,
-      `${matchup.homeTeam.name} vs ${matchup.awayTeam.name}`
+      matchup.homeTeam.name,
+      matchup.awayTeam.name,
+      matchup.id
     );
-  }, [matchup.sport, matchup.competition, rawImage, matchup.homeTeam.name, matchup.awayTeam.name]);
+  }, [matchup.sport, matchup.competition, rawImage, matchup.homeTeam.name, matchup.awayTeam.name, matchup.id]);
 
   // Team crests
   const homeCrest =

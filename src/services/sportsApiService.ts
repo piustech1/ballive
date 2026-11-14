@@ -458,7 +458,8 @@ class SportsApiService {
               ev.league?.name || cfg.name,
               comp?.venue?.images?.[0]?.href,
               homeName,
-              awayName
+              awayName,
+              String(ev.id)
             );
 
             return {
@@ -552,7 +553,7 @@ class SportsApiService {
               },
               venue: 'Stadium Arena',
               hasLiveBroadcast: false,
-              poster: resolveSportBackground('soccer', m.competition?.name || cleanId, null, homeName, awayName),
+              poster: resolveSportBackground('soccer', m.competition?.name || cleanId, null, homeName, awayName, String(m.id)),
             });
           });
           if (matchups.length > 0) return matchups;
@@ -615,7 +616,8 @@ class SportsApiService {
                 espnCfg.name,
                 comp?.venue?.images?.[0]?.href,
                 homeName,
-                awayName
+                awayName,
+                String(ev.id)
               ),
             });
           });

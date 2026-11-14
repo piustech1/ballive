@@ -12,7 +12,7 @@ import { SearchX, RotateCcw } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { DiscoverHeader } from '../features/discover/DiscoverHeader';
 import { ExploreCompetitions } from '../features/discover/ExploreCompetitions';
-import { CommunityPromoBanner } from '../features/discover/CommunityPromoBanner';
+import { SportsScheduleTimeline } from '../features/discover/SportsScheduleTimeline';
 import { PopularTeams } from '../features/discover/PopularTeams';
 import { UpcomingHighlights } from '../features/discover/UpcomingHighlights';
 import {
@@ -36,6 +36,7 @@ export const DiscoverScreen: React.FC = () => {
   const { toggleMatchReminder } = useProfile();
   const [searchQuery, setSearchQuery] = useState('');
   const [liveHighlights, setLiveHighlights] = useState<DiscoverMatchup[]>([]);
+  const [upcomingScheduleMatches, setUpcomingScheduleMatches] = useState<DiscoverMatchup[]>([]);
   const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult[]>([]);
 
   React.useEffect(() => {
@@ -45,6 +46,18 @@ export const DiscoverScreen: React.FC = () => {
         setLiveHighlights(matches.map(m => streamingApiService.convertLiveMatchToMatchup(m)));
       }
     }).catch(() => {});
+
+    streamingApiService.getUpcomingMatches().then(upcoming => {
+      if (isMounted && upcoming && upcoming.length > 0) {
+        const converted = upcoming
+          .filter(m => m.status === 'UPCOMING')
+          .map(m => streamingApiService.convertLiveMatchToMatchup(m));
+        if (converted.length > 0) {
+          setUpcomingScheduleMatches(converted);
+        }
+      }
+    }).catch(() => {});
+
     return () => { isMounted = false; };
   }, []);
 
@@ -292,8 +305,13 @@ export const DiscoverScreen: React.FC = () => {
               />
             )}
 
-            {/* ── C. COMMUNITY PROMOTIONAL BANNER ── */}
-            {!isSearchActive && <CommunityPromoBanner />}
+            {/* ── C. SPORTS SCHEDULE TIMELINE (Replacing Community Banner) ── */}
+            {!isSearchActive && (
+              <SportsScheduleTimeline
+                matches={upcomingScheduleMatches}
+                onMatchPress={handleMatchDetailsPress}
+              />
+            )}
 
             {/* ── D. POPULAR TEAMS (Horizontally Scrollable) ── */}
             {filteredTeams.length > 0 && (

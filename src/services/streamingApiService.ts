@@ -272,7 +272,8 @@ class StreamingApiService {
                 m.genres?.[0] || genre,
                 m.poster || m.background,
                 home,
-                away
+                away,
+                m.id
               );
 
               if (!isTrulyLive) {
@@ -379,7 +380,7 @@ class StreamingApiService {
             const scoreHome = m.score?.fullTime?.home ?? (m.score?.halfTime?.home ?? 0);
             const scoreAway = m.score?.fullTime?.away ?? (m.score?.halfTime?.away ?? 0);
             const minute = m.minute || 45;
-            const bgImage = resolveSportBackground('soccer', m.competition?.name || 'Premier League', null, home, away);
+            const bgImage = resolveSportBackground('soccer', m.competition?.name || 'Premier League', null, home, away, matchId);
 
             fetchedMatches.push({
               id: matchId,
@@ -540,7 +541,8 @@ class StreamingApiService {
       live.competition,
       live.imageUrl,
       live.homeTeam,
-      live.awayTeam
+      live.awayTeam,
+      live.id
     );
 
     return {

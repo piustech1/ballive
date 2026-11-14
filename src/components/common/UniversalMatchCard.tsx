@@ -88,7 +88,8 @@ function normalizeMatchItem(item: UniversalMatchItem) {
     competition,
     rawImage,
     homeTeamName,
-    awayTeamName
+    awayTeamName,
+    item.id
   );
 
   const rawKickoff =

@@ -105,7 +105,8 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     live.competition,
     live.imageUrl,
     live.homeTeam,
-    live.awayTeam
+    live.awayTeam,
+    live.id
   );
 
   return {
