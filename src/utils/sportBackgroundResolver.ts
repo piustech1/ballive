@@ -149,9 +149,9 @@ const BASKETBALL_TEAMS = [
 ];
 
 const HOCKEY_TEAMS = [
-  'rangers', 'bruins', 'canadiens', 'maple leafs', 'leafs', 'blackhawks',
+  'new york rangers', 'ny rangers', 'bruins', 'canadiens', 'maple leafs', 'leafs', 'blackhawks',
   'red wings', 'penguins', 'flyers', 'avalanche', 'lightning', 'golden knights',
-  'oilers', 'flames', 'canucks', 'kraken', 'stars', 'predators', 'jets',
+  'oilers', 'flames', 'canucks', 'kraken', 'dallas stars', 'texas stars', 'predators', 'winnipeg jets',
   'wild', 'blues', 'islanders', 'devils', 'capitals', 'hurricanes',
   'panthers', 'sabres', 'senators', 'ducks', 'sharks', 'coyotes',
 ];
@@ -176,6 +176,45 @@ export function normalizeSportKey(
   const s = (rawSport || '').toLowerCase().trim();
   const c = (competition || '').toLowerCase().trim();
   const teams = `${homeTeam || ''} ${awayTeam || ''}`.toLowerCase().trim();
+
+  // 1. Explicit Soccer / Association Football Check (Highest Priority)
+  const isExplicitSoccer =
+    s === 'soccer' ||
+    s === 'football' ||
+    s === 'association football' ||
+    c.includes('soccer') ||
+    c.includes('premier league') ||
+    c.includes('efl') ||
+    c.includes('championship') ||
+    c.includes('league one') ||
+    c.includes('league two') ||
+    c.includes('la liga') ||
+    c.includes('laliga') ||
+    c.includes('serie a') ||
+    c.includes('bundesliga') ||
+    c.includes('ligue 1') ||
+    c.includes('ligue 2') ||
+    c.includes('coupe de france') ||
+    c.includes('copa del rey') ||
+    c.includes('dfb-pokal') ||
+    c.includes('coppa italia') ||
+    c.includes('fa cup') ||
+    c.includes('carabao') ||
+    c.includes('uefa') ||
+    c.includes('champions league') ||
+    c.includes('europa') ||
+    c.includes('conference league') ||
+    c.includes('fifa') ||
+    c.includes('world cup') ||
+    c.includes('afcon') ||
+    c.includes('conmebol') ||
+    c.includes('concacaf') ||
+    c.includes('friendly') ||
+    c.includes('wsl');
+
+  if (isExplicitSoccer && !s.includes('american') && !c.includes('nfl') && !c.includes('super bowl')) {
+    return 'soccer';
+  }
 
   // Basketball
   if (

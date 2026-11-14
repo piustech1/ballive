@@ -610,39 +610,90 @@ class StreamingApiService {
     }
 
     // 3. Resolve verified 24/7 sports broadcast feeds for this competition/sport
-    const primaryChannel = getBroadcastChannelId(competitionOrSport, '');
-    let secondaryChannel: string | undefined;
+    const CHANNEL_LABELS: Record<string, string> = {
+      [API_CONFIG.PRIORITY_CHANNELS.BEIN]: 'beIN Sports HD',
+      [API_CONFIG.PRIORITY_CHANNELS.GOLAZO]: 'CBS Sports Golazo',
+      [API_CONFIG.PRIORITY_CHANNELS.FOOTBALL]: 'Sky Sports Football',
+      [API_CONFIG.PRIORITY_CHANNELS.PL]: 'Sky Sports Premier League',
+      [API_CONFIG.PRIORITY_CHANNELS.MAIN_EVENT]: 'Sky Sports Main Event',
+      [API_CONFIG.PRIORITY_CHANNELS.UCL]: 'TNT Sports 1 HD',
+      [API_CONFIG.PRIORITY_CHANNELS.LALIGA]: 'LaLiga TV HD',
+      [API_CONFIG.PRIORITY_CHANNELS.DAZN]: 'DAZN LaLiga HD',
+      [API_CONFIG.PRIORITY_CHANNELS.NBA]: 'NBA TV HD',
+      [API_CONFIG.PRIORITY_CHANNELS.NBA_BACKUP]: 'NBA TV Backup',
+      [API_CONFIG.PRIORITY_CHANNELS.NHL]: 'NHL Network',
+      [API_CONFIG.PRIORITY_CHANNELS.F1]: 'Sky Sports F1 HD',
+      [API_CONFIG.PRIORITY_CHANNELS.TENNIS]: 'Sky Sport Tennis',
+    };
 
-    if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.PL) {
-      secondaryChannel = API_CONFIG.PRIORITY_CHANNELS.BEIN;
+    const primaryChannel = getBroadcastChannelId(competitionOrSport, '');
+    const compLower = (competitionOrSport || '').toLowerCase();
+    let secondaryChannels: string[] = [];
+
+    if (
+      compLower.includes('friendly') ||
+      compLower.includes('fifa') ||
+      compLower.includes('afc') ||
+      compLower.includes('caf') ||
+      compLower.includes('conmebol') ||
+      compLower.includes('concacaf') ||
+      compLower.includes('qualifier') ||
+      compLower.includes('international')
+    ) {
+      secondaryChannels = [
+        API_CONFIG.PRIORITY_CHANNELS.GOLAZO,
+        API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
+        API_CONFIG.PRIORITY_CHANNELS.MAIN_EVENT,
+      ];
+    } else if (compLower.includes('efl') || compLower.includes('championship')) {
+      secondaryChannels = [
+        API_CONFIG.PRIORITY_CHANNELS.MAIN_EVENT,
+        API_CONFIG.PRIORITY_CHANNELS.BEIN,
+      ];
+    } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.PL) {
+      secondaryChannels = [
+        API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
+        API_CONFIG.PRIORITY_CHANNELS.BEIN,
+      ];
     } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.BEIN) {
-      secondaryChannel = API_CONFIG.PRIORITY_CHANNELS.PL;
+      secondaryChannels = [
+        API_CONFIG.PRIORITY_CHANNELS.GOLAZO,
+        API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
+      ];
     } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.LALIGA) {
-      secondaryChannel = API_CONFIG.PRIORITY_CHANNELS.PL;
+      secondaryChannels = [
+        API_CONFIG.PRIORITY_CHANNELS.DAZN,
+        API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
+      ];
     } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.UCL) {
-      secondaryChannel = API_CONFIG.PRIORITY_CHANNELS.PL;
+      secondaryChannels = [
+        API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
+        API_CONFIG.PRIORITY_CHANNELS.BEIN,
+      ];
     } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.NBA) {
-      secondaryChannel = API_CONFIG.PRIORITY_CHANNELS.NBA_BACKUP;
+      secondaryChannels = [
+        API_CONFIG.PRIORITY_CHANNELS.NBA_BACKUP,
+      ];
     }
 
-    const channelsToFetch = [primaryChannel, secondaryChannel].filter(Boolean) as string[];
+    const channelsToFetch = Array.from(new Set([primaryChannel, ...secondaryChannels])).filter(Boolean);
 
+    let serverCounter = 1;
     const channelResults = await Promise.allSettled(
-      channelsToFetch.map(async (chId, chIndex) => {
+      channelsToFetch.map(async (chId) => {
         const res = await fetch(`${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${chId}.json`, {
           headers: API_CONFIG.DAG_HEADERS,
         });
         if (!res.ok) return [];
         const data = await res.json();
         const extracted: RawStreamSource[] = [];
-        (data.streams || []).forEach((s: any, sIdx: number) => {
+        const label = CHANNEL_LABELS[chId] || 'Live Satellite Feed';
+        (data.streams || []).forEach((s: any) => {
           const playUrl = s.url || s.externalUrl;
           if (playUrl) {
             extracted.push({
-              id: `stream-bcast-${chIndex}-${sIdx}`,
-              name: chIndex === 0
-                ? (s.name ? `Server 1 (${s.name})` : 'Server 1 (Live HD Broadcast)')
-                : (s.name ? `Server 2 (${s.name})` : 'Server 2 (Backup HD Stream)'),
+              id: `stream-bcast-${chId}-${extracted.length}`,
+              name: `Server ${serverCounter++} (${label})`,
               url: playUrl,
             });
           }
@@ -659,9 +710,10 @@ class StreamingApiService {
 
     // 4. Fallback endpoint if upstream manifest network is delayed
     if (mirrors.length === 0) {
+      const label = CHANNEL_LABELS[primaryChannel] || 'Live HD Broadcast';
       mirrors.push({
         id: 'stream-fallback-1',
-        name: 'Server 1 (Live HD Broadcast)',
+        name: `Server 1 (${label})`,
         url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${primaryChannel}.json`,
       });
     }

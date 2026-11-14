@@ -33,6 +33,7 @@ import {
   Sparkles,
   ShieldAlert,
   ArrowLeft,
+  Check,
 } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
@@ -304,7 +305,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
       <View style={isFullscreen ? styles.fullscreenPlayerWrapper : styles.playerContainer}>
         {isLive && hasPlayableStream ? (
           <LiveStreamPlayer
-            key={`player-${activeMatch.id}`}
+            key={`player-${activeMatch.id}-${activeStreamUrl || 'default'}`}
             streamUrl={activeStreamUrl || activeMatch.streamUrl}
             streams={activeStreams || activeMatch.streams}
             isLive={isLive}
@@ -419,6 +420,45 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
               </View>
             </View>
           </View>
+
+          {/* ── BROADCAST SERVERS SWITCHER ── */}
+          {isLive && activeStreams && activeStreams.length > 1 && (
+            <View style={styles.serverSection}>
+              <View style={styles.serverSectionHeader}>
+                <Radio size={13} color="#7952FC" strokeWidth={2.4} />
+                <Text style={styles.serverSectionTitle}>Broadcast Servers</Text>
+                <Text style={styles.serverSectionHint}>Tap to switch channel feed</Text>
+              </View>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.serverPillList}
+              >
+                {activeStreams.map((s, idx) => {
+                  const isSelected = activeStreamUrl === s.url || (!activeStreamUrl && idx === 0);
+                  return (
+                    <TouchableOpacity
+                      key={s.id || `srv-${idx}`}
+                      activeOpacity={0.8}
+                      style={[styles.serverPill, isSelected && styles.serverPillActive]}
+                      onPress={() => {
+                        setActiveStreamUrl(s.url);
+                      }}
+                    >
+                      {isSelected ? (
+                        <Check size={12} color="#FFFFFF" strokeWidth={2.6} style={{ marginRight: 5 }} />
+                      ) : (
+                        <Tv size={12} color="#A098B5" strokeWidth={2} style={{ marginRight: 5 }} />
+                      )}
+                      <Text style={[styles.serverPillText, isSelected && styles.serverPillTextActive]}>
+                        {s.name}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
+          )}
 
           {/* ── 3. MATCH ACTIONS BAR ── */}
           <View style={styles.actionsBar}>
@@ -799,6 +839,59 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#A098B5',
     fontWeight: '600',
+  },
+  serverSection: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#151322',
+    borderRadius: 14,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#241E38',
+  },
+  serverSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  serverSectionTitle: {
+    color: '#ECE6F0',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  serverSectionHint: {
+    color: '#7E7694',
+    fontSize: 10.5,
+    marginLeft: 'auto',
+  },
+  serverPillList: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  serverPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E1A30',
+    paddingHorizontal: 11,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2D264A',
+  },
+  serverPillActive: {
+    backgroundColor: '#7952FC',
+    borderColor: '#906BFF',
+  },
+  serverPillText: {
+    color: '#A098B5',
+    fontSize: 11.5,
+    fontWeight: '600',
+  },
+  serverPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   actionsBar: {
     flexDirection: 'row',

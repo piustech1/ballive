@@ -26,11 +26,14 @@ export const API_CONFIG = {
   // 24/7 Verified Football & Multi-Sport Broadcast Channels on DAG
   PRIORITY_CHANNELS: {
     PL: 'moviebay_sport_cdn_ch_xx_sky-sports-premier-league-fhd-uk',
+    MAIN_EVENT: 'moviebay_sport_cdn_ch_xx_sky-sports-main-event-fhd-uk',
+    FOOTBALL: 'moviebay_sport_cdn_ch_xx_sky-sports-football-fhd-uk',
     UCL: 'moviebay_sport_cdn_ch_xx_tnt-sports-1-fhd-uk',
     LALIGA: 'moviebay_sport_cdn_ch_xx_laliga-tv-fhd-uk',
     DAZN: 'moviebay_sport_cdn_ch_xx_dazn-la-liga-hd',
     SUPERSPORT: 'moviebay_sport_dlv_ch_414_supersport-premier-league',
     BEIN: 'moviebay_sport_cdn_ch_xx_bein-sports-hd-us',
+    GOLAZO: 'moviebay_sport_cdn_ch_xx_cbs-sports-golazo-network-fhd-us',
     SKY_DE: 'moviebay_sport_cdn_ch_xx_sky-sport-premier-league-fhd-de',
     NBA: 'moviebay_sport_cdn_ch_xx_nba-tv-fhd-us',
     NBA_BACKUP: 'moviebay_sport_dlv_ch_404_nba-tv-usa',
@@ -71,21 +74,58 @@ export function getBroadcastChannelId(competition: string = '', sport: string = 
   }
 
   // Soccer / Association Football
+  // International Friendlies, FIFA, AFC, CAF, World Cup Qualifiers (e.g. Iran vs Palestine)
+  if (
+    compLower.includes('friendly') ||
+    compLower.includes('fifa') ||
+    compLower.includes('afc') ||
+    compLower.includes('caf') ||
+    compLower.includes('conmebol') ||
+    compLower.includes('concacaf') ||
+    compLower.includes('qualifier') ||
+    compLower.includes('international')
+  ) {
+    return API_CONFIG.PRIORITY_CHANNELS.BEIN;
+  }
+
+  // English Football League (EFL Championship, League One, League Two, Carabao Cup)
+  if (
+    compLower.includes('efl') ||
+    compLower.includes('championship') ||
+    compLower.includes('league one') ||
+    compLower.includes('league two') ||
+    compLower.includes('carabao')
+  ) {
+    return API_CONFIG.PRIORITY_CHANNELS.FOOTBALL;
+  }
+
+  // Spain
   if (compLower.includes('laliga') || compLower.includes('spain') || compLower.includes('copa del rey') || compLower.includes('liga f')) {
     return API_CONFIG.PRIORITY_CHANNELS.LALIGA;
   }
+
+  // UEFA European Tournaments
   if (compLower.includes('champions') || compLower.includes('ucl') || compLower.includes('europa') || compLower.includes('conference')) {
     return API_CONFIG.PRIORITY_CHANNELS.UCL;
   }
-  if (compLower.includes('france') || compLower.includes('première') || compLower.includes('premiere') || compLower.includes('ligue 1') || compLower.includes('coupe de france')) {
+
+  // France
+  if (compLower.includes('france') || compLower.includes('première') || compLower.includes('premiere') || compLower.includes('ligue 1') || compLower.includes('ligue 2') || compLower.includes('coupe de france')) {
     return API_CONFIG.PRIORITY_CHANNELS.BEIN;
   }
+
+  // Italy
   if (compLower.includes('serie a') || compLower.includes('italy') || compLower.includes('coppa italia')) {
     return API_CONFIG.PRIORITY_CHANNELS.DAZN;
   }
 
-  // Default football (WSL, Premier League, Friendlies, Global Football)
-  return API_CONFIG.PRIORITY_CHANNELS.PL;
+  // Premier League & Women's Super League
+  if (compLower.includes('premier') || compLower.includes('wsl') || compLower.includes('women')) {
+    return API_CONFIG.PRIORITY_CHANNELS.PL;
+  }
+
+  // General Global Football (CBS Sports Golazo 24/7 Football Network)
+  return API_CONFIG.PRIORITY_CHANNELS.GOLAZO;
 }
 
 /**

@@ -52,6 +52,39 @@ export function normalizeSport(rawSport?: string, competitionName?: string): Nor
   const s = (rawSport || '').toLowerCase();
   const c = (competitionName || '').toLowerCase();
 
+  // 1. Explicit Football / Soccer / EFL / Tournaments (Highest Priority)
+  const isSoccer =
+    s === 'soccer' ||
+    s === 'football' ||
+    s === 'association football' ||
+    c.includes('soccer') ||
+    c.includes('premier') ||
+    c.includes('efl') ||
+    c.includes('championship') ||
+    c.includes('league one') ||
+    c.includes('league two') ||
+    c.includes('la liga') ||
+    c.includes('laliga') ||
+    c.includes('serie a') ||
+    c.includes('bundesliga') ||
+    c.includes('ligue 1') ||
+    c.includes('ligue 2') ||
+    c.includes('coupe') ||
+    c.includes('copa') ||
+    c.includes('fa cup') ||
+    c.includes('carabao') ||
+    c.includes('champions') ||
+    c.includes('europa') ||
+    c.includes('conference') ||
+    c.includes('fifa') ||
+    c.includes('uefa') ||
+    c.includes('friendly') ||
+    c.includes('wsl');
+
+  if (isSoccer && !s.includes('american') && !c.includes('nfl')) {
+    return 'football';
+  }
+
   if (s === 'boxing' || c.includes('boxing') || c.includes('wbc') || c.includes('wba')) return 'boxing';
   if (s === 'wrestling' || c.includes('wwe') || c.includes('aew') || c.includes('tna') || c.includes('wrestling')) return 'wrestling';
   if (s === 'mma' || s === 'combat' || c.includes('ufc') || c.includes('mma') || c.includes('bellator') || c.includes('pfl')) return 'mma';
@@ -61,7 +94,6 @@ export function normalizeSport(rawSport?: string, competitionName?: string): Nor
   if (s === 'motorsport' || s === 'racing' || s === 'f1' || c.includes('f1') || c.includes('formula') || c.includes('grand prix') || c.includes('motorsport') || c.includes('nascar')) return 'motorsport';
   if (s === 'tennis' || c.includes('tennis') || c.includes('atp') || c.includes('wta') || c.includes('wimbledon') || c.includes('us open')) return 'tennis';
   if (s === 'cricket' || c.includes('cricket') || c.includes('ipl') || c.includes('icc') || c.includes('bbl')) return 'cricket';
-  if (s === 'soccer' || s === 'football' || c.includes('premier') || c.includes('la liga') || c.includes('serie a') || c.includes('bundesliga') || c.includes('champions') || c.includes('fifa') || c.includes('uefa') || c.includes('league')) return 'football';
 
   return 'football';
 }

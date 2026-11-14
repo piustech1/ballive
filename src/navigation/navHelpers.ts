@@ -70,14 +70,43 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
   else if (compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png';
   else if (compLower.includes('tennis')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/tennis.png';
 
-  const sport: any = live.sport || (
-    compLower.includes('nba') || compLower.includes('basketball') ? 'basketball' :
-    compLower.includes('nhl') || compLower.includes('hockey') ? 'hockey' :
-    compLower.includes('ufc') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling') || compLower.includes('tna') || compLower.includes('aew') ? 'mma' :
-    compLower.includes('nfl') || compLower.includes('american football') ? 'american_football' :
-    compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport') ? 'motorsport' :
-    compLower.includes('tennis') ? 'tennis' : 'soccer'
-  );
+  const isExplicitSoccer =
+    compLower.includes('soccer') ||
+    compLower.includes('premier') ||
+    compLower.includes('efl') ||
+    compLower.includes('championship') ||
+    compLower.includes('league one') ||
+    compLower.includes('league two') ||
+    compLower.includes('la liga') ||
+    compLower.includes('laliga') ||
+    compLower.includes('serie') ||
+    compLower.includes('bundesliga') ||
+    compLower.includes('ligue') ||
+    compLower.includes('coupe') ||
+    compLower.includes('copa') ||
+    compLower.includes('fa cup') ||
+    compLower.includes('carabao') ||
+    compLower.includes('uefa') ||
+    compLower.includes('champions') ||
+    compLower.includes('europa') ||
+    compLower.includes('conference') ||
+    compLower.includes('fifa') ||
+    compLower.includes('friendly') ||
+    compLower.includes('wsl');
+
+  const liveSportLower = ((live.sport as any) || '').toLowerCase();
+  const isLiveSoccer = liveSportLower === 'soccer' || liveSportLower === 'football';
+
+  const sport: any = (isExplicitSoccer || isLiveSoccer) && !compLower.includes('nhl') && !compLower.includes('nba') && !compLower.includes('nfl')
+    ? 'soccer'
+    : live.sport || (
+      compLower.includes('nba') || compLower.includes('basketball') ? 'basketball' :
+      compLower.includes('nhl') || compLower.includes('hockey') ? 'hockey' :
+      compLower.includes('ufc') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling') || compLower.includes('tna') || compLower.includes('aew') ? 'mma' :
+      compLower.includes('nfl') || compLower.includes('american football') ? 'american_football' :
+      compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport') ? 'motorsport' :
+      compLower.includes('tennis') ? 'tennis' : 'soccer'
+    );
 
   const venue = compLower.includes('nba') ? 'NBA Arena' : compLower.includes('nhl') ? 'NHL Ice Arena' : compLower.includes('ufc') || compLower.includes('mma') ? 'Championship Octagon' : 'Premier Sports Stadium';
 

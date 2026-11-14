@@ -586,8 +586,14 @@ class SportsApiService {
     const homeTokens = homeClean.split(/\s+/).filter(w => w.length >= 3);
     const awayTokens = awayClean.split(/\s+/).filter(w => w.length >= 3);
 
+    const normPref = (preferredSport || '').toLowerCase() === 'football' ? 'soccer' : (preferredSport || '').toLowerCase();
+
     // 1. Strict two-team match
     for (const ev of events) {
+      const evSport = ((ev._sport || '') as string).toLowerCase() === 'football' ? 'soccer' : ((ev._sport || '') as string).toLowerCase();
+      // Strict sport boundary - never match across sports when preferredSport is specified
+      if (normPref && evSport && normPref !== evSport) continue;
+
       const comp = ev.competitions?.[0];
       if (!comp?.competitors || comp.competitors.length < 2) continue;
 
@@ -620,16 +626,28 @@ class SportsApiService {
       }
     }
 
-    // 2. Fallback single-team unique match (token >= 4 chars)
+    // 2. Fallback single-team unique match (token >= 4 chars, excluding generic multi-sport names)
+    const GENERIC_MULTI_SPORT_WORDS = new Set([
+      'rangers', 'stars', 'kings', 'panthers', 'jets', 'giants', 'cardinals',
+      'tigers', 'lions', 'bears', 'eagles', 'wild', 'devils', 'senators',
+      'united', 'city', 'town', 'athletic', 'rovers', 'wanderers', 'real',
+      'inter', 'racing', 'sporting', 'dynamo', 'club', 'team', 'saint',
+      'stade', 'olympique', 'vallecano', 'madrid', 'barcelona',
+    ]);
+
     for (const ev of events) {
+      const evSport = ((ev._sport || '') as string).toLowerCase() === 'football' ? 'soccer' : ((ev._sport || '') as string).toLowerCase();
+      // Strict sport boundary - never match across sports
+      if (normPref && evSport && normPref !== evSport) continue;
+
       const comp = ev.competitions?.[0];
       if (!comp?.competitors || comp.competitors.length < 2) continue;
 
       const t0 = clean(comp.competitors[0]?.team?.displayName || '');
       const t1 = clean(comp.competitors[1]?.team?.displayName || '');
 
-      const hMatch = homeTokens.some(tok => tok.length >= 4 && (t0.includes(tok) || t1.includes(tok)));
-      const aMatch = awayTokens.some(tok => tok.length >= 4 && (t0.includes(tok) || t1.includes(tok)));
+      const hMatch = homeTokens.some(tok => tok.length >= 4 && !GENERIC_MULTI_SPORT_WORDS.has(tok) && (t0.includes(tok) || t1.includes(tok)));
+      const aMatch = awayTokens.some(tok => tok.length >= 4 && !GENERIC_MULTI_SPORT_WORDS.has(tok) && (t0.includes(tok) || t1.includes(tok)));
 
       if (hMatch || aMatch) {
         const c0 = comp.competitors[0];
@@ -1429,14 +1447,41 @@ class SportsApiService {
 
     // Sport-adaptive fallbacks based on sport / competition
     const compLower = matchup.competition.toLowerCase();
-    const resolvedSport = matchup.sport || (
-      compLower.includes('nba') || compLower.includes('basketball') ? 'basketball' :
-      compLower.includes('nhl') || compLower.includes('hockey') ? 'hockey' :
-      compLower.includes('ufc') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling') || compLower.includes('tna') || compLower.includes('aew') ? 'mma' :
-      compLower.includes('nfl') || compLower.includes('american football') ? 'american_football' :
-      compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport') ? 'motorsport' :
-      compLower.includes('tennis') ? 'tennis' : 'soccer'
-    );
+    const rawSportLower = ((matchup.sport as any) || '').toLowerCase();
+    const isExplicitSoccerComp =
+      compLower.includes('soccer') ||
+      compLower.includes('premier') ||
+      compLower.includes('efl') ||
+      compLower.includes('championship') ||
+      compLower.includes('league one') ||
+      compLower.includes('league two') ||
+      compLower.includes('la liga') ||
+      compLower.includes('laliga') ||
+      compLower.includes('serie') ||
+      compLower.includes('bundesliga') ||
+      compLower.includes('ligue') ||
+      compLower.includes('coupe') ||
+      compLower.includes('copa') ||
+      compLower.includes('fa cup') ||
+      compLower.includes('carabao') ||
+      compLower.includes('uefa') ||
+      compLower.includes('champions') ||
+      compLower.includes('europa') ||
+      compLower.includes('conference') ||
+      compLower.includes('fifa') ||
+      compLower.includes('friendly') ||
+      compLower.includes('wsl');
+
+    const resolvedSport = (isExplicitSoccerComp || rawSportLower === 'soccer' || rawSportLower === 'football') && !compLower.includes('nhl') && !compLower.includes('nba') && !compLower.includes('nfl')
+      ? 'soccer'
+      : matchup.sport || (
+        compLower.includes('nba') || compLower.includes('basketball') ? 'basketball' :
+        compLower.includes('nhl') || compLower.includes('hockey') ? 'hockey' :
+        compLower.includes('ufc') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling') || compLower.includes('tna') || compLower.includes('aew') ? 'mma' :
+        compLower.includes('nfl') || compLower.includes('american football') ? 'american_football' :
+        compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport') ? 'motorsport' :
+        compLower.includes('tennis') ? 'tennis' : 'soccer'
+      );
 
     if (resolvedSport === 'mma') {
       const intel = buildCombatIntel(matchup);
