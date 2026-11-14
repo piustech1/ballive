@@ -2,7 +2,7 @@
   "expo": {
     "name": "BALLIVE",
     "slug": "ballive",
-    "version": "2.6.0",
+    "version": "2.6.1",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -13,7 +13,7 @@
     },
     "android": {
       "package": "com.piustech.ballive",
-      "versionCode": 35,
+      "versionCode": 36,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#1E1730"

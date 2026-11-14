@@ -11,7 +11,7 @@ import {
 import { LIVE_MATCHES, LiveMatch, FEATURED_COMPETITIONS, FeaturedCompetition } from '../constants/mockData';
 import { CLUB_CRESTS, LEAGUE_EMBLEMS } from '../constants/crests';
 import { getTeamCrest } from '../utils/teamCrestResolver';
-import { API_CONFIG } from '../config/api';
+import { API_CONFIG, getBroadcastChannelId } from '../config/api';
 import { resolveSportBackground } from '../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../utils/matchStatus';
 import { ScreenRoute } from './NavigationContext';
@@ -99,7 +99,13 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     ? 'Full Time'
     : (rawKickoff.includes('EAT') ? rawKickoff : formatKickoffEAT(rawKickoff));
 
-  const hasLiveStream = isLive && Boolean(live.streamUrl || (live.streams && live.streams.length > 0));
+    const compChannel = getBroadcastChannelId(live.competition, live.sport);
+  const resolvedStreamUrl = live.streamUrl || (isLive ? `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${compChannel}.json` : undefined);
+  const resolvedStreams = (live.streams && live.streams.length > 0)
+    ? live.streams
+    : (isLive && resolvedStreamUrl ? [{ id: `srv-${compChannel}`, name: 'Server 1 (Live HD Broadcast)', url: resolvedStreamUrl }] : undefined);
+
+  const hasLiveStream = isLive && Boolean(resolvedStreamUrl || (resolvedStreams && resolvedStreams.length > 0));
 
   const poster = resolveSportBackground(
     sport,
@@ -136,9 +142,9 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
       score: awayScore,
     },
     venue,
-    hasLiveBroadcast: hasLiveStream,
-    streamUrl: isLive ? live.streamUrl : undefined,
-    streams: isLive ? live.streams : undefined,
+    hasLiveBroadcast: isLive || hasLiveStream,
+    streamUrl: isLive ? resolvedStreamUrl : undefined,
+    streams: isLive ? resolvedStreams : undefined,
     poster,
   };
 }

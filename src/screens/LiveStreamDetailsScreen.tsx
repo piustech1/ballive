@@ -38,7 +38,7 @@ import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
 import { LiveBadge } from '../components/common/LiveBadge';
 import { getTeamCrest } from '../utils/teamCrestResolver';
-import { DiscoverMatchup } from '../constants/discoverData';
+import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
 import { getAllLiveStreamMatches, resolveLiveMatchToMatchup, determineMatchRoute } from '../navigation/navHelpers';
 import { useAppNavigation } from '../navigation/NavigationContext';
@@ -71,6 +71,28 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
   const [activeStreams, setActiveStreams] = useState<any[] | undefined>(activeMatch.streams);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  const normalizedStatus = useMemo(
+    () =>
+      normalizeMatchStatus({
+        rawStatus: activeMatch.status,
+        playTime: activeMatch.playTime,
+        minute: activeMatch.minute,
+        sport: activeMatch.sport,
+      }),
+    [activeMatch.status, activeMatch.playTime, activeMatch.minute, activeMatch.sport]
+  );
+  const hasPlayableStream = Boolean(activeStreamUrl || (activeStreams && activeStreams.length > 0));
+  const isLive =
+    normalizedStatus.isLive ||
+    activeMatch.status === 'LIVE' ||
+    Boolean((activeMatch as any).isLive) ||
+    (activeMatch.minute !== undefined && activeMatch.minute > 0) ||
+    Boolean(activeMatch.playTime && activeMatch.playTime.toUpperCase().includes('LIVE')) ||
+    hasPlayableStream;
+  const isFinished = (normalizedStatus.isFinished || activeMatch.status === 'FT') && !hasPlayableStream;
+  const isReminderSet = profile.matchReminderIds.includes(activeMatch.id);
+  const isSaved = profile.savedMatchIds.includes(activeMatch.id);
+
   // Live real-time scores and clock
   const [liveScore, setLiveScore] = useState<{
     home: number;
@@ -94,8 +116,19 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
   useEffect(() => {
     let isMounted = true;
-    setActiveStreamUrl(activeMatch.streamUrl);
-    setActiveStreams(activeMatch.streams);
+    const fallbackStream = isLive
+      ? activeMatch.streamUrl || streamingApiService.getDefaultStreamUrl(activeMatch.competition, activeMatch.sport)
+      : activeMatch.streamUrl;
+
+    setActiveStreamUrl(fallbackStream);
+    setActiveStreams(
+      activeMatch.streams && activeMatch.streams.length > 0
+        ? activeMatch.streams
+        : fallbackStream
+        ? [{ id: 'srv-primary', name: 'Server 1 (Live HD Broadcast)', url: fallbackStream }]
+        : undefined
+    );
+
     setLiveScore({
       home: activeMatch.homeTeam.score ?? 0,
       away: activeMatch.awayTeam.score ?? 0,
@@ -109,7 +142,12 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
     if (activeMatch.id) {
       streamingApiService
-        .resolveStreamMirrors(activeMatch.id, activeMatch.competition)
+        .resolveStreamMirrors(
+          activeMatch.id,
+          activeMatch.competition,
+          activeMatch.homeTeam.name,
+          activeMatch.awayTeam.name
+        )
         .then(mirrors => {
           if (isMounted && mirrors.length > 0) {
             setActiveStreams(mirrors);
@@ -216,14 +254,16 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     setIsFullscreen(false);
   };
 
-  const normalizedStatus = normalizeMatchStatus({ rawStatus: activeMatch.status, playTime: activeMatch.playTime, minute: activeMatch.minute });
-  const isLive = normalizedStatus.isLive;
-  const hasPlayableStream = Boolean(activeStreamUrl || (activeStreams && activeStreams.length > 0));
-  const isReminderSet = profile.matchReminderIds.includes(activeMatch.id);
-  const isSaved = profile.savedMatchIds.includes(activeMatch.id);
 
   const otherMatches = useMemo(() => {
-    const combined = [...liveRelatedStreams, ...upcomingRelatedMatches];
+    let combined = [...liveRelatedStreams, ...upcomingRelatedMatches];
+    if (combined.length === 0) {
+      const fallbackLive = getAllLiveStreamMatches()
+        .filter(m => m.id !== activeMatch.id)
+        .map(resolveLiveMatchToMatchup);
+      const fallbackUpcoming = UPCOMING_HIGHLIGHTS.filter(m => m.id !== activeMatch.id);
+      combined = [...fallbackLive, ...fallbackUpcoming];
+    }
     const seen = new Set<string>();
     const result: DiscoverMatchup[] = [];
     for (const m of combined) {
@@ -278,19 +318,26 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             onToggleFullscreen={isFullscreen ? handleExitFullscreen : handleEnterFullscreen}
             style={isFullscreen ? { width: '100%', height: '100%' } : undefined}
           />
+        ) : isLive ? (
+          /* Live Stream Connecting / Buffering Experience */
+          <View style={styles.upcomingPlayerSurface}>
+            <View style={styles.upcomingCountdownIcon}>
+              <Radio size={28} color="#7952FC" strokeWidth={2.4} />
+            </View>
+            <Text style={styles.upcomingPlayerTitle}>Connecting to Live Broadcast...</Text>
+            <Text style={styles.upcomingPlayerSubtitle}>
+              Establishing live satellite stream for {activeMatch.competition}. Please wait a moment...
+            </Text>
+          </View>
         ) : (
-          /* Upcoming / Unavailable Stream Experience */
+          /* Upcoming Scheduled Kickoff Experience */
           <View style={styles.upcomingPlayerSurface}>
             <View style={styles.upcomingCountdownIcon}>
               <Clock size={32} color="#7952FC" strokeWidth={2.2} />
             </View>
-            <Text style={styles.upcomingPlayerTitle}>
-              {isLive ? 'Satellite Broadcast Connecting' : 'Broadcast Starts Before Kickoff'}
-            </Text>
+            <Text style={styles.upcomingPlayerTitle}>Broadcast Starts Before Kickoff</Text>
             <Text style={styles.upcomingPlayerSubtitle}>
-              {isLive
-                ? 'Live feed is establishing connection. Tap below to receive an alert or refresh when active.'
-                : `Live satellite coverage begins 15 minutes before ${activeMatch.kickoffTime || 'kickoff'}. Set an alert to be notified when the feed connects!`}
+              Live satellite coverage begins 15 minutes before {activeMatch.kickoffTime || 'kickoff'}. Set an alert to be notified when the feed connects!
             </Text>
             <TouchableOpacity
               activeOpacity={0.85}
@@ -377,20 +424,38 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
           {/* ── 3. MATCH ACTIONS BAR ── */}
           <View style={styles.actionsBar}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.actionPrimaryBtn, isReminderSet && styles.actionPrimaryBtnActive]}
-              onPress={() => toggleMatchReminder(activeMatch.id)}
-            >
-              {isReminderSet ? (
-                <BellRing size={16} color="#FFFFFF" strokeWidth={2.4} />
-              ) : (
-                <Bell size={16} color="#FFFFFF" strokeWidth={2.2} />
-              )}
-              <Text style={styles.actionPrimaryBtnText}>
-                {isReminderSet ? 'Alert Enabled' : 'Notify Kickoff'}
-              </Text>
-            </TouchableOpacity>
+            {isLive ? (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={[styles.actionPrimaryBtn, styles.actionPrimaryBtnLive]}
+                onPress={handleEnterFullscreen}
+              >
+                <Radio size={16} color="#FFFFFF" strokeWidth={2.4} />
+                <Text style={styles.actionPrimaryBtnText}>Watch Fullscreen</Text>
+              </TouchableOpacity>
+            ) : isFinished ? (
+              <View style={[styles.actionPrimaryBtn, styles.actionPrimaryBtnFinished]}>
+                <Clock size={16} color="#A098B5" strokeWidth={2.2} />
+                <Text style={[styles.actionPrimaryBtnText, { color: '#A098B5' }]}>
+                  Match Concluded (FT)
+                </Text>
+              </View>
+            ) : (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={[styles.actionPrimaryBtn, isReminderSet && styles.actionPrimaryBtnActive]}
+                onPress={() => toggleMatchReminder(activeMatch.id)}
+              >
+                {isReminderSet ? (
+                  <BellRing size={16} color="#FFFFFF" strokeWidth={2.4} />
+                ) : (
+                  <Bell size={16} color="#FFFFFF" strokeWidth={2.2} />
+                )}
+                <Text style={styles.actionPrimaryBtnText}>
+                  {isReminderSet ? 'Alert Enabled' : 'Notify Kickoff'}
+                </Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               activeOpacity={0.8}
@@ -415,40 +480,30 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             </TouchableOpacity>
           </View>
 
-          {/* ── 4. OTHER LIVE & UPCOMING FIXTURES CAROUSEL (IN-PLACE SWITCHING) ── */}
+          {/* ── 4. MORE LIVE & UPCOMING FIXTURES (VERTICAL FULL-WIDTH LIST) ── */}
           {otherMatches.length > 0 && (
             <View style={styles.relatedSection}>
               <View style={styles.relatedSectionHeader}>
-                <Text style={styles.relatedSectionTitle}>
-                  {liveRelatedStreams.length > 0 ? 'MORE LIVE & UPCOMING MATCHES' : 'UPCOMING FIXTURES'}
-                </Text>
-                <View style={styles.relatedCountPill}>
-                  <Text style={styles.relatedCountText}>{otherMatches.length}</Text>
-                </View>
+                <Text style={styles.relatedSectionTitle}>More live & upcoming matches</Text>
               </View>
 
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.relatedCarouselContent}
-              >
+              <View style={styles.relatedList}>
                 {otherMatches.map(rel => (
-                  <View key={rel.id} style={styles.relatedCardWrapper}>
-                    <UniversalMatchCard
-                      match={rel}
-                      layout="carousel"
-                      onPress={() => {
-                        const target = determineMatchRoute(rel);
-                        if (target.name === 'MatchDetails') {
-                          navigate(target);
-                        } else {
-                          setActiveMatch(rel);
-                        }
-                      }}
-                    />
-                  </View>
+                  <UniversalMatchCard
+                    key={rel.id}
+                    match={rel}
+                    layout="full"
+                    onPress={() => {
+                      const target = determineMatchRoute(rel);
+                      if (target.name === 'MatchDetails') {
+                        navigate(target);
+                      } else {
+                        setActiveMatch(rel);
+                      }
+                    }}
+                  />
                 ))}
-              </ScrollView>
+              </View>
             </View>
           )}
         </ScrollView>
@@ -479,6 +534,7 @@ const styles = StyleSheet.create({
   },
   playerContainer: {
     width: SCREEN_WIDTH,
+    minHeight: PLAYER_HEIGHT,
     backgroundColor: '#000000',
   },
   livePlayerSurface: {
@@ -601,11 +657,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   upcomingPlayerSurface: {
-    flex: 1,
+    minHeight: PLAYER_HEIGHT,
     backgroundColor: '#181524',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingVertical: 20,
   },
   upcomingCountdownIcon: {
     width: 56,
@@ -764,6 +821,12 @@ const styles = StyleSheet.create({
   actionPrimaryBtnActive: {
     backgroundColor: '#2A2045',
   },
+  actionPrimaryBtnLive: {
+    backgroundColor: '#7952FC',
+  },
+  actionPrimaryBtnFinished: {
+    backgroundColor: '#1E1730',
+  },
   actionPrimaryBtnText: {
     fontSize: 13,
     fontWeight: '700',
@@ -785,7 +848,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#352558',
   },
   relatedSection: {
-    marginTop: 8,
+    marginTop: 10,
     marginBottom: 24,
   },
   relatedSectionHeader: {
@@ -796,30 +859,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   relatedSectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#A098B5',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  relatedCountPill: {
-    backgroundColor: '#261C3D',
-    paddingHorizontal: 8,
-    paddingVertical: 2.5,
-    borderRadius: 6,
-  },
-  relatedCountText: {
-    fontSize: 11,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#7952FC',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
   },
-  relatedCarouselContent: {
-    paddingLeft: 16,
-    paddingRight: 8,
-    gap: 12,
-  },
-  relatedCardWrapper: {
-    width: 250,
+  relatedList: {
+    paddingHorizontal: 16,
   },
   // Fullscreen Landscape Video Player
   fullscreenContainer: {

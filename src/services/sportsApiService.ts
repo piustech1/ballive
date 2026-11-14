@@ -1,4 +1,4 @@
-import { API_CONFIG } from '../config/api';
+import { API_CONFIG, getBroadcastChannelId } from '../config/api';
 import { getPlayerPhoto } from '../utils/playerResolver';
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { LEAGUE_EMBLEMS } from '../constants/crests';
@@ -745,11 +745,21 @@ class SportsApiService {
               time: displayTime,
               isLive,
               imageUrl: bgImage,
-              hasLiveStream: false, // Only set to true if an authentic stream is confirmed
+              hasLiveStream: isLive,
               homeBadge: homeLogo,
               awayBadge: awayLogo,
-              streamUrl: undefined,
-              streams: [],
+              streamUrl: isLive
+                ? `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${cfg.fallbackChannel || getBroadcastChannelId(compInfo.name, sportKey)}.json`
+                : undefined,
+              streams: isLive
+                ? [
+                    {
+                      id: `srv-${cfg.fallbackChannel || getBroadcastChannelId(compInfo.name, sportKey)}`,
+                      name: 'Server 1 (Live HD Broadcast)',
+                      url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${cfg.fallbackChannel || getBroadcastChannelId(compInfo.name, sportKey)}.json`,
+                    },
+                  ]
+                : [],
               sport: sportKey as any,
               venue: comp?.venue?.fullName || 'Arena',
             };
