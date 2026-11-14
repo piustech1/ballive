@@ -439,8 +439,8 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                       layout="carousel"
                       onPress={() => {
                         const target = determineMatchRoute(rel);
-                        if (target.routeName === 'MatchDetails') {
-                          navigate({ name: 'MatchDetails', params: target.params });
+                        if (target.name === 'MatchDetails') {
+                          navigate(target);
                         } else {
                           setActiveMatch(rel);
                         }
