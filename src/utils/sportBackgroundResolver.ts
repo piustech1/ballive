@@ -97,6 +97,28 @@ export const SPORT_ARTWORK_POOLS: Record<string, string[]> = {
   ],
 };
 
+// Verified, competition-specific authentic hero backdrops
+export const COMPETITION_BACKDROPS: Record<string, string> = {
+  ucl: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1200&q=80',
+  uel: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80',
+  pl: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1200&q=80',
+  laliga: 'https://images.unsplash.com/photo-1556056504-5c7696c4c28d?auto=format&fit=crop&w=1200&q=80',
+  seriea: 'https://images.unsplash.com/photo-1511886929837-354d827aae26?auto=format&fit=crop&w=1200&q=80',
+  bundesliga: 'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?auto=format&fit=crop&w=1200&q=80',
+  ligue1: 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1200&q=80',
+  uefa_nations: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1200&q=80',
+  concacaf: 'https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=1200&q=80',
+  afcon: 'https://images.unsplash.com/photo-1516475429286-465d815a0df7?auto=format&fit=crop&w=1200&q=80',
+  world_cup: 'https://images.unsplash.com/photo-1517927033932-b3d18e61fb3a?auto=format&fit=crop&w=1200&q=80',
+  mls: 'https://images.unsplash.com/photo-1459865264687-595d652de67e?auto=format&fit=crop&w=1200&q=80',
+  nwsl: 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?auto=format&fit=crop&w=1200&q=80',
+  nba: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80',
+  nhl: 'https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?auto=format&fit=crop&w=1200&q=80',
+  nfl: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=1200&q=80',
+  ufc: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=1200&q=80',
+  f1: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=1200&q=80',
+};
+
 // Backwards compatibility
 export const SPORT_ARTWORK: Record<string, string> = Object.fromEntries(
   Object.entries(SPORT_ARTWORK_POOLS).map(([k, v]) => [k, v[0]])
@@ -296,11 +318,65 @@ export function cleanServerArtworkUrl(rawUrl?: string | null): string | null {
 }
 
 /**
+ * Checks whether an image URL represents a verified, fixture-specific event thumbnail
+ * (e.g. from TheSportsDB, ondemand.st, ESPN event cards) rather than a generic sport placeholder.
+ */
+export function isVerifiedEventImage(rawUrl?: string | null): boolean {
+  if (!rawUrl || typeof rawUrl !== 'string') return false;
+  const s = rawUrl.toLowerCase().trim();
+  if (
+    s.includes('thesportsdb.com') ||
+    s.includes('ondemand.st') ||
+    s.includes('espncdn.com/i/cards') ||
+    s.includes('espncdn.com/images/match') ||
+    s.includes('espncdn.com/i/headshots')
+  ) {
+    return true;
+  }
+  if (s.includes('dag.s-u.in/img')) {
+    return s.includes('thesportsdb') || s.includes('ondemand') || s.includes('event');
+  }
+  return false;
+}
+
+/**
+ * Normalizes any tournament or competition title into a canonical competition key
+ * for authentic hero backdrop mapping.
+ */
+export function normalizeCompetitionKey(competition?: string): string | null {
+  if (!competition) return null;
+  const c = competition.toLowerCase().trim();
+  if (c.includes('champion') || c === 'ucl') return 'ucl';
+  if (c.includes('europa') || c === 'uel') return 'uel';
+  if (c.includes('uefa nation') || (c.includes('nations league') && (c.includes('uefa') || c.includes('group a') || c.includes('group b') || c.includes('group c') || c.includes('group d')))) return 'uefa_nations';
+  if (c.includes('concacaf')) return 'concacaf';
+  if (c.includes('afcon') || c.includes('africa cup') || c.includes('caf')) return 'afcon';
+  if (c.includes('premier') || c === 'epl' || c === 'pl') return 'pl';
+  if (c.includes('laliga') || c.includes('la liga') || c.includes('primera')) return 'laliga';
+  if (c.includes('serie a')) return 'seriea';
+  if (c.includes('bundesliga') || c.includes('bundes')) return 'bundesliga';
+  if (c.includes('ligue 1') || c.includes('ligue1') || c.includes('première ligue')) return 'ligue1';
+  if (c.includes('nwsl') || c.includes('women')) return 'nwsl';
+  if (c.includes('mls') || c.includes('major league soccer')) return 'mls';
+  if (c.includes('world cup') || c.includes('qualifying') || c.includes('fifa')) return 'world_cup';
+  if (c.includes('nba') || c.includes('basketball')) return 'nba';
+  if (c.includes('nhl') || c.includes('hockey')) return 'nhl';
+  if (c.includes('nfl') || c.includes('american football')) return 'nfl';
+  if (c.includes('ufc') || c.includes('mma') || c.includes('combat') || c.includes('wwe')) return 'ufc';
+  if (c.includes('f1') || c.includes('formula')) return 'f1';
+  return null;
+}
+
+/**
  * Resolves the appropriate, match-specific background image.
- * 1. Prioritizes verified server-supplied artwork (DAG poster / banner / venue) if valid.
- * 2. If no valid server artwork exists, deterministically selects a distinct,
- *    authentic sport backdrop from the curated pool based on match identity.
- * 3. Never falls back to a single universal background across all matches.
+ * 
+ * 5-Tier Resolution Hierarchy:
+ * 1. Verified authentic event card/thumbnail from server/DAG (TheSportsDB, ondemand.st, ESPN).
+ * 2. Authentic competition-specific hero backdrop (e.g. UCL starry night, UEFA Nations League,
+ *    Concacaf Nations League, Premier League, LaLiga, Serie A, AFCON, NBA, NHL, NFL, UFC).
+ * 3. Curated team/venue backdrop if available.
+ * 4. Deterministic high-definition sport-authentic fallback from multi-image pool (indexed by seed).
+ * 5. Neutral sport fallback.
  */
 export function resolveSportBackground(
   rawSport?: string,
@@ -313,21 +389,34 @@ export function resolveSportBackground(
   const sportKey = normalizeSportKey(rawSport, competition, homeTeam, awayTeam);
   const seed = matchId || `${homeTeam || ''} ${awayTeam || ''} ${competition || ''}`.trim();
 
-  // 1. Try cleaning and using server artwork
+  // Tier 1: Verified authentic event thumbnail
   const cleanedServerImage = cleanServerArtworkUrl(rawImage);
   if (cleanedServerImage) {
-    // If sport is NOT soccer, ensure a generic soccer placeholder was not passed
+    if (isVerifiedEventImage(cleanedServerImage)) {
+      return cleanedServerImage;
+    }
+
+    // Check if it's not a generic soccer placeholder erroneously passed for other sports
     const isMismatchedSoccerPlaceholder =
       sportKey !== 'soccer' &&
       (cleanedServerImage.includes('photo-1579952363873-27f3bade9f55') ||
         cleanedServerImage.includes('photo-1522778119026-d647f0596c20'));
 
-    if (!isMismatchedSoccerPlaceholder) {
+    const isGenericUnsplash = cleanedServerImage.includes('images.unsplash.com');
+
+    // If it's a dedicated custom non-generic server image, keep it
+    if (!isMismatchedSoccerPlaceholder && !isGenericUnsplash) {
       return cleanedServerImage;
     }
   }
 
-  // 2. Deterministic high-definition sport-authentic fallback
+  // Tier 2: Authentic competition-specific hero backdrop
+  const compKey = normalizeCompetitionKey(competition);
+  if (compKey && COMPETITION_BACKDROPS[compKey]) {
+    return COMPETITION_BACKDROPS[compKey];
+  }
+
+  // Tier 3 & 4: Deterministic high-definition sport-authentic fallback from pool
   return getDeterministicSportArtwork(sportKey, seed);
 }
 

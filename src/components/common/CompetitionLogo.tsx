@@ -64,7 +64,40 @@ export function resolveCompetitionLogo(competitionIdOrName?: string): string {
     return LEAGUE_EMBLEMS['nhl'];
   }
 
-  // Football / Soccer Leagues
+  // Football / Soccer Leagues & Tournaments
+  if (clean.includes('concacaf')) {
+    return LEAGUE_EMBLEMS['concacaf-nations-league'];
+  }
+  if (clean.includes('uefa-nation') || clean.includes('nations-league')) {
+    return LEAGUE_EMBLEMS['uefa-nations-league'];
+  }
+  if (clean.includes('afcon') || clean.includes('africa-cup')) {
+    return LEAGUE_EMBLEMS['afcon'];
+  }
+  if (clean.includes('nwsl')) {
+    return LEAGUE_EMBLEMS['nwsl'];
+  }
+  if (clean.includes('liga-mx') || clean.includes('mex-1')) {
+    return LEAGUE_EMBLEMS['liga-mx'];
+  }
+  if (clean.includes('super-league') && (clean.includes('women') || clean.includes('wsl'))) {
+    return LEAGUE_EMBLEMS['womens-super-league'];
+  }
+  if (clean.includes('coupe-de-france')) {
+    return LEAGUE_EMBLEMS['coupe-de-france'];
+  }
+  if (clean.includes('fa-cup')) {
+    return LEAGUE_EMBLEMS['fa-cup'];
+  }
+  if (clean.includes('copa-del-rey')) {
+    return LEAGUE_EMBLEMS['copa-del-rey'];
+  }
+  if (clean.includes('europa') || clean === 'uel') {
+    return LEAGUE_EMBLEMS['europa-league'];
+  }
+  if (clean.includes('mls') || clean.includes('major-league-soccer')) {
+    return LEAGUE_EMBLEMS['mls'];
+  }
   if (clean.includes('premier') || clean === 'epl' || clean === 'pl') {
     return LEAGUE_EMBLEMS['premier-league'];
   }

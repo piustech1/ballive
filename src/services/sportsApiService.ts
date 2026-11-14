@@ -2,6 +2,7 @@ import { API_CONFIG } from '../config/api';
 import { getPlayerPhoto } from '../utils/playerResolver';
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { LEAGUE_EMBLEMS } from '../constants/crests';
+import { resolveCompetitionLogo } from '../components/common/CompetitionLogo';
 import { resolveSportBackground } from '../utils/sportBackgroundResolver';
 import { formatKickoffEAT, normalizeMatchStatus } from '../utils/matchStatus';
 import { StandingsRow } from '../constants/standingsData';
@@ -245,6 +246,126 @@ export function parseClockAndStatus(ev: any, sport: string): { minute: number; p
   } else {
     return { minute: 0, playTime: shortDetail || detail || 'Upcoming', isLive: false, status: 'UPCOMING' };
   }
+}
+
+// Known ESPN Soccer League IDs to authentic tournament names
+const ESPN_SOCCER_LEAGUE_MAP: Record<string, string> = {
+  '19267': 'Concacaf Nations League',
+  '2395': 'UEFA Nations League',
+  '8301': 'NWSL',
+  '760': 'Liga MX',
+  '3922': "Men's International Friendly",
+  '8097': "Women's Super League",
+  '3952': 'Coupe de France',
+  '20226': "Women's FA Cup",
+  '20956': 'Liga F',
+  '20955': 'Première Ligue',
+  '18992': 'A-League Women',
+  '8315': 'AFCON Qualifying',
+  '4002': 'USL Championship',
+  '19915': 'USL League One',
+  '3932': 'Liga de Expansión MX',
+  '23541': 'Liga MX Femenil',
+  '23286': 'Northern Super League',
+  '19834': 'Club Friendly',
+  '786': 'World Cup Qualifying - UEFA',
+  '787': 'World Cup Qualifying - CONMEBOL',
+  '790': 'World Cup Qualifying - CAF',
+  '788': 'World Cup Qualifying - AFC',
+  '789': 'World Cup Qualifying - CONCACAF',
+  '2': 'UEFA Champions League',
+  '2310': 'UEFA Europa League',
+  '39': 'Premier League',
+  '140': 'LaLiga',
+  '135': 'Serie A',
+  '78': 'Bundesliga',
+  '61': 'Ligue 1',
+  '182': 'Coupe de France',
+  '40': 'FA Cup',
+  '80': 'Copa del Rey',
+  '2406': 'Concacaf Nations League',
+};
+
+export interface ParsedCompetitionInfo {
+  name: string;
+  shortName: string;
+  logo: string;
+}
+
+export function parseCompetitionInfo(ev: any, cfg: SportLeagueConfig): ParsedCompetitionInfo {
+  if (cfg.sport !== 'soccer') {
+    return {
+      name: cfg.name,
+      shortName: cfg.shortName,
+      logo: cfg.logo,
+    };
+  }
+
+  const comp = ev.competitions?.[0];
+
+  // 1. Check explicit league name if present and not generic
+  if (ev.league?.name && ev.league.name !== 'Global Football' && ev.league.name !== 'Soccer' && ev.league.name !== 'All') {
+    const lName = ev.league.name.trim();
+    return {
+      name: lName,
+      shortName: ev.league.abbreviation || ev.league.shortName || lName,
+      logo: resolveCompetitionLogo(lName),
+    };
+  }
+
+  // 2. Parse altGameNote from competition (e.g. "Concacaf Nations League, Quarterfinals", "UEFA Nations League, Group B3", "AFCON Qualifying, Group H", "NWSL, Semifinals")
+  const rawNote = comp?.altGameNote || '';
+  if (rawNote && typeof rawNote === 'string' && rawNote.trim().length > 0) {
+    const trimmed = rawNote.trim();
+    const parts = trimmed.split(',');
+    const mainName = parts[0]?.trim();
+    if (mainName && mainName.length > 2) {
+      return {
+        name: mainName,
+        shortName: mainName.length > 15 ? mainName.split(' ')[0] : mainName,
+        logo: resolveCompetitionLogo(mainName),
+      };
+    }
+  }
+
+  // 3. Extract league ID from UID pattern (e.g. s:600~l:19267~e:401929710)
+  const uidStr = `${ev.uid || ''} ${comp?.uid || ''}`;
+  const lMatch = uidStr.match(/~l:(\d+)~/);
+  if (lMatch && lMatch[1] && ESPN_SOCCER_LEAGUE_MAP[lMatch[1]]) {
+    const mappedName = ESPN_SOCCER_LEAGUE_MAP[lMatch[1]];
+    return {
+      name: mappedName,
+      shortName: mappedName.length > 15 ? mappedName.split(' ')[0] : mappedName,
+      logo: resolveCompetitionLogo(mappedName),
+    };
+  }
+
+  // 4. Check season slug (e.g. "concacaf.nations.league")
+  const seasonSlug = ev.season?.slug || '';
+  if (seasonSlug) {
+    if (seasonSlug.includes('concacaf')) {
+      return { name: 'Concacaf Nations League', shortName: 'Concacaf', logo: resolveCompetitionLogo('concacaf') };
+    }
+    if (seasonSlug.includes('uefa') && seasonSlug.includes('nations')) {
+      return { name: 'UEFA Nations League', shortName: 'Nations League', logo: resolveCompetitionLogo('uefa nations') };
+    }
+  }
+
+  // 5. Fallback to cfg if not generic 'all'
+  if (cfg.league !== 'all' && cfg.name !== 'Global Football') {
+    return {
+      name: cfg.name,
+      shortName: cfg.shortName,
+      logo: cfg.logo,
+    };
+  }
+
+  // 6. Last resort fallback
+  return {
+    name: 'Global Football',
+    shortName: 'Football',
+    logo: resolveCompetitionLogo('football'),
+  };
 }
 
 class SportsApiService {
@@ -491,9 +612,11 @@ class SportsApiService {
             const scheduledKickoff = formatKickoffEAT(ev.date);
             const displayTime = isLive ? `${clockInfo.playTime} Live` : scheduledKickoff;
 
+            const compInfo = parseCompetitionInfo(ev, cfg);
+
             const bgImage = resolveSportBackground(
               sportKey,
-              ev.league?.name || cfg.name,
+              compInfo.name,
               comp?.venue?.images?.[0]?.href,
               homeName,
               awayName,
@@ -505,7 +628,8 @@ class SportsApiService {
               title: `${homeName} vs ${awayName}`,
               homeTeam: homeName,
               awayTeam: awayName,
-              competition: ev.league?.name || cfg.name,
+              competition: compInfo.name,
+              competitionLogo: compInfo.logo,
               score: { home: scoreHome, away: scoreAway },
               minute: clockInfo.minute,
               playTime: clockInfo.playTime,
@@ -573,7 +697,7 @@ class SportsApiService {
             matchups.push({
               id: `sched-fd-${m.id}`,
               competition: m.competition?.name || cleanId.toUpperCase(),
-              competitionLogo: LEAGUE_EMBLEMS[cleanId] || LEAGUE_EMBLEMS['ucl'],
+              competitionLogo: LEAGUE_EMBLEMS[cleanId] || resolveCompetitionLogo(m.competition?.name || cleanId),
               status: 'UPCOMING',
               kickoffDate: dateStr,
               kickoffTime: eatTime,

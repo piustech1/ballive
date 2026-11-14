@@ -28,6 +28,7 @@ export interface LiveMatch {
   homeTeam: string;
   awayTeam: string;
   competition: string;
+  competitionLogo?: string;
   score: { home: number; away: number };
   minute: number;
   imageUrl: string;

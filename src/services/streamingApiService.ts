@@ -4,7 +4,8 @@ import { DiscoverMatchup } from '../constants/discoverData';
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { LEAGUE_EMBLEMS, CLUB_CRESTS } from '../constants/crests';
 import { sportsApiService } from './sportsApiService';
-import { resolveSportBackground, SPORT_ARTWORK } from '../utils/sportBackgroundResolver';
+import { resolveSportBackground, isVerifiedEventImage, SPORT_ARTWORK } from '../utils/sportBackgroundResolver';
+import { resolveCompetitionLogo } from '../components/common/CompetitionLogo';
 import { formatKickoffEAT, normalizeMatchStatus } from '../utils/matchStatus';
 
 export interface RawStreamSource {
@@ -243,7 +244,39 @@ class StreamingApiService {
               });
 
               if (existingMatch) {
-                // Merge direct stream URL into the existing authentic match and discard duplicate generic card
+                // 1. Resolve DAG artwork (which often provides verified thesportsdb.com or ondemand.st event thumbnail)
+                const dagPoster = m.poster || m.background;
+                if (dagPoster) {
+                  const resolvedDagArt = resolveSportBackground(
+                    existingMatch.sport,
+                    existingMatch.competition,
+                    dagPoster,
+                    existingMatch.homeTeam,
+                    existingMatch.awayTeam,
+                    m.id
+                  );
+                  // If DAG provided a verified event thumbnail or existing match has a generic Unsplash image, upgrade to DAG artwork
+                  if (
+                    isVerifiedEventImage(resolvedDagArt) ||
+                    !existingMatch.imageUrl ||
+                    existingMatch.imageUrl.includes('images.unsplash.com')
+                  ) {
+                    existingMatch.imageUrl = resolvedDagArt;
+                  }
+                }
+
+                // 2. If existing match still has generic "Global Football", upgrade to specific DAG genre if available
+                if (
+                  existingMatch.competition === 'Global Football' &&
+                  m.genres?.[0] &&
+                  m.genres[0] !== 'FOOTBALL' &&
+                  m.genres[0] !== 'SOCCER'
+                ) {
+                  existingMatch.competition = m.genres[0];
+                  existingMatch.competitionLogo = resolveCompetitionLogo(m.genres[0]);
+                }
+
+                // 3. Merge direct stream URL into the existing authentic match and discard duplicate generic card
                 const directUrl = `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`;
                 if (!existingMatch.streams) {
                   existingMatch.streams = [];
@@ -504,17 +537,8 @@ class StreamingApiService {
     const homeCrest = validHomeBadge || getTeamCrest(live.homeTeam);
     const awayCrest = validAwayBadge || getTeamCrest(live.awayTeam);
 
-    const compLower = live.competition.toLowerCase();
-    let compLogo = LEAGUE_EMBLEMS['ucl'];
-    if (compLower.includes('premier')) compLogo = LEAGUE_EMBLEMS['premier-league'];
-    else if (compLower.includes('laliga')) compLogo = LEAGUE_EMBLEMS['laliga'];
-    else if (compLower.includes('serie')) compLogo = LEAGUE_EMBLEMS['serie-a'];
-    else if (compLower.includes('bundesliga')) compLogo = LEAGUE_EMBLEMS['bundesliga'];
-    else if (compLower.includes('nba') || compLower.includes('basketball')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png';
-    else if (compLower.includes('nhl') || compLower.includes('hockey')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png';
-    else if (compLower.includes('ufc') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png';
-    else if (compLower.includes('nfl') || compLower.includes('american football')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
-    else if (compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png';
+    const compLogo = live.competitionLogo || resolveCompetitionLogo(live.competition);
+    const compLower = (live.competition || '').toLowerCase();
 
     // Authoritative Match Status Normalization
     const statusInfo = normalizeMatchStatus({
