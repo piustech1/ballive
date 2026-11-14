@@ -1,4 +1,4 @@
-import { API_CONFIG, getBroadcastChannelId } from '../config/api';
+import { API_CONFIG, getBroadcastChannelId, isUnsupportedStreamingCompetition } from '../config/api';
 import { LiveMatch } from '../constants/mockData';
 import { DiscoverMatchup } from '../constants/discoverData';
 import { getTeamCrest } from '../utils/teamCrestResolver';
@@ -120,6 +120,7 @@ class StreamingApiService {
       // ── Process Source 1: ESPN Multi-Sport Scoreboard (Live & Upcoming Events) ──
       if (espnMatchesRes.status === 'fulfilled' && Array.isArray(espnMatchesRes.value)) {
         espnMatchesRes.value.forEach(m => {
+          if (isUnsupportedStreamingCompetition(m.competition, m.title)) return;
           if (!seenMatchIds.has(m.id)) {
             seenMatchIds.add(m.id);
             if (m.status === 'UPCOMING' || !m.isLive) {
@@ -184,9 +185,10 @@ class StreamingApiService {
               const genre = (m.genres?.[0] || 'LIVE SPORTS').toUpperCase();
               // Strictly exclude 24/7 standalone TV channels without fixture
               if (genre === 'NETWORKS' || genre.includes('CHANNEL')) return;
-              if (m.name && (m.name.startsWith('📺') || m.name.includes('24/7 Network'))) return;
-
               const cleanTitle = cleanMatchName(m.name || '');
+
+              // Strictly exclude competitions without confirmed streaming presence on DAG
+              if (isUnsupportedStreamingCompetition(m.genres?.[0] || genre, cleanTitle)) return;
 
               let home = m.team1?.name;
               let away = m.team2?.name;
@@ -434,6 +436,9 @@ class StreamingApiService {
 
             const home = m.homeTeam?.name || 'Home Team';
             const away = m.awayTeam?.name || 'Away Team';
+            const compName = m.competition?.name || 'Premier League';
+            if (isUnsupportedStreamingCompetition(compName, `${home} vs ${away}`)) return;
+
             const matchId = `fb-live-${m.id}`;
             if (seenMatchIds.has(matchId)) return;
             seenMatchIds.add(matchId);
@@ -443,7 +448,6 @@ class StreamingApiService {
             const minute = m.minute || 45;
             const bgImage = resolveSportBackground('soccer', m.competition?.name || 'Premier League', null, home, away, matchId);
 
-            const compName = m.competition?.name || 'Premier League';
             const bChannel = getBroadcastChannelId(compName, 'soccer');
             const liveStreamUrl = `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${bChannel}.json`;
 
@@ -610,6 +614,10 @@ class StreamingApiService {
     }
 
     // 3. Resolve verified 24/7 sports broadcast feeds for this competition/sport
+    if (isUnsupportedStreamingCompetition(competitionOrSport)) {
+      return [];
+    }
+
     const CHANNEL_LABELS: Record<string, string> = {
       [API_CONFIG.PRIORITY_CHANNELS.BEIN]: 'beIN Sports HD',
       [API_CONFIG.PRIORITY_CHANNELS.GOLAZO]: 'CBS Sports Golazo',
@@ -759,13 +767,16 @@ class StreamingApiService {
       ? 'Full Time'
       : (live.kickoffTime?.includes('EAT') ? live.kickoffTime : formatKickoffEAT(live.kickoffTime || live.time));
 
-    const compChannel = getBroadcastChannelId(live.competition, live.sport);
-    const resolvedStreamUrl = live.streamUrl || (isLive ? `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${compChannel}.json` : undefined);
-    const resolvedStreams = (live.streams && live.streams.length > 0)
-      ? live.streams
-      : (isLive && resolvedStreamUrl ? [{ id: `srv-${compChannel}`, name: 'Server 1 (Live HD Broadcast)', url: resolvedStreamUrl }] : undefined);
+    const isUnsupported = isUnsupportedStreamingCompetition(live.competition, live.title);
+    const compChannel = isUnsupported ? '' : getBroadcastChannelId(live.competition, live.sport);
+    const resolvedStreamUrl = isUnsupported ? undefined : (live.streamUrl || (isLive ? `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${compChannel}.json` : undefined));
+    const resolvedStreams = isUnsupported
+      ? undefined
+      : ((live.streams && live.streams.length > 0)
+        ? live.streams
+        : (isLive && resolvedStreamUrl ? [{ id: `srv-${compChannel}`, name: 'Server 1 (Live HD Broadcast)', url: resolvedStreamUrl }] : undefined));
 
-    const hasLiveStream = isLive && Boolean(resolvedStreamUrl || (resolvedStreams && resolvedStreams.length > 0));
+    const hasLiveStream = !isUnsupported && isLive && Boolean(resolvedStreamUrl || (resolvedStreams && resolvedStreams.length > 0));
 
     const poster = resolveSportBackground(
       live.sport,

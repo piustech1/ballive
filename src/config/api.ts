@@ -100,7 +100,7 @@ export function getBroadcastChannelId(competition: string = '', sport: string = 
   }
 
   // Spain
-  if (compLower.includes('laliga') || compLower.includes('spain') || compLower.includes('copa del rey') || compLower.includes('liga f')) {
+  if (compLower.includes('laliga') || compLower.includes('spain') || compLower.includes('copa del rey')) {
     return API_CONFIG.PRIORITY_CHANNELS.LALIGA;
   }
 
@@ -109,8 +109,8 @@ export function getBroadcastChannelId(competition: string = '', sport: string = 
     return API_CONFIG.PRIORITY_CHANNELS.UCL;
   }
 
-  // France
-  if (compLower.includes('france') || compLower.includes('première') || compLower.includes('premiere') || compLower.includes('ligue 1') || compLower.includes('ligue 2') || compLower.includes('coupe de france')) {
+  // France (Ligue 1 & Ligue 2)
+  if (compLower.includes('ligue 1') || compLower.includes('ligue 2')) {
     return API_CONFIG.PRIORITY_CHANNELS.BEIN;
   }
 
@@ -119,13 +119,104 @@ export function getBroadcastChannelId(competition: string = '', sport: string = 
     return API_CONFIG.PRIORITY_CHANNELS.DAZN;
   }
 
-  // Premier League & Women's Super League
-  if (compLower.includes('premier') || compLower.includes('wsl') || compLower.includes('women')) {
+  // Premier League
+  if (compLower.includes('premier') || compLower.includes('epl')) {
     return API_CONFIG.PRIORITY_CHANNELS.PL;
   }
 
   // General Global Football (CBS Sports Golazo 24/7 Football Network)
   return API_CONFIG.PRIORITY_CHANNELS.GOLAZO;
+}
+
+/**
+ * Detects competitions that have NO verified streaming broadcasts on upstream servers.
+ * Prevents phantom live fixtures (Coupe de France, Première Ligue, Liga F, NWSL, etc.)
+ * from being ingested or mapped to incorrect broadcast channels.
+ */
+export function isUnsupportedStreamingCompetition(competition?: string | null, title?: string | null): boolean {
+  const comp = (competition || '').toLowerCase();
+  const tit = (title || '').toLowerCase();
+  const combined = `${comp} ${tit}`;
+
+  // Coupe de France (French Cup)
+  if (
+    combined.includes('coupe de france') ||
+    combined.includes('french cup') ||
+    combined.includes('fra.coupe_de_france') ||
+    combined.includes('coupe_de_france')
+  ) {
+    return true;
+  }
+
+  // Première Ligue (France Women's First Division / D1 Arkema)
+  if (
+    combined.includes('première ligue') ||
+    combined.includes('premiere ligue') ||
+    combined.includes('arkema') ||
+    combined.includes('fra.w.1')
+  ) {
+    return true;
+  }
+
+  // Liga F (Spain Women's First Division)
+  if (
+    combined.includes('liga f') ||
+    combined.includes('esp.w.1') ||
+    combined.includes('liga_f') ||
+    combined.includes('primera división femenina') ||
+    combined.includes('primera division femenina')
+  ) {
+    return true;
+  }
+
+  // NWSL (National Women's Soccer League - USA)
+  if (
+    combined.includes('nwsl') ||
+    combined.includes('usa.nwsl') ||
+    combined.includes('national women’s soccer') ||
+    combined.includes("national women's soccer")
+  ) {
+    return true;
+  }
+
+  // Women's Super League (WSL - England)
+  if (
+    combined.includes("women's super league") ||
+    combined.includes("womens super league") ||
+    combined.includes('eng.w.1') ||
+    (comp.includes('wsl') && !comp.includes('world surf'))
+  ) {
+    return true;
+  }
+
+  // Liga MX Femenil & generic Femenil
+  if (
+    combined.includes('liga mx femenil') ||
+    combined.includes('mex.w.1') ||
+    combined.includes('liga_mx_femenil') ||
+    combined.includes('femenil') ||
+    combined.includes('femenino') ||
+    combined.includes('femeni')
+  ) {
+    return true;
+  }
+
+  // Regional women's club leagues with 0 broadcast presence on DAG
+  if (
+    combined.includes('w-league') ||
+    combined.includes('fra.w') ||
+    combined.includes('esp.w') ||
+    combined.includes('eng.w') ||
+    combined.includes('mex.w') ||
+    combined.includes("women's premier") ||
+    combined.includes("womens premier") ||
+    combined.includes("women's championship") ||
+    combined.includes("womens championship")
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**

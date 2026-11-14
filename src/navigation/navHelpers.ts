@@ -11,7 +11,7 @@ import {
 import { LIVE_MATCHES, LiveMatch, FEATURED_COMPETITIONS, FeaturedCompetition } from '../constants/mockData';
 import { CLUB_CRESTS, LEAGUE_EMBLEMS } from '../constants/crests';
 import { getTeamCrest } from '../utils/teamCrestResolver';
-import { API_CONFIG, getBroadcastChannelId } from '../config/api';
+import { API_CONFIG, getBroadcastChannelId, isUnsupportedStreamingCompetition } from '../config/api';
 import { resolveSportBackground } from '../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../utils/matchStatus';
 import { ScreenRoute } from './NavigationContext';
@@ -82,7 +82,6 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     compLower.includes('serie') ||
     compLower.includes('bundesliga') ||
     compLower.includes('ligue') ||
-    compLower.includes('coupe') ||
     compLower.includes('copa') ||
     compLower.includes('fa cup') ||
     compLower.includes('carabao') ||
@@ -91,8 +90,7 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     compLower.includes('europa') ||
     compLower.includes('conference') ||
     compLower.includes('fifa') ||
-    compLower.includes('friendly') ||
-    compLower.includes('wsl');
+    compLower.includes('friendly');
 
   const liveSportLower = ((live.sport as any) || '').toLowerCase();
   const isLiveSoccer = liveSportLower === 'soccer' || liveSportLower === 'football';
@@ -128,13 +126,16 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     ? 'Full Time'
     : (rawKickoff.includes('EAT') ? rawKickoff : formatKickoffEAT(rawKickoff));
 
-    const compChannel = getBroadcastChannelId(live.competition, live.sport);
-  const resolvedStreamUrl = live.streamUrl || (isLive ? `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${compChannel}.json` : undefined);
-  const resolvedStreams = (live.streams && live.streams.length > 0)
-    ? live.streams
-    : (isLive && resolvedStreamUrl ? [{ id: `srv-${compChannel}`, name: 'Server 1 (Live HD Broadcast)', url: resolvedStreamUrl }] : undefined);
+  const isUnsupported = isUnsupportedStreamingCompetition(live.competition, live.title);
+  const compChannel = isUnsupported ? '' : getBroadcastChannelId(live.competition, live.sport);
+  const resolvedStreamUrl = isUnsupported ? undefined : (live.streamUrl || (isLive ? `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${compChannel}.json` : undefined));
+  const resolvedStreams = isUnsupported
+    ? undefined
+    : ((live.streams && live.streams.length > 0)
+      ? live.streams
+      : (isLive && resolvedStreamUrl ? [{ id: `srv-${compChannel}`, name: 'Server 1 (Live HD Broadcast)', url: resolvedStreamUrl }] : undefined));
 
-  const hasLiveStream = isLive && Boolean(resolvedStreamUrl || (resolvedStreams && resolvedStreams.length > 0));
+  const hasLiveStream = !isUnsupported && isLive && Boolean(resolvedStreamUrl || (resolvedStreams && resolvedStreams.length > 0));
 
   const poster = resolveSportBackground(
     sport,
