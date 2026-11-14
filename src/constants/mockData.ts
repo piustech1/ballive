@@ -171,7 +171,7 @@ export const FEATURED_COMPETITIONS: FeaturedCompetition[] = [
     country: 'Global',
     matchesCount: 5,
     season: 'Championship Series',
-    crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500/mma.png',
+    crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png',
     verified: true,
     sport: 'mma',
   },

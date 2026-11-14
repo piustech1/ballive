@@ -45,7 +45,6 @@ import { useAppNavigation } from '../navigation/NavigationContext';
 import { LiveStreamPlayer } from '../components/player/LiveStreamPlayer';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
-import { InlineMatchDetailsModule } from '../components/player/InlineMatchDetailsModule';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
 import { normalizeMatchStatus } from '../utils/matchStatus';
 
@@ -416,15 +415,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             </TouchableOpacity>
           </View>
 
-          {/* ── 4. INLINE MATCH DETAILS MODULE (OVERVIEW, LINEUPS, EVENTS) ── */}
-          <View style={styles.inlineDetailsWrapper}>
-            <InlineMatchDetailsModule
-              matchup={activeMatch}
-              liveScore={liveScore}
-            />
-          </View>
-
-          {/* ── 5. OTHER LIVE & UPCOMING FIXTURES CAROUSEL (IN-PLACE SWITCHING) ── */}
+          {/* ── 4. OTHER LIVE & UPCOMING FIXTURES CAROUSEL (IN-PLACE SWITCHING) ── */}
           {otherMatches.length > 0 && (
             <View style={styles.relatedSection}>
               <View style={styles.relatedSectionHeader}>

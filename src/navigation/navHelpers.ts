@@ -64,7 +64,7 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
   else if (compLower.includes('bundesliga')) compLogo = LEAGUE_EMBLEMS['bundesliga'];
   else if (compLower.includes('nba') || compLower.includes('basketball')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png';
   else if (compLower.includes('nhl') || compLower.includes('hockey')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png';
-  else if (compLower.includes('ufc') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling') || compLower.includes('tna') || compLower.includes('aew')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/mma.png';
+  else if (compLower.includes('ufc') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling') || compLower.includes('tna') || compLower.includes('aew')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png';
   else if (compLower.includes('nfl') || compLower.includes('american football')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
   else if (compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png';
   else if (compLower.includes('tennis')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/tennis.png';
