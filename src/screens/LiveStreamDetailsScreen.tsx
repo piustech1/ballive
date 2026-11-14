@@ -258,9 +258,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
   const otherMatches = useMemo(() => {
     let combined = [...liveRelatedStreams, ...upcomingRelatedMatches];
     if (combined.length === 0) {
-      const fallbackLive = getAllLiveStreamMatches()
-        .filter(m => m.id !== activeMatch.id)
-        .map(resolveLiveMatchToMatchup);
+      const fallbackLive = getAllLiveStreamMatches().filter(m => m.id !== activeMatch.id);
       const fallbackUpcoming = UPCOMING_HIGHLIGHTS.filter(m => m.id !== activeMatch.id);
       combined = [...fallbackLive, ...fallbackUpcoming];
     }
