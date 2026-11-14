@@ -19,7 +19,7 @@ import {
   MapPin,
   Calendar,
   Clock,
-  ArrowRight,
+  Trophy,
 } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
@@ -159,6 +159,11 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     });
   };
 
+  const formattedKickoff = (matchup.kickoffTime || 'Today')
+    .replace(/\s*\(EAT\)/i, '')
+    .replace(/\s*EAT/i, '')
+    .trim();
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.headerPurple} translucent={false} />
@@ -179,7 +184,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── 2. STATIC MATCH HERO IMAGE (SHARP, NO BLUR, NO OVERLAYS) ── */}
+        {/* ── 2. STATIC MATCH HERO BANNER (WELL-PROPORTIONED, NO BLUR, NO OVERLAYS) ── */}
         <View style={styles.heroContainer}>
           <Image
             source={{ uri: heroArtworkUrl }}
@@ -188,121 +193,153 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
           />
         </View>
 
-        {/* ── 3. COMPACT MATCHUP CARD ── */}
+        {/* ── 3. REFINED MATCHUP CARD WITH INTEGRATED METADATA STRIP ── */}
         <View style={styles.matchupCard}>
-          {/* Home Team */}
-          <View style={styles.teamCol}>
-            <View style={styles.crestCircle}>
-              <Image source={{ uri: homeCrest }} style={styles.crestImage} resizeMode="contain" />
+          {/* Main Matchup Score Row */}
+          <View style={styles.matchupRow}>
+            {/* Home Team */}
+            <View style={styles.teamCol}>
+              <View style={styles.crestCircle}>
+                <Image source={{ uri: homeCrest }} style={styles.crestImage} resizeMode="contain" />
+              </View>
+              <Text style={styles.teamName} numberOfLines={2}>
+                {matchup.homeTeam.name}
+              </Text>
             </View>
-            <Text style={styles.teamName} numberOfLines={1}>
-              {matchup.homeTeam.name}
-            </Text>
-          </View>
 
-          {/* Center VS / Score & Status */}
-          <View style={styles.centerCol}>
-            {isLive ? (
-              <>
-                <View style={styles.scoreRow}>
-                  <Text style={styles.scoreText}>{homeScore}</Text>
-                  <Text style={styles.scoreColon}>:</Text>
-                  <Text style={styles.scoreText}>{awayScore}</Text>
-                </View>
-                <View style={styles.livePill}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.livePillText}>
-                    {matchup.playTime || (matchup.minute ? `${matchup.minute}' LIVE` : 'LIVE')}
-                  </Text>
-                </View>
-              </>
-            ) : isFinished ? (
-              <>
-                <View style={styles.scoreRow}>
-                  <Text style={styles.scoreText}>{homeScore}</Text>
-                  <Text style={styles.scoreColon}>:</Text>
-                  <Text style={styles.scoreText}>{awayScore}</Text>
-                </View>
-                <View style={styles.ftPill}>
-                  <Text style={styles.ftPillText}>FULL TIME</Text>
-                </View>
-              </>
-            ) : (
-              <>
-                <View style={styles.vsPill}>
-                  <Text style={styles.vsText}>VS</Text>
-                </View>
-                <View style={styles.timePill}>
-                  <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
-                  <Text style={styles.kickoffTimeText} numberOfLines={1}>
-                    {matchup.kickoffTime || 'Today'}
-                  </Text>
-                </View>
-              </>
-            )}
+            {/* Center: Score / Status / VS */}
+            <View style={styles.centerCol}>
+              {isLive ? (
+                <>
+                  <View style={styles.scoreRow}>
+                    <Text style={styles.scoreText}>{homeScore}</Text>
+                    <Text style={styles.scoreColon}>:</Text>
+                    <Text style={styles.scoreText}>{awayScore}</Text>
+                  </View>
+                  <View style={styles.livePill}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.livePillText}>
+                      {matchup.playTime || (matchup.minute ? `${matchup.minute}' LIVE` : 'LIVE')}
+                    </Text>
+                  </View>
+                </>
+              ) : isFinished ? (
+                <>
+                  <View style={styles.scoreRow}>
+                    <Text style={styles.scoreText}>{homeScore}</Text>
+                    <Text style={styles.scoreColon}>:</Text>
+                    <Text style={styles.scoreText}>{awayScore}</Text>
+                  </View>
+                  <View style={styles.ftPill}>
+                    <Text style={styles.ftPillText}>FULL TIME</Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.vsPill}>
+                    <Text style={styles.vsText}>VS</Text>
+                  </View>
+                  <View style={styles.timePill}>
+                    <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
+                    <Text style={styles.kickoffTimeText} numberOfLines={1}>
+                      {formattedKickoff}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
 
-            <View style={styles.venueRow}>
-              <MapPin size={11} color={Colors.textMuted} style={{ marginRight: 3 }} />
-              <Text style={styles.venueText} numberOfLines={1}>
-                {matchup.venue || matchup.competition}
+            {/* Away Team */}
+            <View style={styles.teamCol}>
+              <View style={styles.crestCircle}>
+                <Image source={{ uri: awayCrest }} style={styles.crestImage} resizeMode="contain" />
+              </View>
+              <Text style={styles.teamName} numberOfLines={2}>
+                {matchup.awayTeam.name}
               </Text>
             </View>
           </View>
 
-          {/* Away Team */}
-          <View style={styles.teamCol}>
-            <View style={styles.crestCircle}>
-              <Image source={{ uri: awayCrest }} style={styles.crestImage} resizeMode="contain" />
+          {/* Integrated Metadata Strip (No Empty Gaps) */}
+          <View style={styles.cardMetaStrip}>
+            {matchup.venue ? (
+              <View style={styles.metaItem}>
+                <MapPin size={11} color="#A58BFC" style={{ marginRight: 4 }} />
+                <Text style={styles.metaText} numberOfLines={1}>
+                  {matchup.venue}
+                </Text>
+              </View>
+            ) : null}
+
+            {matchup.venue && <Text style={styles.metaDivider}>•</Text>}
+
+            <View style={styles.metaItem}>
+              <Calendar size={11} color="#A58BFC" style={{ marginRight: 4 }} />
+              <Text style={styles.metaText} numberOfLines={1}>
+                {matchup.kickoffDate || 'Today'}
+              </Text>
             </View>
-            <Text style={styles.teamName} numberOfLines={1}>
-              {matchup.awayTeam.name}
-            </Text>
           </View>
         </View>
 
-        {/* ── 4. PRIMARY & SECONDARY ACTIONS ── */}
+        {/* ── 4. BALANCED ACTION ROW (COMPACT, HIGH-IMPACT, ZERO WASTED SPACE) ── */}
         <View style={styles.actionsContainer}>
-          {/* If Live Broadcast is genuinely available: Watch Live Stream button */}
-          {hasLiveStream && (
-            <TouchableOpacity
-              style={styles.watchLiveButton}
-              activeOpacity={0.85}
-              onPress={handleWatchLive}
-              accessibilityRole="button"
-              accessibilityLabel="Watch Live Stream"
-            >
-              <Tv size={16} color="#FFFFFF" strokeWidth={2.4} />
-              <Text style={styles.watchLiveText}>Watch Live Stream</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Action Row: Notify Kickoff + Save + Share */}
           <View style={styles.actionsRow}>
-            {/* Primary Kickoff Alert Button */}
-            <TouchableOpacity
-              style={[
-                styles.notifyButton,
-                isReminderSet && styles.notifyButtonActive,
-              ]}
-              activeOpacity={0.85}
-              onPress={() => toggleMatchReminder(matchup.id)}
-              accessibilityRole="button"
-              accessibilityLabel={isReminderSet ? 'Kickoff reminder set' : 'Notify at kickoff'}
-            >
-              {isReminderSet ? (
-                <>
-                  <BellRing size={16} color="#7952FC" strokeWidth={2.4} />
-                  <Text style={[styles.notifyText, { color: '#A58BFC' }]}>
-                    Kickoff Alert Active
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <Bell size={16} color="#FFFFFF" strokeWidth={2.2} />
-                  <Text style={styles.notifyText}>Notify Kickoff</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {/* Primary Action Button */}
+            {hasLiveStream ? (
+              <TouchableOpacity
+                style={styles.primaryActionButton}
+                activeOpacity={0.85}
+                onPress={handleWatchLive}
+                accessibilityRole="button"
+                accessibilityLabel="Watch Live Stream"
+              >
+                <Tv size={16} color="#FFFFFF" strokeWidth={2.4} />
+                <Text style={styles.primaryActionText}>Watch Live Stream</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.primaryActionButton,
+                  isReminderSet && styles.primaryActionActive,
+                ]}
+                activeOpacity={0.85}
+                onPress={() => toggleMatchReminder(matchup.id)}
+                accessibilityRole="button"
+                accessibilityLabel={isReminderSet ? 'Kickoff reminder set' : 'Notify at kickoff'}
+              >
+                {isReminderSet ? (
+                  <>
+                    <BellRing size={16} color="#7952FC" strokeWidth={2.4} />
+                    <Text style={[styles.primaryActionText, { color: '#A58BFC' }]}>
+                      Kickoff Alert Active
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Bell size={16} color="#FFFFFF" strokeWidth={2.2} />
+                    <Text style={styles.primaryActionText}>Notify Kickoff</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {/* If live stream is active, allow setting reminder via icon button */}
+            {hasLiveStream && (
+              <TouchableOpacity
+                style={[styles.iconButton, isReminderSet && styles.iconButtonActive]}
+                activeOpacity={0.8}
+                onPress={() => toggleMatchReminder(matchup.id)}
+                accessibilityRole="button"
+                accessibilityLabel="Toggle reminder"
+              >
+                {isReminderSet ? (
+                  <BellRing size={18} color="#7952FC" strokeWidth={2.4} />
+                ) : (
+                  <Bell size={18} color="#A098B5" strokeWidth={2} />
+                )}
+              </TouchableOpacity>
+            )}
 
             {/* Bookmark Action */}
             <TouchableOpacity
@@ -332,7 +369,70 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
           </View>
         </View>
 
-        {/* ── 5. MORE LIVE & UPCOMING FIXTURES (USEFUL NAVIGATION) ── */}
+        {/* ── 5. ESSENTIAL MATCH OVERVIEW CARD (SMART SPACE UTILIZATION) ── */}
+        <View style={styles.overviewCard}>
+          <View style={styles.overviewGrid}>
+            {/* Item 1: Venue */}
+            <View style={styles.overviewItem}>
+              <View style={styles.overviewIconCircle}>
+                <MapPin size={13} color="#A58BFC" strokeWidth={2.2} />
+              </View>
+              <View style={styles.overviewTextCol}>
+                <Text style={styles.overviewLabel}>VENUE</Text>
+                <Text style={styles.overviewValue} numberOfLines={1}>
+                  {matchup.venue || 'Stadium'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Item 2: Kickoff */}
+            <View style={styles.overviewItem}>
+              <View style={styles.overviewIconCircle}>
+                <Clock size={13} color="#A58BFC" strokeWidth={2.2} />
+              </View>
+              <View style={styles.overviewTextCol}>
+                <Text style={styles.overviewLabel}>KICKOFF</Text>
+                <Text style={styles.overviewValue} numberOfLines={1}>
+                  {formattedKickoff}
+                </Text>
+              </View>
+            </View>
+
+            {/* Item 3: Competition */}
+            <View style={styles.overviewItem}>
+              <View style={styles.overviewIconCircle}>
+                <Trophy size={13} color="#A58BFC" strokeWidth={2.2} />
+              </View>
+              <View style={styles.overviewTextCol}>
+                <Text style={styles.overviewLabel}>COMPETITION</Text>
+                <Text style={styles.overviewValue} numberOfLines={1}>
+                  {matchup.competition}
+                </Text>
+              </View>
+            </View>
+
+            {/* Item 4: Coverage / Broadcast */}
+            <View style={styles.overviewItem}>
+              <View style={styles.overviewIconCircle}>
+                <Tv size={13} color="#A58BFC" strokeWidth={2.2} />
+              </View>
+              <View style={styles.overviewTextCol}>
+                <Text style={styles.overviewLabel}>BROADCAST</Text>
+                <Text
+                  style={[
+                    styles.overviewValue,
+                    hasLiveStream && { color: '#EF4444' },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {hasLiveStream ? 'Live Stream Active' : 'BALLIVE Coverage'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* ── 6. MORE LIVE & UPCOMING FIXTURES ── */}
         {moreMatches.length > 0 && (
           <View style={styles.moreSection}>
             <View style={styles.moreHeaderRow}>
@@ -371,59 +471,65 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 48,
+    paddingBottom: 36,
   },
+
   // ── Static Match Hero ──
   heroContainer: {
     marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 10,
-    height: 180,
+    marginTop: 8,
+    marginBottom: 8,
+    height: 160,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#1E1730', // Deliberate neutral solid fallback
+    backgroundColor: '#1E1730',
   },
   heroImage: {
     width: '100%',
     height: '100%',
   },
+
   // ── Matchup Card ──
   matchupCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: '#1E1730',
     borderRadius: 16,
     paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingVertical: 12,
     marginHorizontal: 16,
-    marginBottom: 12,
+    marginBottom: 10,
+  },
+  matchupRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   teamCol: {
     flex: 1,
     alignItems: 'center',
+    paddingHorizontal: 2,
   },
   crestCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#181524',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 6,
   },
   crestImage: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
   },
   teamName: {
     fontSize: 12,
     fontWeight: '800',
     color: Colors.textPrimary,
     textAlign: 'center',
+    lineHeight: 16,
   },
   centerCol: {
-    flex: 1.2,
+    flex: 1.1,
     alignItems: 'center',
     paddingHorizontal: 4,
   },
@@ -433,13 +539,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   scoreText: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '900',
     color: Colors.textPrimary,
     letterSpacing: 1,
   },
   scoreColon: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '900',
     color: '#7952FC',
     marginHorizontal: 4,
@@ -451,7 +557,6 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderRadius: 6,
-    marginBottom: 6,
     gap: 4,
   },
   liveDot: {
@@ -471,7 +576,6 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 8,
     borderRadius: 6,
-    marginBottom: 6,
   },
   ftPillText: {
     fontSize: 10,
@@ -482,12 +586,12 @@ const styles = StyleSheet.create({
   vsPill: {
     backgroundColor: '#271D3E',
     paddingVertical: 3,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     borderRadius: 6,
     marginBottom: 4,
   },
   vsText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
     color: '#A58BFC',
     letterSpacing: 1,
@@ -495,65 +599,67 @@ const styles = StyleSheet.create({
   timePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 6,
   },
   kickoffTimeText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#D4CEF2',
   },
-  venueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    maxWidth: '90%',
-  },
-  venueText: {
-    fontSize: 10,
-    color: Colors.textMuted,
-  },
-  // ── Actions ──
-  actionsContainer: {
-    marginHorizontal: 16,
-    marginBottom: 20,
-    gap: 10,
-  },
-  watchLiveButton: {
+
+  // ── Integrated Card Metadata Strip ──
+  cardMetaStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#7952FC',
-    paddingVertical: 12,
-    borderRadius: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
+    paddingTop: 8,
+    marginTop: 8,
     gap: 8,
   },
-  watchLiveText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.4,
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: '45%',
+  },
+  metaText: {
+    fontSize: 11,
+    color: '#A098B5',
+    fontWeight: '600',
+  },
+  metaDivider: {
+    fontSize: 11,
+    color: 'rgba(255, 255, 255, 0.2)',
+  },
+
+  // ── Balanced Action Controls ──
+  actionsContainer: {
+    marginHorizontal: 16,
+    marginBottom: 10,
   },
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  notifyButton: {
+  primaryActionButton: {
     flex: 1,
+    height: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#7952FC',
-    paddingVertical: 11,
     borderRadius: 12,
     gap: 7,
   },
-  notifyButtonActive: {
+  primaryActionActive: {
     backgroundColor: '#271D3E',
   },
-  notifyText: {
+  primaryActionText: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   iconButton: {
     width: 44,
@@ -566,9 +672,53 @@ const styles = StyleSheet.create({
   iconButtonActive: {
     backgroundColor: '#271D3E',
   },
+
+  // ── Essential Match Overview Card ──
+  overviewCard: {
+    backgroundColor: '#1E1730',
+    borderRadius: 14,
+    padding: 12,
+    marginHorizontal: 16,
+    marginBottom: 14,
+  },
+  overviewGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  overviewItem: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  overviewIconCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: '#181524',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overviewTextCol: {
+    flex: 1,
+  },
+  overviewLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#A098B5',
+    letterSpacing: 0.5,
+    marginBottom: 1,
+  },
+  overviewValue: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
   // ── More Matches ──
   moreSection: {
-    marginTop: 8,
+    marginTop: 4,
     paddingHorizontal: 16,
   },
   moreHeaderRow: {
@@ -587,3 +737,5 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 });
+
+export default MatchDetailsScreen;

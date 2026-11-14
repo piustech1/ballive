@@ -7,7 +7,7 @@ import {
   Image,
   StyleSheet,
 } from 'react-native';
-import { Trophy } from 'lucide-react-native';
+import { Trophy, Clock } from 'lucide-react-native';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { streamingApiService } from '../../services/streamingApiService';
 import { resolveSportBackground } from '../../utils/sportBackgroundResolver';
@@ -324,88 +324,80 @@ export const SportsScheduleTimeline: React.FC<SportsScheduleTimelineProps> = ({
     };
   }, [propMatches]);
 
-  // Select top 3 fixtures for the 1 Large + 2 Small arrangement
   const displayMatches = useMemo(() => {
     const list = internalMatches.length > 0 ? internalMatches : FALLBACK_TIMELINE_MATCHES;
-    return list.slice(0, 3);
+    return list.slice(0, 4);
   }, [internalMatches]);
 
-  const topMatch = displayMatches[0];
-  const lowerLeftMatch = displayMatches.length > 1 ? displayMatches[1] : null;
-  const lowerRightMatch = displayMatches.length > 2 ? displayMatches[2] : null;
-
-  if (!topMatch) {
+  if (displayMatches.length === 0) {
     return null;
   }
 
-  const topTime = formatKickoffTime(topMatch.kickoffTime);
-  const lowerTime = lowerLeftMatch
-    ? formatKickoffTime(lowerLeftMatch.kickoffTime)
-    : topTime;
+  // 1st match: Wide Top Card
+  const match1 = displayMatches[0];
+  // 2nd and 3rd matches: Side-by-side cards
+  const match2 = displayMatches.length > 1 ? displayMatches[1] : null;
+  const match3 = displayMatches.length > 2 ? displayMatches[2] : null;
+  // 4th match (if available): Wide Bottom Card
+  const match4 = displayMatches.length > 3 ? displayMatches[3] : null;
 
   return (
     <View style={styles.container}>
-      {/* ── TIMELINE WRAPPER: TIME AXIS ON LEFT + CARDS ON RIGHT ── */}
-      <View style={styles.timelineRow}>
-        {/* 1. LEFT COMPACT TIME AXIS */}
-        <View style={styles.timeAxisCol}>
-          {/* Top Milestone (aligned with Top Card) */}
-          <View style={styles.topMilestoneBox}>
-            <Text style={styles.timeLabelText} numberOfLines={1}>
-              {topTime}
-            </Text>
-            <View style={styles.milestoneDot} />
-          </View>
-
-          {/* Vertical Connecting Line */}
-          {lowerLeftMatch && <View style={styles.axisConnectingLine} />}
-
-          {/* Lower Milestone (aligned with Lower Row) */}
-          {lowerLeftMatch && (
-            <View style={styles.lowerMilestoneBox}>
-              <Text style={styles.timeLabelText} numberOfLines={1}>
-                {lowerTime}
-              </Text>
-              <View style={styles.milestoneDot} />
-            </View>
-          )}
+      {/* ── SECTION HEADER (SPORTS SCHEDULE + TIMEZONE BADGE) ── */}
+      <View style={styles.headerRow}>
+        <Text style={styles.sectionTitle}>Sports schedule</Text>
+        <View style={styles.eatBadge}>
+          <Clock size={11} color="#A58BFC" strokeWidth={2.4} style={{ marginRight: 4 }} />
+          <Text style={styles.eatBadgeText}>EAT (UTC+3)</Text>
         </View>
+      </View>
 
-        {/* 2. RIGHT CARDS COMPOSITION */}
-        <View style={styles.cardsCol}>
-          {/* ── TOP LARGE MATCH CARD ── */}
+      {/* ── FULL-WIDTH MODERN MATCH CARD SCHEDULE ── */}
+      <View style={styles.scheduleGrid}>
+        {/* 1. Primary Wide Match Card */}
+        {match1 && (
           <TopLargeCard
-            match={topMatch}
-            onPress={() => onMatchPress(topMatch)}
+            match={match1}
+            onPress={() => onMatchPress(match1)}
           />
+        )}
 
-          {/* ── LOWER ROW: TWO SMALL CARDS SIDE-BY-SIDE ── */}
-          {(lowerLeftMatch || lowerRightMatch) && (
-            <View style={styles.lowerCardsRow}>
-              {lowerLeftMatch && (
-                <SmallMatchCard
-                  match={lowerLeftMatch}
-                  themeColor="#3F4D85"
-                  onPress={() => onMatchPress(lowerLeftMatch)}
-                />
-              )}
-              {lowerRightMatch && (
-                <SmallMatchCard
-                  match={lowerRightMatch}
-                  themeColor="#D84315"
-                  onPress={() => onMatchPress(lowerRightMatch)}
-                />
-              )}
-            </View>
-          )}
-        </View>
+        {/* 2. Side-by-Side Compact Match Cards */}
+        {(match2 || match3) && (
+          <View style={styles.sideBySideRow}>
+            {match2 && (
+              <SmallMatchCard
+                match={match2}
+                themeColor="#3F4D85"
+                onPress={() => onMatchPress(match2)}
+              />
+            )}
+            {match3 && (
+              <SmallMatchCard
+                match={match3}
+                themeColor="#D84315"
+                onPress={() => onMatchPress(match3)}
+              />
+            )}
+          </View>
+        )}
+
+        {/* 3. Secondary Wide Match Card (if 4th match exists) */}
+        {match4 && (
+          <View style={styles.bottomCardWrapper}>
+            <TopLargeCard
+              match={match4}
+              onPress={() => onMatchPress(match4)}
+            />
+          </View>
+        )}
       </View>
     </View>
   );
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   TOP LARGE MATCH CARD (Purple/Indigo Sport Graphic Surface)
+   WIDE MATCH CARD (Full Width, Crisp Typography, Authentic Artwork)
 ───────────────────────────────────────────────────────────────────────────── */
 interface TopLargeCardProps {
   match: DiscoverMatchup;
@@ -454,7 +446,6 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
         imageStyle={styles.topCardBgImage}
         resizeMode="cover"
       >
-        {/* Subtle sports overlay ensuring high contrast without muddying artwork */}
         <View style={styles.topCardOverlay}>
           {/* Kickoff Time at Top Left */}
           <Text style={styles.topKickoffText} numberOfLines={1}>
@@ -507,7 +498,7 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   LOWER SMALL MATCH CARD (Slate Blue or Warm Orange Surface)
+   SIDE-BY-SIDE COMPACT MATCH CARD (Slate Blue or Warm Orange Surface)
 ───────────────────────────────────────────────────────────────────────────── */
 interface SmallMatchCardProps {
   match: DiscoverMatchup;
@@ -589,74 +580,51 @@ const SmallMatchCard: React.FC<SmallMatchCardProps> = ({
 };
 
 /* ─────────────────────────────────────────────────────────────────────────────
-   STYLES: CLEAN REFERENCE-FAITHFUL TIMELINE COMPOSITION
+   STYLES: CLEAN FULL-WIDTH CARD-BASED SCHEDULE (NO TIMELINE OVERHEAD)
 ───────────────────────────────────────────────────────────────────────────── */
 const styles = StyleSheet.create({
   container: {
-    marginTop: 18,
+    marginTop: 20,
     marginBottom: 20,
     paddingHorizontal: 16,
   },
-  timelineRow: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-  },
-
-  /* ── LEFT TIME AXIS ── */
-  timeAxisCol: {
-    width: 62,
-    alignItems: 'flex-start',
-    position: 'relative',
-    paddingTop: 12,
-  },
-  topMilestoneBox: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
-    paddingRight: 6,
+    marginBottom: 12,
   },
-  lowerMilestoneBox: {
-    position: 'absolute',
-    top: 146,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingRight: 6,
-  },
-  timeLabelText: {
-    fontSize: 11,
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: '#A58BFC',
-    letterSpacing: -0.2,
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
   },
-  milestoneDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#7952FC',
+  eatBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E1730',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(165, 139, 252, 0.2)',
   },
-  axisConnectingLine: {
-    position: 'absolute',
-    right: 8.5,
-    top: 20,
-    height: 126,
-    width: 1.5,
-    backgroundColor: 'rgba(165, 139, 252, 0.22)',
-  },
-
-  /* ── RIGHT CARDS COLUMN ── */
-  cardsCol: {
-    flex: 1,
-    paddingLeft: 10,
+  eatBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#C4B5FD',
   },
 
-  /* ── TOP LARGE CARD ── */
+  /* ── FULL WIDTH SCHEDULE GRID ── */
+  scheduleGrid: {
+    width: '100%',
+  },
+
+  /* ── WIDE MATCH CARD ── */
   topCardBase: {
     width: '100%',
-    height: 126,
+    height: 128,
     borderRadius: 16,
     overflow: 'hidden',
     backgroundColor: '#35235A',
@@ -711,11 +679,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  /* ── LOWER ROW: TWO SMALL CARDS ── */
-  lowerCardsRow: {
+  /* ── SIDE-BY-SIDE COMPACT CARDS ── */
+  sideBySideRow: {
     flexDirection: 'row',
     gap: 10,
     marginTop: 10,
+    width: '100%',
   },
   smallCardBase: {
     flex: 1,
@@ -759,6 +728,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.82)',
     letterSpacing: 0.2,
+  },
+  bottomCardWrapper: {
+    marginTop: 10,
+    width: '100%',
   },
 });
 
