@@ -84,7 +84,7 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     rawStatus: live.status,
     minute: live.minute,
     playTime: live.playTime,
-    completed: live.status === 'FT' || live.minute === 90,
+    completed: live.status === 'FT' || (live as any).state === 'post',
   });
 
   const { status, isLive, isUpcoming, isFinished } = statusInfo;
@@ -106,7 +106,9 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     live.imageUrl,
     live.homeTeam,
     live.awayTeam,
-    live.id
+    live.id,
+    homeCrest,
+    awayCrest
   );
 
   return {
@@ -114,6 +116,7 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     competition: live.competition,
     competitionLogo: compLogo,
     status,
+    isLive,
     kickoffDate: 'Today',
     kickoffTime,
     playTime: isLive ? live.playTime : undefined,

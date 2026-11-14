@@ -265,6 +265,8 @@ export const AllLiveStreamsScreen: React.FC = () => {
               const isLive =
                 item.status === 'LIVE' ||
                 (item.minute !== undefined && item.minute > 0) ||
+                item.playTime === 'HT' ||
+                Boolean(item.playTime && item.playTime.includes('LIVE')) ||
                 Boolean(item.isLive) ||
                 Boolean(item.streamUrl || item.hasLiveBroadcast);
 

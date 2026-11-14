@@ -17,7 +17,15 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({
   onReminderToggle,
 }) => {
   const handlePress = () => {
-    if (onWatchPress && (matchup.status === 'LIVE' || matchup.hasLiveBroadcast)) {
+    const isLive =
+      matchup.status === 'LIVE' ||
+      Boolean(matchup.isLive) ||
+      (matchup.minute !== undefined && matchup.minute > 0) ||
+      matchup.playTime === 'HT' ||
+      Boolean(matchup.playTime && matchup.playTime.includes('LIVE')) ||
+      Boolean(matchup.hasLiveBroadcast || matchup.streamUrl);
+
+    if (isLive && onWatchPress) {
       onWatchPress(matchup);
     } else {
       onMatchDetailsPress(matchup);

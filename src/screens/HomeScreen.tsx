@@ -138,6 +138,8 @@ export const HomeScreen: React.FC = () => {
     const isLive =
       match.status === 'LIVE' ||
       (match.minute !== undefined && match.minute > 0) ||
+      match.playTime === 'HT' ||
+      matchup.playTime === 'HT' ||
       matchup.status === 'LIVE' ||
       Boolean(matchup.isLive) ||
       Boolean(matchup.streamUrl || match.streamUrl || match.hasLiveStream);

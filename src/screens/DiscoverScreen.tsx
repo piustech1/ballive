@@ -228,10 +228,25 @@ export const DiscoverScreen: React.FC = () => {
   };
 
   const handleMatchDetailsPress = (matchup: DiscoverMatchup) => {
-    navigate({
-      name: 'MatchDetails',
-      params: { matchup },
-    });
+    const isLive =
+      matchup.status === 'LIVE' ||
+      (matchup.minute !== undefined && matchup.minute > 0) ||
+      Boolean(matchup.isLive) ||
+      matchup.playTime === 'HT' ||
+      Boolean(matchup.playTime && matchup.playTime.includes('LIVE')) ||
+      Boolean(matchup.streamUrl || matchup.hasLiveBroadcast);
+
+    if (isLive) {
+      navigate({
+        name: 'LiveStreamDetails',
+        params: { match: matchup },
+      });
+    } else {
+      navigate({
+        name: 'MatchDetails',
+        params: { matchup },
+      });
+    }
   };
 
   const handleWatchPress = (matchup: DiscoverMatchup) => {
@@ -239,6 +254,8 @@ export const DiscoverScreen: React.FC = () => {
       matchup.status === 'LIVE' ||
       (matchup.minute !== undefined && matchup.minute > 0) ||
       Boolean(matchup.isLive) ||
+      matchup.playTime === 'HT' ||
+      Boolean(matchup.playTime && matchup.playTime.includes('LIVE')) ||
       Boolean(matchup.streamUrl || matchup.hasLiveBroadcast);
 
     if (isLive) {

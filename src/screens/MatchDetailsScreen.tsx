@@ -98,7 +98,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             homeTeam: { ...prev.homeTeam, score: found.scoreHome },
             awayTeam: { ...prev.awayTeam, score: found.scoreAway },
           }));
-        } else if (found.statusText === 'FT' || found.minute === 90) {
+        } else if (found.statusText === 'FT' || (found as any).state === 'post') {
           setActiveMatchup(prev => ({
             ...prev,
             status: 'FT',
@@ -134,6 +134,19 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     };
   }, [activeMatchup.id]);
 
+  // Team crests
+  const homeCrest =
+    activeMatchup.homeTeam.crestUrl ||
+    (activeMatchup as any).homeBadge ||
+    getTeamCrest(activeMatchup.homeTeam.name) ||
+    DEFAULT_CREST;
+
+  const awayCrest =
+    activeMatchup.awayTeam.crestUrl ||
+    (activeMatchup as any).awayBadge ||
+    getTeamCrest(activeMatchup.awayTeam.name) ||
+    DEFAULT_CREST;
+
   // Resolve authentic, sharp, unblurred sport-specific background
   const rawImage =
     activeMatchup.poster ||
@@ -148,22 +161,11 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       rawImage,
       activeMatchup.homeTeam.name,
       activeMatchup.awayTeam.name,
-      activeMatchup.id
+      activeMatchup.id,
+      homeCrest,
+      awayCrest
     );
-  }, [activeMatchup.sport, activeMatchup.competition, rawImage, activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, activeMatchup.id]);
-
-  // Team crests
-  const homeCrest =
-    activeMatchup.homeTeam.crestUrl ||
-    (activeMatchup as any).homeBadge ||
-    getTeamCrest(activeMatchup.homeTeam.name) ||
-    DEFAULT_CREST;
-
-  const awayCrest =
-    activeMatchup.awayTeam.crestUrl ||
-    (activeMatchup as any).awayBadge ||
-    getTeamCrest(activeMatchup.awayTeam.name) ||
-    DEFAULT_CREST;
+  }, [activeMatchup.sport, activeMatchup.competition, rawImage, activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, activeMatchup.id, homeCrest, awayCrest]);
 
   const isReminderSet = profile.matchReminderIds.includes(activeMatchup.id);
   const isSaved = profile.savedMatchIds.includes(activeMatchup.id);
@@ -172,7 +174,14 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     playTime: activeMatchup.playTime,
     minute: activeMatchup.minute,
   });
-  const isLive = normalizedStatus.isLive || activeMatchup.status === 'LIVE' || (activeMatchup.minute !== undefined && activeMatchup.minute > 0);
+  const isLive =
+    normalizedStatus.isLive ||
+    activeMatchup.status === 'LIVE' ||
+    Boolean(activeMatchup.isLive) ||
+    (activeMatchup.minute !== undefined && activeMatchup.minute > 0) ||
+    activeMatchup.playTime === 'HT' ||
+    Boolean(activeMatchup.playTime && activeMatchup.playTime.includes('LIVE')) ||
+    Boolean(activeMatchup.hasLiveBroadcast || activeMatchup.streamUrl);
   const isFinished = normalizedStatus.isFinished || activeMatchup.status === 'FT';
   const isUpcoming = !isLive && !isFinished;
   const hasLiveStream = isLive && Boolean(activeMatchup.streamUrl || activeMatchup.hasLiveBroadcast || (activeMatchup.streams && activeMatchup.streams.length > 0));

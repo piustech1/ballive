@@ -301,12 +301,12 @@ class StreamingApiService {
                 return;
               }
 
-              // Check live status strictly - ignore scheduled upcoming games with future times
+              // Check live status strictly - prioritize confirmed live ESPN scoreboard or explicit live release
               const isReleaseLive = m.releaseInfo === 'LIVE' || cleanTitle.includes('🔴 LIVE') || Boolean(m.description && m.description.includes('LIVE NOW'));
               const isTimeUpcoming = typeof m.releaseInfo === 'string' && (m.releaseInfo.includes('AM') || m.releaseInfo.includes('PM') || m.releaseInfo.includes(':') || cleanTitle.startsWith('⏱️'));
               const matchedEspn = findMatchedEspn(home, away, `${m.id || ''} ${m.poster || ''}`);
-              const isEspnLive = Boolean(matchedEspn && matchedEspn.isLive && (matchedEspn.minute > 0 || matchedEspn.score.home > 0 || matchedEspn.score.away > 0));
-              const isTrulyLive = !isTimeUpcoming && (isReleaseLive || isEspnLive);
+              const isEspnLive = Boolean(matchedEspn && matchedEspn.isLive && (matchedEspn.minute > 0 || matchedEspn.score.home > 0 || matchedEspn.score.away > 0 || matchedEspn.playTime === 'HT'));
+              const isTrulyLive = isEspnLive || isReleaseLive || (!isTimeUpcoming && m.releaseInfo === 'LIVE');
 
               // Select authentic unique artwork with multi-sport detection (never generic placeholder)
               const backdrop = resolveSportBackground(
@@ -564,7 +564,7 @@ class StreamingApiService {
       rawStatus: live.status,
       minute: live.minute,
       playTime: live.playTime,
-      completed: live.status === 'FT' || live.minute === 90,
+      completed: live.status === 'FT' || (live as any).state === 'post',
     });
 
     const { status, isLive, isUpcoming, isFinished } = statusInfo;
@@ -585,7 +585,9 @@ class StreamingApiService {
       live.imageUrl,
       live.homeTeam,
       live.awayTeam,
-      live.id
+      live.id,
+      homeCrest,
+      awayCrest
     );
 
     return {
@@ -593,6 +595,7 @@ class StreamingApiService {
       competition: live.competition,
       competitionLogo: compLogo,
       status,
+      isLive,
       kickoffDate: 'Today',
       kickoffTime,
       minute: isLive ? live.minute : 0,

@@ -36,6 +36,8 @@ export const MatchOfTheDayTicker: React.FC<MatchOfTheDayTickerProps> = ({ match 
           const isLive =
             match.status === 'LIVE' ||
             (match.minute !== undefined && match.minute > 0) ||
+            match.playTime === 'HT' ||
+            Boolean(match.playTime && match.playTime.includes('LIVE')) ||
             Boolean(match.isLive) ||
             Boolean(match.streamUrl || match.hasLiveBroadcast);
 

@@ -83,6 +83,12 @@ export function resolveLeagueKey(rawKey?: string | null): string {
   if (clean === 'la-liga' || clean === 'primera-division') return 'laliga';
   if (clean === 'serie-a') return 'seriea';
   if (clean === 'ligue-1') return 'ligue1';
+  if (clean === 'liga-f' || clean === 'esp-w-1' || clean === 'liga_f') return 'liga_f';
+  if (clean === 'wsl' || clean === 'eng-w-1' || clean === 'womens-super-league') return 'wsl';
+  if (clean === 'nwsl' || clean === 'usa-nwsl') return 'nwsl';
+  if (clean === 'liga-mx-femenil' || clean === 'mex-w-1') return 'liga_mx_femenil';
+  if (clean === 'coupe-de-france' || clean === 'fra-coupe-de-france') return 'coupe_de_france';
+  if (clean === 'fifa-friendly' || clean === 'friendly' || clean === 'friendlies') return 'fifa_friendly';
   return clean;
 }
 
@@ -141,6 +147,54 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     name: 'Ligue 1 McDonald’s',
     shortName: 'Ligue 1',
     logo: LEAGUE_EMBLEMS['ligue-1'],
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
+  'liga_f': {
+    sport: 'soccer',
+    league: 'esp.w.1',
+    name: 'Liga F',
+    shortName: 'Liga F',
+    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/esp.w.1.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.DAZN,
+  },
+  'wsl': {
+    sport: 'soccer',
+    league: 'eng.w.1',
+    name: "Barclays Women's Super League",
+    shortName: 'WSL',
+    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/eng.w.1.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
+  'nwsl': {
+    sport: 'soccer',
+    league: 'usa.nwsl',
+    name: 'National Women’s Soccer League',
+    shortName: 'NWSL',
+    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/usa.nwsl.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
+  'liga_mx_femenil': {
+    sport: 'soccer',
+    league: 'mex.w.1',
+    name: 'Liga MX Femenil',
+    shortName: 'Liga MX Fem',
+    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/mex.w.1.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.DAZN,
+  },
+  'coupe_de_france': {
+    sport: 'soccer',
+    league: 'fra.coupe_de_france',
+    name: 'Coupe de France',
+    shortName: 'Coupe de France',
+    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/fra.coupe_de_france.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
+  'fifa_friendly': {
+    sport: 'soccer',
+    league: 'fifa.friendly',
+    name: 'International Friendly',
+    shortName: 'Friendlies',
+    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/fifa.friendly.png',
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
   },
   'mls': {
@@ -478,6 +532,12 @@ class SportsApiService {
 
     const endpoints = [
       { url: `${API_CONFIG.ESPN_BASE}/soccer/all/scoreboard`, sport: 'soccer', league: 'all' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/fifa.friendly/scoreboard`, sport: 'soccer', league: 'fifa.friendly' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/esp.w.1/scoreboard`, sport: 'soccer', league: 'esp.w.1' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/usa.nwsl/scoreboard`, sport: 'soccer', league: 'usa.nwsl' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/eng.w.1/scoreboard`, sport: 'soccer', league: 'eng.w.1' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/mex.w.1/scoreboard`, sport: 'soccer', league: 'mex.w.1' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/fra.coupe_de_france/scoreboard`, sport: 'soccer', league: 'fra.coupe_de_france' },
       { url: `${API_CONFIG.ESPN_BASE}/basketball/nba/scoreboard`, sport: 'basketball', league: 'nba' },
       { url: `${API_CONFIG.ESPN_BASE}/basketball/nbl/scoreboard`, sport: 'basketball', league: 'nbl' },
       { url: `${API_CONFIG.ESPN_BASE}/basketball/mens-college-basketball/scoreboard`, sport: 'basketball', league: 'ncaa-m' },
@@ -665,7 +725,9 @@ class SportsApiService {
               comp?.venue?.images?.[0]?.href,
               homeName,
               awayName,
-              String(ev.id)
+              String(ev.id),
+              homeLogo,
+              awayLogo
             );
 
             return {
@@ -760,7 +822,16 @@ class SportsApiService {
               },
               venue: 'Stadium Arena',
               hasLiveBroadcast: false,
-              poster: resolveSportBackground('soccer', m.competition?.name || cleanId, null, homeName, awayName, String(m.id)),
+              poster: resolveSportBackground(
+                'soccer',
+                m.competition?.name || cleanId,
+                null,
+                homeName,
+                awayName,
+                String(m.id),
+                m.homeTeam?.crest || getTeamCrest(homeName),
+                m.awayTeam?.crest || getTeamCrest(awayName)
+              ),
             });
           });
           if (matchups.length > 0) return matchups;
@@ -824,7 +895,9 @@ class SportsApiService {
                 comp?.venue?.images?.[0]?.href,
                 homeName,
                 awayName,
-                String(ev.id)
+                String(ev.id),
+                homeLogo,
+                awayLogo
               ),
             });
           });

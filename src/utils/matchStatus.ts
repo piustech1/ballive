@@ -92,28 +92,31 @@ export function normalizeMatchStatus(options: {
   } = options;
 
   const rawUpper = (rawStatus || '').toUpperCase().trim();
-  const detailUpper = `${detail || ''} ${shortDetail || ''}`.toUpperCase().trim();
+  const detailCombined = `${detail || ''} ${shortDetail || ''} ${rawPlayTime || ''}`.toUpperCase().trim();
 
   // 1. Authoritative Finished / Full Time State
+  // Strictly requires authoritative server post-state or explicit completed indicators.
+  // Never triggered solely by minute === 90 since stoppage time (90'+1', 90'+3') is actively in-play.
   const isPost =
     state === 'post' ||
     completed === true ||
     rawUpper === 'FT' ||
     rawUpper === 'FINAL' ||
+    rawUpper === 'STATUS_FULL_TIME' ||
     rawUpper === 'AET' ||
-    rawUpper === 'PEN' && detailUpper.includes('FINAL') ||
-    detailUpper.includes('FINAL') ||
-    detailUpper === 'FT' ||
-    detailUpper.includes('FULL TIME') ||
-    detailUpper.includes('POSTPONED') ||
-    detailUpper.includes('CANCELED') ||
-    detailUpper.includes('CANCELLED');
+    (rawUpper === 'PEN' && detailCombined.includes('FINAL')) ||
+    (detailCombined.includes('FINAL') && !detailCombined.includes('QUARTER') && !detailCombined.includes('Q')) ||
+    detailCombined === 'FT' ||
+    detailCombined.includes('FULL TIME') ||
+    detailCombined.includes('POSTPONED') ||
+    detailCombined.includes('CANCELED') ||
+    detailCombined.includes('CANCELLED');
 
   if (isPost) {
     let displayStatus = 'FULL TIME';
-    if (detailUpper.includes('POSTPONED')) displayStatus = 'POSTPONED';
-    else if (detailUpper.includes('CANCELED') || detailUpper.includes('CANCELLED')) displayStatus = 'CANCELLED';
-    else if (detailUpper.includes('FINAL/OT') || detailUpper.includes('FINAL/2OT')) displayStatus = shortDetail || 'FINAL/OT';
+    if (detailCombined.includes('POSTPONED')) displayStatus = 'POSTPONED';
+    else if (detailCombined.includes('CANCELED') || detailCombined.includes('CANCELLED')) displayStatus = 'CANCELLED';
+    else if (detailCombined.includes('FINAL/OT') || detailCombined.includes('FINAL/2OT')) displayStatus = shortDetail || 'FINAL/OT';
 
     return {
       status: 'FT',
@@ -127,32 +130,50 @@ export function normalizeMatchStatus(options: {
   }
 
   // 2. Authoritative Live State
-  // A match is LIVE ONLY if the authoritative server confirms in-progress state ('in'),
-  // or explicit in-play period/minute tags (e.g. 1H, 2H, HT, Q1, Q2, P1, P2) AND not pre-game.
+  // A match is LIVE if the authoritative server confirms in-progress state ('in'),
+  // or explicit in-play status/period/minute tags (e.g. 1H, 2H, HT, Halftime, STATUS_IN_PROGRESS, Q1, Q2, P1, P2),
+  // or active minute > 0.
   const isExplicitLive =
     state === 'in' ||
     rawUpper === 'LIVE' ||
     rawUpper === 'IN_PLAY' ||
     rawUpper === 'PAUSED' ||
-    /^(1H|2H|HT|ET|Q1|Q2|Q3|Q4|P1|P2|P3|OT)\b/i.test(detailUpper) ||
-    /halftime|half-time|\bht\b/i.test(detailUpper);
+    rawUpper === 'HT' ||
+    rawUpper === 'HALFTIME' ||
+    rawUpper === 'STATUS_HALFTIME' ||
+    rawUpper === 'STATUS_FIRST_HALF' ||
+    rawUpper === 'STATUS_SECOND_HALF' ||
+    rawUpper === 'STATUS_IN_PROGRESS' ||
+    (rawUpper.startsWith('STATUS_') && !rawUpper.includes('SCHEDULED') && !rawUpper.includes('FINAL') && !rawUpper.includes('POST') && !rawUpper.includes('FULL')) ||
+    /^(1H|2H|HT|ET|Q1|Q2|Q3|Q4|P1|P2|P3|OT)\b/i.test(detailCombined) ||
+    /halftime|half-time|\bht\b/i.test(detailCombined) ||
+    (rawMinute !== undefined && rawMinute > 0);
 
   // Guard against pre-game or scheduled games tagged erroneously
+  // Overridden if the match is actively confirmed in-play by state ('in'), minute > 0, or explicit live periods.
   const isPreScheduled =
-    state === 'pre' ||
-    rawUpper === 'UPCOMING' ||
-    rawUpper === 'SCHEDULED' ||
-    rawUpper === 'NS' ||
-    rawUpper === 'NOT_STARTED' ||
-    detailUpper.includes('SCHEDULED') ||
-    detailUpper.includes('DELAYED');
+    (state === 'pre' ||
+      rawUpper === 'UPCOMING' ||
+      rawUpper === 'SCHEDULED' ||
+      rawUpper === 'NS' ||
+      rawUpper === 'NOT_STARTED' ||
+      detailCombined.includes('SCHEDULED') ||
+      detailCombined.includes('DELAYED')) &&
+    state !== 'in' &&
+    !(rawMinute !== undefined && rawMinute > 0) &&
+    !/^(1H|2H|HT|ET|Q1|Q2|Q3|Q4|P1|P2|P3|OT)\b/i.test(detailCombined) &&
+    !/halftime|half-time|\bht\b/i.test(detailCombined) &&
+    rawUpper !== 'STATUS_HALFTIME' &&
+    rawUpper !== 'STATUS_FIRST_HALF' &&
+    rawUpper !== 'STATUS_SECOND_HALF' &&
+    rawUpper !== 'STATUS_IN_PROGRESS';
 
   if (isExplicitLive && !isPreScheduled) {
     let minute = rawMinute && rawMinute > 0 ? rawMinute : 1;
     let playTime = rawPlayTime;
 
     if (!playTime) {
-      if (/half|ht/i.test(detailUpper)) {
+      if (/half|ht/i.test(detailCombined) || rawUpper === 'HT' || rawUpper === 'HALFTIME' || rawUpper === 'STATUS_HALFTIME') {
         playTime = 'HT';
         minute = 45;
       } else if (shortDetail && shortDetail.length > 0) {
@@ -162,6 +183,9 @@ export function normalizeMatchStatus(options: {
       } else {
         playTime = 'LIVE';
       }
+    } else if (/half|ht/i.test(playTime) || rawUpper === 'HT' || rawUpper === 'HALFTIME' || rawUpper === 'STATUS_HALFTIME') {
+      playTime = 'HT';
+      minute = 45;
     }
 
     return {

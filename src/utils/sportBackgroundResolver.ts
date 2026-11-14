@@ -112,6 +112,15 @@ export const COMPETITION_BACKDROPS: Record<string, string> = {
   world_cup: 'https://images.unsplash.com/photo-1517927033932-b3d18e61fb3a?auto=format&fit=crop&w=1200&q=80',
   mls: 'https://images.unsplash.com/photo-1459865264687-595d652de67e?auto=format&fit=crop&w=1200&q=80',
   nwsl: 'https://images.unsplash.com/photo-1575361204480-aadea25e6e68?auto=format&fit=crop&w=1200&q=80',
+  liga_f: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1200&q=80',
+  wsl: 'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=1200&q=80',
+  liga_mx_femenil: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1200&q=80',
+  coupe_de_france: 'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1200&q=80',
+  intl_friendly: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=1200&q=80',
+  copa_del_rey: 'https://images.unsplash.com/photo-1556056504-5c7696c4c28d?auto=format&fit=crop&w=1200&q=80',
+  fa_cup: 'https://images.unsplash.com/photo-1511886929837-354d827aae26?auto=format&fit=crop&w=1200&q=80',
+  dfb_pokal: 'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?auto=format&fit=crop&w=1200&q=80',
+  coppa_italia: 'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=1200&q=80',
   nba: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80',
   nhl: 'https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?auto=format&fit=crop&w=1200&q=80',
   nfl: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=1200&q=80',
@@ -359,11 +368,21 @@ export function normalizeCompetitionKey(competition?: string): string | null {
   if (c.includes('concacaf')) return 'concacaf';
   if (c.includes('afcon') || c.includes('africa cup') || c.includes('caf')) return 'afcon';
   if (c.includes('premier') || c === 'epl' || c === 'pl') return 'pl';
+  if (c.includes('liga f') || c.includes('primera división femenina') || c.includes('primera femenina')) return 'liga_f';
+  if (c.includes("women's super league") || c.includes('womens super league') || c.includes('wsl') || c.includes('fa wsl')) return 'wsl';
+  if (c.includes('nwsl') || c.includes("national women's soccer league")) return 'nwsl';
+  if (c.includes('liga mx femenil') || c.includes('mexico femenil')) return 'liga_mx_femenil';
+  if (c.includes('coupe de france') || c.includes('french cup')) return 'coupe_de_france';
+  if (c.includes('copa del rey')) return 'copa_del_rey';
+  if (c.includes('fa cup')) return 'fa_cup';
+  if (c.includes('dfb-pokal') || c.includes('dfb pokal') || c.includes('german cup')) return 'dfb_pokal';
+  if (c.includes('coppa italia') || c.includes('italian cup')) return 'coppa_italia';
+  if (c.includes('friendly') || c.includes('friendlies') || c.includes('amichevole') || c.includes('amistoso')) return 'intl_friendly';
   if (c.includes('laliga') || c.includes('la liga') || c.includes('primera')) return 'laliga';
   if (c.includes('serie a')) return 'seriea';
   if (c.includes('bundesliga') || c.includes('bundes')) return 'bundesliga';
   if (c.includes('ligue 1') || c.includes('ligue1') || c.includes('première ligue')) return 'ligue1';
-  if (c.includes('nwsl') || c.includes('women')) return 'nwsl';
+  if (c.includes('women')) return 'nwsl';
   if (c.includes('mls') || c.includes('major league soccer')) return 'mls';
   if (c.includes('world cup') || c.includes('qualifying') || c.includes('fifa')) return 'world_cup';
   if (c.includes('nba') || c.includes('basketball')) return 'nba';
@@ -379,6 +398,7 @@ export function normalizeCompetitionKey(competition?: string): string | null {
  * 
  * 5-Tier Resolution Hierarchy:
  * 1. Verified authentic event card/thumbnail from server/DAG (TheSportsDB, ondemand.st, ESPN).
+ * 1b. Authentic DAG dynamic match artwork with authentic team crests for association football.
  * 2. Authentic competition-specific hero backdrop (e.g. UCL starry night, UEFA Nations League,
  *    Concacaf Nations League, Premier League, LaLiga, Serie A, AFCON, NBA, NHL, NFL, UFC).
  * 3. Curated team/venue backdrop if available.
@@ -391,7 +411,9 @@ export function resolveSportBackground(
   rawImage?: string | null,
   homeTeam?: string,
   awayTeam?: string,
-  matchId?: string
+  matchId?: string,
+  homeBadge?: string | null,
+  awayBadge?: string | null
 ): string {
   const sportKey = normalizeSportKey(rawSport, competition, homeTeam, awayTeam);
   const seed = matchId || `${homeTeam || ''} ${awayTeam || ''} ${competition || ''}`.trim();
@@ -414,6 +436,17 @@ export function resolveSportBackground(
     // If it's a dedicated custom non-generic server image, keep it
     if (!isMismatchedSoccerPlaceholder && !isGenericUnsplash) {
       return cleanedServerImage;
+    }
+  }
+
+  // Tier 1b: For soccer matches with named teams, generate authentic DAG match card with badges
+  if (sportKey === 'soccer' && homeTeam && awayTeam && homeTeam.trim() !== '' && awayTeam.trim() !== '') {
+    const cleanHome = homeTeam.trim();
+    const cleanAway = awayTeam.trim();
+    if (cleanHome.toLowerCase() !== 'home team' && cleanAway.toLowerCase() !== 'away team') {
+      const b1 = homeBadge && typeof homeBadge === 'string' && !homeBadge.includes('default-team-logo') && !homeBadge.includes('default_crest') ? `&b1=${encodeURIComponent(homeBadge)}` : '';
+      const b2 = awayBadge && typeof awayBadge === 'string' && !awayBadge.includes('default-team-logo') && !awayBadge.includes('default_crest') ? `&b2=${encodeURIComponent(awayBadge)}` : '';
+      return `https://dag.s-u.in/img/match?title=${encodeURIComponent(`${cleanHome} vs ${cleanAway}`)}&cat=football${b1}${b2}`;
     }
   }
 
