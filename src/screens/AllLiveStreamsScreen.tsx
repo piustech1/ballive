@@ -262,15 +262,21 @@ export const AllLiveStreamsScreen: React.FC = () => {
             match={item}
             layout="grid"
             onPress={() => {
-              if (item.status === 'UPCOMING' || !item.hasLiveBroadcast) {
-                navigate({
-                  name: 'MatchDetails',
-                  params: { matchup: item },
-                });
-              } else {
+              const isLive =
+                item.status === 'LIVE' ||
+                (item.minute !== undefined && item.minute > 0) ||
+                Boolean(item.isLive) ||
+                Boolean(item.streamUrl || item.hasLiveBroadcast);
+
+              if (isLive) {
                 navigate({
                   name: 'LiveStreamDetails',
                   params: { match: item },
+                });
+              } else {
+                navigate({
+                  name: 'MatchDetails',
+                  params: { matchup: item },
                 });
               }
             }}

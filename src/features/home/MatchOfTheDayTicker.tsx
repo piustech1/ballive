@@ -33,15 +33,21 @@ export const MatchOfTheDayTicker: React.FC<MatchOfTheDayTickerProps> = ({ match 
         match={match}
         layout="featured"
         onPress={() => {
-          if (match.status === 'UPCOMING' || !match.hasLiveBroadcast) {
-            navigate({
-              name: 'MatchDetails',
-              params: { matchup: match },
-            });
-          } else {
+          const isLive =
+            match.status === 'LIVE' ||
+            (match.minute !== undefined && match.minute > 0) ||
+            Boolean(match.isLive) ||
+            Boolean(match.streamUrl || match.hasLiveBroadcast);
+
+          if (isLive) {
             navigate({
               name: 'LiveStreamDetails',
               params: { match },
+            });
+          } else {
+            navigate({
+              name: 'MatchDetails',
+              params: { matchup: match },
             });
           }
         }}

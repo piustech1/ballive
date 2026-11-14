@@ -235,7 +235,12 @@ export const DiscoverScreen: React.FC = () => {
   };
 
   const handleWatchPress = (matchup: DiscoverMatchup) => {
-    const isLive = matchup.status === 'LIVE' && Boolean(matchup.streamUrl || matchup.hasLiveBroadcast);
+    const isLive =
+      matchup.status === 'LIVE' ||
+      (matchup.minute !== undefined && matchup.minute > 0) ||
+      Boolean(matchup.isLive) ||
+      Boolean(matchup.streamUrl || matchup.hasLiveBroadcast);
+
     if (isLive) {
       navigate({
         name: 'LiveStreamDetails',

@@ -54,7 +54,19 @@ export function resolveCompetitionLogo(competitionIdOrName?: string): string {
     return LEAGUE_EMBLEMS['cricket'];
   }
 
-  // Basketball / NBA
+  // Basketball
+  if (clean.includes('nbl')) {
+    return LEAGUE_EMBLEMS['nbl'];
+  }
+  if (clean.includes('ncaa') || clean.includes('college-basketball')) {
+    return LEAGUE_EMBLEMS['ncaa'];
+  }
+  if (clean.includes('wnba')) {
+    return LEAGUE_EMBLEMS['wnba'];
+  }
+  if (clean.includes('fiba')) {
+    return LEAGUE_EMBLEMS['fiba'];
+  }
   if (clean.includes('nba') || clean.includes('basketball')) {
     return LEAGUE_EMBLEMS['nba'];
   }

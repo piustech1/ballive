@@ -137,7 +137,12 @@ class StreamingApiService {
       const cleanName = (s: string) =>
         s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\b(fc|cf|sc|afc|club|united|city|women|ladies|men)\b/g, '').trim();
 
-      const findMatchedEspn = (homeStr: string, awayStr: string): LiveMatch | undefined => {
+      const findMatchedEspn = (homeStr: string, awayStr: string, eventIdOrPoster?: string): LiveMatch | undefined => {
+        if (eventIdOrPoster) {
+          const directHit = espnLiveList.find(em => em.id && eventIdOrPoster.includes(em.id));
+          if (directHit) return directHit;
+        }
+
         const hClean = cleanName(homeStr);
         const aClean = cleanName(awayStr);
         const hToks = hClean.split(/\s+/).filter(w => w.length >= 3);
@@ -236,6 +241,8 @@ class StreamingApiService {
               const aToks = cleanAway.split(/\s+/).filter(w => w.length >= 3);
 
               const existingMatch = [...fetchedMatches, ...fetchedUpcoming].find(em => {
+                if (em.id && m.id && (m.id.includes(em.id) || em.id.includes(m.id))) return true;
+                if (m.poster && em.id && m.poster.includes(em.id)) return true;
                 const emH = cleanName(em.homeTeam);
                 const emA = cleanName(em.awayTeam);
                 const hHit = hToks.some(t => emH.includes(t) || emA.includes(t));
@@ -259,7 +266,8 @@ class StreamingApiService {
                   if (
                     isVerifiedEventImage(resolvedDagArt) ||
                     !existingMatch.imageUrl ||
-                    existingMatch.imageUrl.includes('images.unsplash.com')
+                    existingMatch.imageUrl.includes('images.unsplash.com') ||
+                    !isVerifiedEventImage(existingMatch.imageUrl)
                   ) {
                     existingMatch.imageUrl = resolvedDagArt;
                   }
@@ -288,6 +296,7 @@ class StreamingApiService {
                     url: directUrl,
                   });
                   existingMatch.streamUrl = directUrl;
+                  existingMatch.hasLiveStream = true;
                 }
                 return;
               }
@@ -295,8 +304,8 @@ class StreamingApiService {
               // Check live status strictly - ignore scheduled upcoming games with future times
               const isReleaseLive = m.releaseInfo === 'LIVE' || cleanTitle.includes('🔴 LIVE') || Boolean(m.description && m.description.includes('LIVE NOW'));
               const isTimeUpcoming = typeof m.releaseInfo === 'string' && (m.releaseInfo.includes('AM') || m.releaseInfo.includes('PM') || m.releaseInfo.includes(':') || cleanTitle.startsWith('⏱️'));
-              const matchedEspn = findMatchedEspn(home, away);
-              const isEspnLive = Boolean(matchedEspn && matchedEspn.isLive && matchedEspn.minute > 0);
+              const matchedEspn = findMatchedEspn(home, away, `${m.id || ''} ${m.poster || ''}`);
+              const isEspnLive = Boolean(matchedEspn && matchedEspn.isLive && (matchedEspn.minute > 0 || matchedEspn.score.home > 0 || matchedEspn.score.away > 0));
               const isTrulyLive = !isTimeUpcoming && (isReleaseLive || isEspnLive);
 
               // Select authentic unique artwork with multi-sport detection (never generic placeholder)
@@ -361,6 +370,12 @@ class StreamingApiService {
                 minute = matchedEspn.minute;
                 playTime = matchedEspn.playTime;
                 kickoffTime = matchedEspn.kickoffTime || (matchedEspn.playTime ? `${matchedEspn.playTime} Live` : 'Live In-Play');
+              } else if (matchedEspn && matchedEspn.score) {
+                scoreHome = matchedEspn.score.home;
+                scoreAway = matchedEspn.score.away;
+                minute = matchedEspn.minute;
+                playTime = matchedEspn.playTime || 'Live';
+                kickoffTime = matchedEspn.kickoffTime || 'Live In-Play';
               } else {
                 scoreHome = 0;
                 scoreAway = 0;
@@ -374,12 +389,16 @@ class StreamingApiService {
                 title: cleanTitle.replace(/^🔴\s*LIVE:\s*/i, ''),
                 homeTeam: home,
                 awayTeam: away,
-                competition: isCombat ? 'UFC / Combat' : (m.genres?.[0] || genre),
+                competition: isCombat
+                  ? 'UFC / Combat'
+                  : (matchedEspn?.competition && matchedEspn.competition !== 'Global Football'
+                      ? matchedEspn.competition
+                      : (m.genres?.[0] || genre)),
                 score: { home: scoreHome, away: scoreAway },
                 minute,
                 playTime,
                 status: 'LIVE',
-                imageUrl: backdrop,
+                imageUrl: (matchedEspn && isVerifiedEventImage(matchedEspn.imageUrl)) ? matchedEspn.imageUrl : backdrop,
                 hasLiveStream: true,
                 homeBadge: b1,
                 awayBadge: b2,
@@ -553,7 +572,7 @@ class StreamingApiService {
     const awayScore = isUpcoming ? 0 : (live.score?.away ?? 0);
 
     const kickoffTime = isLive
-      ? (live.playTime ? `${live.playTime} Live` : (live.minute > 0 ? `${live.minute}' Live` : 'Live In-Play'))
+      ? (live.playTime ? (live.playTime.toUpperCase().includes('LIVE') ? live.playTime : `${live.playTime} Live`) : (live.minute > 0 ? `${live.minute}' Live` : 'Live In-Play'))
       : isFinished
       ? 'Full Time'
       : (live.kickoffTime?.includes('EAT') ? live.kickoffTime : formatKickoffEAT(live.kickoffTime || live.time));

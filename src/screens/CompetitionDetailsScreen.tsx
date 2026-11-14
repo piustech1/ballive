@@ -400,7 +400,13 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                   <MMAFightCard
                     match={displayFixtures[0]}
                     onPress={() => {
-                      if (displayFixtures[0].status === 'LIVE' && (displayFixtures[0].hasLiveBroadcast || displayFixtures[0].streamUrl)) {
+                      const isLive =
+                        displayFixtures[0].status === 'LIVE' ||
+                        (displayFixtures[0].minute !== undefined && displayFixtures[0].minute > 0) ||
+                        Boolean(displayFixtures[0].isLive) ||
+                        Boolean(displayFixtures[0].hasLiveBroadcast || displayFixtures[0].streamUrl);
+
+                      if (isLive) {
                         navigate({
                           name: 'LiveStreamDetails',
                           params: { match: displayFixtures[0] },
@@ -418,7 +424,13 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                     match={displayFixtures[0]}
                     layout="featured"
                     onPress={() => {
-                      if (displayFixtures[0].status === 'LIVE' && (displayFixtures[0].hasLiveBroadcast || displayFixtures[0].streamUrl)) {
+                      const isLive =
+                        displayFixtures[0].status === 'LIVE' ||
+                        (displayFixtures[0].minute !== undefined && displayFixtures[0].minute > 0) ||
+                        Boolean(displayFixtures[0].isLive) ||
+                        Boolean(displayFixtures[0].hasLiveBroadcast || displayFixtures[0].streamUrl);
+
+                      if (isLive) {
                         navigate({
                           name: 'LiveStreamDetails',
                           params: { match: displayFixtures[0] },
@@ -483,7 +495,13 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                         <MMAFightCard
                           match={fixture}
                           onPress={() => {
-                            if (fixture.status === 'LIVE' && (fixture.hasLiveBroadcast || fixture.streamUrl)) {
+                            const isLive =
+                              fixture.status === 'LIVE' ||
+                              (fixture.minute !== undefined && fixture.minute > 0) ||
+                              Boolean(fixture.isLive) ||
+                              Boolean(fixture.hasLiveBroadcast || fixture.streamUrl);
+
+                            if (isLive) {
                               navigate({
                                 name: 'LiveStreamDetails',
                                 params: { match: fixture },
@@ -501,7 +519,13 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                           match={fixture}
                           layout="full"
                           onPress={() => {
-                            if (fixture.status === 'LIVE' && (fixture.hasLiveBroadcast || fixture.streamUrl)) {
+                            const isLive =
+                              fixture.status === 'LIVE' ||
+                              (fixture.minute !== undefined && fixture.minute > 0) ||
+                              Boolean(fixture.isLive) ||
+                              Boolean(fixture.hasLiveBroadcast || fixture.streamUrl);
+
+                            if (isLive) {
                               navigate({
                                 name: 'LiveStreamDetails',
                                 params: { match: fixture },

@@ -187,7 +187,7 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
                 <View style={styles.livePulseDot} />
                 <Text style={styles.liveBadgeText}>
                   {m.playTime
-                    ? `${m.playTime} LIVE`
+                    ? (m.playTime.toUpperCase().includes('LIVE') ? m.playTime.toUpperCase() : `${m.playTime} LIVE`)
                     : m.minute > 0
                     ? `${m.minute}' LIVE`
                     : 'LIVE'}

@@ -159,6 +159,38 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.NBA,
   },
+  'nbl': {
+    sport: 'basketball',
+    league: 'nbl',
+    name: 'National Basketball League',
+    shortName: 'NBL',
+    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/nbl.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.NBA,
+  },
+  'ncaa-m': {
+    sport: 'basketball',
+    league: 'mens-college-basketball',
+    name: "NCAA Men's Basketball",
+    shortName: 'NCAA',
+    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/ncaa.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.NBA,
+  },
+  'wnba': {
+    sport: 'basketball',
+    league: 'wnba',
+    name: 'WNBA Basketball',
+    shortName: 'WNBA',
+    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.NBA,
+  },
+  'fiba': {
+    sport: 'basketball',
+    league: 'fiba',
+    name: 'FIBA Basketball',
+    shortName: 'FIBA',
+    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/fiba.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.NBA,
+  },
   'nhl': {
     sport: 'hockey',
     league: 'nhl',
@@ -233,7 +265,8 @@ export function parseClockAndStatus(ev: any, sport: string): { minute: number; p
       return { minute: min, playTime: displayClock ? `${displayClock}` : `${min}'`, isLive: true, status: 'LIVE' };
     } else if (sport === 'basketball') {
       const min = period * 12;
-      return { minute: min, playTime: shortDetail || detail || `Q${period} ${displayClock}`.trim(), isLive: true, status: 'LIVE' };
+      const bClock = detail || shortDetail || (displayClock ? `Q${period} ${displayClock}` : `Quarter ${period}`).trim();
+      return { minute: min, playTime: bClock, isLive: true, status: 'LIVE' };
     } else if (sport === 'hockey') {
       const min = period * 20;
       return { minute: min, playTime: shortDetail || detail || `P${period} ${displayClock}`.trim(), isLive: true, status: 'LIVE' };
@@ -242,7 +275,13 @@ export function parseClockAndStatus(ev: any, sport: string): { minute: number; p
       return { minute: min, playTime: shortDetail || detail || `Q${period} ${displayClock}`.trim(), isLive: true, status: 'LIVE' };
     }
   } else if (state === 'post' || ev.status?.type?.completed) {
-    return { minute: 90, playTime: 'FT', isLive: false, status: 'FT' };
+    const isBasketball = sport === 'basketball';
+    return {
+      minute: isBasketball ? 48 : 90,
+      playTime: isBasketball ? 'Final' : 'FT',
+      isLive: false,
+      status: 'FT',
+    };
   } else {
     return { minute: 0, playTime: shortDetail || detail || 'Upcoming', isLive: false, status: 'UPCOMING' };
   }
@@ -440,6 +479,10 @@ class SportsApiService {
     const endpoints = [
       { url: `${API_CONFIG.ESPN_BASE}/soccer/all/scoreboard`, sport: 'soccer', league: 'all' },
       { url: `${API_CONFIG.ESPN_BASE}/basketball/nba/scoreboard`, sport: 'basketball', league: 'nba' },
+      { url: `${API_CONFIG.ESPN_BASE}/basketball/nbl/scoreboard`, sport: 'basketball', league: 'nbl' },
+      { url: `${API_CONFIG.ESPN_BASE}/basketball/mens-college-basketball/scoreboard`, sport: 'basketball', league: 'ncaa-m' },
+      { url: `${API_CONFIG.ESPN_BASE}/basketball/wnba/scoreboard`, sport: 'basketball', league: 'wnba' },
+      { url: `${API_CONFIG.ESPN_BASE}/basketball/fiba/scoreboard`, sport: 'basketball', league: 'fiba' },
       { url: `${API_CONFIG.ESPN_BASE}/hockey/nhl/scoreboard`, sport: 'hockey', league: 'nhl' },
       { url: `${API_CONFIG.ESPN_BASE}/football/nfl/scoreboard`, sport: 'football', league: 'nfl' },
     ];
@@ -562,6 +605,8 @@ class SportsApiService {
       : [
           SUPPORTED_LEAGUES['soccer-all'],
           SUPPORTED_LEAGUES['nba'],
+          SUPPORTED_LEAGUES['nbl'],
+          SUPPORTED_LEAGUES['ncaa-m'],
           SUPPORTED_LEAGUES['nhl'],
           SUPPORTED_LEAGUES['nfl'],
         ].filter(Boolean);

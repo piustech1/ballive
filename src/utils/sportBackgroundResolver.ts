@@ -309,8 +309,6 @@ export function cleanServerArtworkUrl(rawUrl?: string | null): string | null {
     const u = new URL(trimmed);
     u.searchParams.delete('text');
     u.searchParams.delete('color');
-    u.searchParams.delete('b1');
-    u.searchParams.delete('b2');
     return u.toString();
   } catch {
     return trimmed;
@@ -319,7 +317,7 @@ export function cleanServerArtworkUrl(rawUrl?: string | null): string | null {
 
 /**
  * Checks whether an image URL represents a verified, fixture-specific event thumbnail
- * (e.g. from TheSportsDB, ondemand.st, ESPN event cards) rather than a generic sport placeholder.
+ * (e.g. from TheSportsDB, ondemand.st, ESPN event cards, DAG match cards) rather than a generic sport placeholder.
  */
 export function isVerifiedEventImage(rawUrl?: string | null): boolean {
   if (!rawUrl || typeof rawUrl !== 'string') return false;
@@ -329,12 +327,21 @@ export function isVerifiedEventImage(rawUrl?: string | null): boolean {
     s.includes('ondemand.st') ||
     s.includes('espncdn.com/i/cards') ||
     s.includes('espncdn.com/images/match') ||
-    s.includes('espncdn.com/i/headshots')
+    s.includes('espncdn.com/i/headshots') ||
+    s.includes('espncdn.com/photo')
   ) {
     return true;
   }
   if (s.includes('dag.s-u.in/img')) {
-    return s.includes('thesportsdb') || s.includes('ondemand') || s.includes('event');
+    return (
+      s.includes('thesportsdb') ||
+      s.includes('ondemand') ||
+      s.includes('event') ||
+      s.includes('/img/match') ||
+      s.includes('cat=football') ||
+      s.includes('cat=soccer') ||
+      s.includes('title=')
+    );
   }
   return false;
 }

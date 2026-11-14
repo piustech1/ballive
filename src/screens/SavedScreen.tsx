@@ -64,7 +64,12 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({ onNavigateToDiscover }
   };
 
   const handleWatchPress = (matchup: DiscoverMatchup) => {
-    const isLive = matchup.status === 'LIVE' && Boolean(matchup.streamUrl || matchup.hasLiveBroadcast);
+    const isLive =
+      matchup.status === 'LIVE' ||
+      (matchup.minute !== undefined && matchup.minute > 0) ||
+      Boolean(matchup.isLive) ||
+      Boolean(matchup.streamUrl || matchup.hasLiveBroadcast);
+
     if (isLive) {
       navigate({
         name: 'LiveStreamDetails',

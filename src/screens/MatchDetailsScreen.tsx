@@ -20,6 +20,7 @@ import {
   Calendar,
   Clock,
   Trophy,
+  CheckCircle,
 } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
@@ -29,6 +30,7 @@ import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData'
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { streamingApiService } from '../services/streamingApiService';
+import { sportsApiService } from '../services/sportsApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
 import { normalizeMatchStatus } from '../utils/matchStatus';
 
@@ -70,48 +72,113 @@ interface MatchDetailsScreenProps {
 export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup }) => {
   const { navigate } = useAppNavigation();
   const { profile, toggleMatchReminder, toggleSaveMatch } = useProfile();
+  const [activeMatchup, setActiveMatchup] = useState<DiscoverMatchup>(matchup);
   const [moreMatches, setMoreMatches] = useState<DiscoverMatchup[]>([]);
+
+  useEffect(() => {
+    setActiveMatchup(matchup);
+  }, [matchup]);
+
+  // Synchronize real-time live score, game clock, and stream mirrors for the active match
+  useEffect(() => {
+    let isMounted = true;
+
+    // 1. Cross-reference with live scoreboards (e.g. ESPN)
+    sportsApiService
+      .findEspnEvent(activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, activeMatchup.sport)
+      .then(found => {
+        if (!isMounted || !found) return;
+        if (found.isLive) {
+          setActiveMatchup(prev => ({
+            ...prev,
+            status: 'LIVE',
+            isLive: true,
+            minute: found.minute,
+            playTime: found.playTime,
+            homeTeam: { ...prev.homeTeam, score: found.scoreHome },
+            awayTeam: { ...prev.awayTeam, score: found.scoreAway },
+          }));
+        } else if (found.statusText === 'FT' || found.minute === 90) {
+          setActiveMatchup(prev => ({
+            ...prev,
+            status: 'FT',
+            isLive: false,
+            minute: 90,
+            playTime: 'FT',
+            homeTeam: { ...prev.homeTeam, score: found.scoreHome },
+            awayTeam: { ...prev.awayTeam, score: found.scoreAway },
+          }));
+        }
+      })
+      .catch(() => {});
+
+    // 2. Resolve stream mirrors
+    if (activeMatchup.id) {
+      streamingApiService
+        .resolveStreamMirrors(activeMatchup.id, activeMatchup.competition)
+        .then(mirrors => {
+          if (isMounted && mirrors.length > 0) {
+            setActiveMatchup(prev => ({
+              ...prev,
+              streamUrl: mirrors[0].url,
+              streams: mirrors,
+              hasLiveBroadcast: true,
+            }));
+          }
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeMatchup.id]);
 
   // Resolve authentic, sharp, unblurred sport-specific background
   const rawImage =
-    matchup.poster ||
-    (matchup as any).imageUrl ||
-    matchup.matchBannerUrl ||
+    activeMatchup.poster ||
+    (activeMatchup as any).imageUrl ||
+    activeMatchup.matchBannerUrl ||
     null;
 
   const heroArtworkUrl = useMemo(() => {
     return resolveSportBackground(
-      matchup.sport,
-      matchup.competition,
+      activeMatchup.sport,
+      activeMatchup.competition,
       rawImage,
-      matchup.homeTeam.name,
-      matchup.awayTeam.name,
-      matchup.id
+      activeMatchup.homeTeam.name,
+      activeMatchup.awayTeam.name,
+      activeMatchup.id
     );
-  }, [matchup.sport, matchup.competition, rawImage, matchup.homeTeam.name, matchup.awayTeam.name, matchup.id]);
+  }, [activeMatchup.sport, activeMatchup.competition, rawImage, activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, activeMatchup.id]);
 
   // Team crests
   const homeCrest =
-    matchup.homeTeam.crestUrl ||
-    (matchup as any).homeBadge ||
-    getTeamCrest(matchup.homeTeam.name) ||
+    activeMatchup.homeTeam.crestUrl ||
+    (activeMatchup as any).homeBadge ||
+    getTeamCrest(activeMatchup.homeTeam.name) ||
     DEFAULT_CREST;
 
   const awayCrest =
-    matchup.awayTeam.crestUrl ||
-    (matchup as any).awayBadge ||
-    getTeamCrest(matchup.awayTeam.name) ||
+    activeMatchup.awayTeam.crestUrl ||
+    (activeMatchup as any).awayBadge ||
+    getTeamCrest(activeMatchup.awayTeam.name) ||
     DEFAULT_CREST;
 
-  const isReminderSet = profile.matchReminderIds.includes(matchup.id);
-  const isSaved = profile.savedMatchIds.includes(matchup.id);
-  const normalizedStatus = normalizeMatchStatus({ rawStatus: matchup.status, playTime: matchup.playTime, minute: matchup.minute });
-  const isLive = normalizedStatus.isLive;
-  const isFinished = normalizedStatus.isFinished;
-  const hasLiveStream = isLive && Boolean(matchup.streamUrl || matchup.hasLiveBroadcast || (matchup.streams && matchup.streams.length > 0));
+  const isReminderSet = profile.matchReminderIds.includes(activeMatchup.id);
+  const isSaved = profile.savedMatchIds.includes(activeMatchup.id);
+  const normalizedStatus = normalizeMatchStatus({
+    rawStatus: activeMatchup.status,
+    playTime: activeMatchup.playTime,
+    minute: activeMatchup.minute,
+  });
+  const isLive = normalizedStatus.isLive || activeMatchup.status === 'LIVE' || (activeMatchup.minute !== undefined && activeMatchup.minute > 0);
+  const isFinished = normalizedStatus.isFinished || activeMatchup.status === 'FT';
+  const isUpcoming = !isLive && !isFinished;
+  const hasLiveStream = isLive && Boolean(activeMatchup.streamUrl || activeMatchup.hasLiveBroadcast || (activeMatchup.streams && activeMatchup.streams.length > 0));
 
-  const homeScore = matchup.homeTeam.score ?? 0;
-  const awayScore = matchup.awayTeam.score ?? 0;
+  const homeScore = activeMatchup.homeTeam.score ?? 0;
+  const awayScore = activeMatchup.awayTeam.score ?? 0;
 
   // Load other live & upcoming matches for discovery navigation
   useEffect(() => {
@@ -122,30 +189,30 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
         if (!isMounted) return;
         const converted = matches
           .map(m => streamingApiService.convertLiveMatchToMatchup(m))
-          .filter(m => m.id !== matchup.id);
+          .filter(m => m.id !== activeMatchup.id);
 
         if (converted.length > 0) {
           setMoreMatches(converted.slice(0, 6));
         } else {
-          setMoreMatches(UPCOMING_HIGHLIGHTS.filter(m => m.id !== matchup.id).slice(0, 6));
+          setMoreMatches(UPCOMING_HIGHLIGHTS.filter(m => m.id !== activeMatchup.id).slice(0, 6));
         }
       })
       .catch(() => {
         if (isMounted) {
-          setMoreMatches(UPCOMING_HIGHLIGHTS.filter(m => m.id !== matchup.id).slice(0, 6));
+          setMoreMatches(UPCOMING_HIGHLIGHTS.filter(m => m.id !== activeMatchup.id).slice(0, 6));
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, [matchup.id]);
+  }, [activeMatchup.id]);
 
   const handleShare = async () => {
     try {
       await Share.share({
-        message: `${matchup.homeTeam.name} vs ${matchup.awayTeam.name} — ${matchup.competition} on BALLIVE`,
-        title: `${matchup.homeTeam.name} vs ${matchup.awayTeam.name}`,
+        message: `${activeMatchup.homeTeam.name} vs ${activeMatchup.awayTeam.name} — ${activeMatchup.competition} on BALLIVE`,
+        title: `${activeMatchup.homeTeam.name} vs ${activeMatchup.awayTeam.name}`,
       });
     } catch {
       // User cancelled
@@ -155,11 +222,11 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   const handleWatchLive = () => {
     navigate({
       name: 'LiveStreamDetails',
-      params: { match: matchup },
+      params: { match: activeMatchup },
     });
   };
 
-  const formattedKickoff = (matchup.kickoffTime || 'Today')
+  const formattedKickoff = (activeMatchup.kickoffTime || 'Today')
     .replace(/\s*\(EAT\)/i, '')
     .replace(/\s*EAT/i, '')
     .trim();
@@ -170,8 +237,8 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
 
       {/* ── 1. CURVED SECONDARY TOP APP BAR ── */}
       <SecondaryScreenHeader
-        title={matchup.competition}
-        subtitle={`${matchup.homeTeam.name} vs ${matchup.awayTeam.name}`}
+        title={activeMatchup.competition}
+        subtitle={`${activeMatchup.homeTeam.name} vs ${activeMatchup.awayTeam.name}`}
         rightAction={{
           icon: Share2,
           onPress: handleShare,
@@ -203,7 +270,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                 <Image source={{ uri: homeCrest }} style={styles.crestImage} resizeMode="contain" />
               </View>
               <Text style={styles.teamName} numberOfLines={2}>
-                {matchup.homeTeam.name}
+                {activeMatchup.homeTeam.name}
               </Text>
             </View>
 
@@ -219,7 +286,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   <View style={styles.livePill}>
                     <View style={styles.liveDot} />
                     <Text style={styles.livePillText}>
-                      {matchup.playTime || (matchup.minute ? `${matchup.minute}' LIVE` : 'LIVE')}
+                      {activeMatchup.playTime || (activeMatchup.minute ? `${activeMatchup.minute}' LIVE` : 'LIVE')}
                     </Text>
                   </View>
                 </>
@@ -255,28 +322,28 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                 <Image source={{ uri: awayCrest }} style={styles.crestImage} resizeMode="contain" />
               </View>
               <Text style={styles.teamName} numberOfLines={2}>
-                {matchup.awayTeam.name}
+                {activeMatchup.awayTeam.name}
               </Text>
             </View>
           </View>
 
           {/* Integrated Metadata Strip (No Empty Gaps) */}
           <View style={styles.cardMetaStrip}>
-            {matchup.venue ? (
+            {activeMatchup.venue ? (
               <View style={styles.metaItem}>
                 <MapPin size={11} color="#A58BFC" style={{ marginRight: 4 }} />
                 <Text style={styles.metaText} numberOfLines={1}>
-                  {matchup.venue}
+                  {activeMatchup.venue}
                 </Text>
               </View>
             ) : null}
 
-            {matchup.venue && <Text style={styles.metaDivider}>•</Text>}
+            {activeMatchup.venue && <Text style={styles.metaDivider}>•</Text>}
 
             <View style={styles.metaItem}>
               <Calendar size={11} color="#A58BFC" style={{ marginRight: 4 }} />
               <Text style={styles.metaText} numberOfLines={1}>
-                {matchup.kickoffDate || 'Today'}
+                {activeMatchup.kickoffDate || 'Today'}
               </Text>
             </View>
           </View>
@@ -286,7 +353,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
         <View style={styles.actionsContainer}>
           <View style={styles.actionsRow}>
             {/* Primary Action Button */}
-            {hasLiveStream ? (
+            {isLive ? (
               <TouchableOpacity
                 style={styles.primaryActionButton}
                 activeOpacity={0.85}
@@ -297,6 +364,11 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                 <Tv size={16} color="#FFFFFF" strokeWidth={2.4} />
                 <Text style={styles.primaryActionText}>Watch Live Stream</Text>
               </TouchableOpacity>
+            ) : isFinished ? (
+              <View style={[styles.primaryActionButton, styles.completedActionButton]}>
+                <CheckCircle size={16} color="#10B981" strokeWidth={2.2} />
+                <Text style={[styles.primaryActionText, { color: '#E2E8F0' }]}>Match Concluded (FT)</Text>
+              </View>
             ) : (
               <TouchableOpacity
                 style={[
@@ -304,7 +376,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   isReminderSet && styles.primaryActionActive,
                 ]}
                 activeOpacity={0.85}
-                onPress={() => toggleMatchReminder(matchup.id)}
+                onPress={() => toggleMatchReminder(activeMatchup.id)}
                 accessibilityRole="button"
                 accessibilityLabel={isReminderSet ? 'Kickoff reminder set' : 'Notify at kickoff'}
               >
@@ -324,12 +396,12 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
               </TouchableOpacity>
             )}
 
-            {/* If live stream is active, allow setting reminder via icon button */}
-            {hasLiveStream && (
+            {/* If match is live, allow setting reminder / alert via icon button */}
+            {isLive && (
               <TouchableOpacity
                 style={[styles.iconButton, isReminderSet && styles.iconButtonActive]}
                 activeOpacity={0.8}
-                onPress={() => toggleMatchReminder(matchup.id)}
+                onPress={() => toggleMatchReminder(activeMatchup.id)}
                 accessibilityRole="button"
                 accessibilityLabel="Toggle reminder"
               >
@@ -345,15 +417,16 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             <TouchableOpacity
               style={[styles.iconButton, isSaved && styles.iconButtonActive]}
               activeOpacity={0.8}
-              onPress={() => toggleSaveMatch(matchup.id)}
+              onPress={() => toggleSaveMatch(activeMatchup.id)}
               accessibilityRole="button"
-              accessibilityLabel="Save match"
+              accessibilityLabel={isSaved ? 'Remove from saved' : 'Save match'}
             >
-              {isSaved ? (
-                <BookmarkCheck size={18} color="#7952FC" strokeWidth={2.4} />
-              ) : (
-                <Bookmark size={18} color="#A098B5" strokeWidth={2} />
-              )}
+              <Bookmark
+                size={18}
+                color={isSaved ? '#7952FC' : '#A098B5'}
+                fill={isSaved ? '#7952FC' : 'transparent'}
+                strokeWidth={2}
+              />
             </TouchableOpacity>
 
             {/* Share Action */}
@@ -446,7 +519,13 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   match={item}
                   layout="full"
                   onPress={() => {
-                    if (item.status === 'LIVE' && (item.hasLiveBroadcast || item.streamUrl)) {
+                    const isItemLive =
+                      item.status === 'LIVE' ||
+                      (item.minute !== undefined && item.minute > 0) ||
+                      Boolean(item.isLive) ||
+                      Boolean(item.hasLiveBroadcast || item.streamUrl);
+
+                    if (isItemLive) {
                       navigate({ name: 'LiveStreamDetails', params: { match: item } });
                     } else {
                       navigate({ name: 'MatchDetails', params: { matchup: item } });
@@ -654,6 +733,11 @@ const styles = StyleSheet.create({
   },
   primaryActionActive: {
     backgroundColor: '#271D3E',
+  },
+  completedActionButton: {
+    backgroundColor: '#1E1730',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.35)',
   },
   primaryActionText: {
     fontSize: 13,

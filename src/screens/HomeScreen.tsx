@@ -135,15 +135,22 @@ export const HomeScreen: React.FC = () => {
 
   const handleMatchPress = (match: LiveMatch) => {
     const matchup = resolveLiveMatchToMatchup(match);
-    if (matchup.status === 'UPCOMING' || !matchup.hasLiveBroadcast) {
-      navigate({
-        name: 'MatchDetails',
-        params: { matchup },
-      });
-    } else {
+    const isLive =
+      match.status === 'LIVE' ||
+      (match.minute !== undefined && match.minute > 0) ||
+      matchup.status === 'LIVE' ||
+      Boolean(matchup.isLive) ||
+      Boolean(matchup.streamUrl || match.streamUrl || match.hasLiveStream);
+
+    if (isLive) {
       navigate({
         name: 'LiveStreamDetails',
         params: { match: matchup },
+      });
+    } else {
+      navigate({
+        name: 'MatchDetails',
+        params: { matchup },
       });
     }
   };

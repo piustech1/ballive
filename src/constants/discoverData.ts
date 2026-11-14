@@ -57,6 +57,7 @@ export interface DiscoverMatchup {
   competition: string;
   competitionLogo: string;
   status: MatchStatus;
+  isLive?: boolean;
   kickoffDate: string;
   kickoffTime: string;
   playTime?: string;
