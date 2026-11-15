@@ -9,12 +9,13 @@ import {
   StyleProp,
   ViewStyle,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '../../theme/colors';
 import { LiveMatch } from '../../constants/mockData';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { CompetitionLogo } from './CompetitionLogo';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
-import { resolveSportBackground, isVerifiedEventImage } from '../../utils/sportBackgroundResolver';
+import { resolveSportBackground, isGenuineEventArtwork, isVerifiedEventImage } from '../../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../../utils/matchStatus';
 import { theSportsDbService } from '../../services/theSportsDbService';
 
@@ -170,6 +171,111 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
       ? styles.fullContainer
       : styles.carouselContainer;
 
+  const candidateArtwork = (resolvedArtwork && isGenuineEventArtwork(resolvedArtwork))
+    ? resolvedArtwork
+    : (m.backdropUrl && isGenuineEventArtwork(m.backdropUrl))
+    ? m.backdropUrl
+    : null;
+  const hasArtwork = Boolean(candidateArtwork);
+
+  const cardInnerContent = (
+    <>
+      {/* ── CARD TOP ROW: Competition Identity & Status Badge ── */}
+      <View style={styles.topRow}>
+        <View style={styles.compBadge}>
+          <CompetitionLogo
+            competitionId={m.competition}
+            uri={m.competitionLogo}
+            size={17}
+            containerStyle={{ marginRight: 5 }}
+          />
+          <Text style={styles.competitionText} numberOfLines={1}>
+            {m.competition}
+          </Text>
+        </View>
+
+        <View style={styles.topRightGroup}>
+          {m.isLive ? (
+            <View style={styles.liveBadge}>
+              <View style={styles.livePulseDot} />
+              <Text style={styles.liveBadgeText}>
+                {m.playTime
+                  ? (m.playTime.toUpperCase().includes('LIVE') ? m.playTime.toUpperCase() : `${m.playTime} LIVE`)
+                  : m.minute > 0
+                  ? `${m.minute}' LIVE`
+                  : 'LIVE'}
+              </Text>
+            </View>
+          ) : m.isFinished ? (
+            <View style={styles.ftBadge}>
+              <Text style={styles.ftBadgeText}>FT</Text>
+            </View>
+          ) : (
+            <View style={styles.upcomingBadge}>
+              <Text style={styles.upcomingBadgeText}>UPCOMING</Text>
+            </View>
+          )}
+
+          {rightAction ? (
+            <View style={{ marginLeft: 6 }}>{rightAction}</View>
+          ) : null}
+        </View>
+      </View>
+
+      {/* ── CARD BOTTOM MATCHUP CONTAINER: Solid Surface with Authentic Crests & Scores ── */}
+      <View style={[styles.matchupSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
+        {/* Home Team */}
+        <View style={styles.teamCol}>
+          <View style={styles.crestCircle}>
+            <Image source={{ uri: m.homeCrest }} style={styles.crestImage} />
+          </View>
+          <Text style={styles.teamNameText} numberOfLines={1}>
+            {m.homeTeamName}
+          </Text>
+        </View>
+
+        {/* Center Score / VS / Status */}
+        <View style={styles.centerScoreBox}>
+          {m.isUpcoming ? (
+            <>
+              <Text style={styles.vsText}>VS</Text>
+              <Text style={styles.kickoffText} numberOfLines={1}>
+                {m.kickoffTime}
+              </Text>
+            </>
+          ) : (
+            <>
+              <View style={styles.scoreRow}>
+                <Text style={styles.scoreNumber}>{m.homeScore}</Text>
+                <Text style={styles.scoreDivider}>-</Text>
+                <Text style={styles.scoreNumber}>{m.awayScore}</Text>
+              </View>
+              <Text
+                style={[
+                  styles.statusSubText,
+                  m.isLive ? styles.statusLiveText : styles.statusFtText,
+                ]}
+                numberOfLines={1}
+              >
+                {m.isLive ? (m.playTime || 'LIVE') : 'FINAL'}
+              </Text>
+            </>
+          )}
+        </View>
+
+        {/* Away Team */}
+        <View style={styles.teamCol}>
+          <View style={styles.crestCircle}>
+            <Image source={{ uri: m.awayCrest }} style={styles.crestImage} />
+          </View>
+          <Text style={styles.teamNameText} numberOfLines={1}>
+            {m.awayTeamName}
+          </Text>
+        </View>
+      </View>
+    </>
+  );
+
   return (
     <TouchableOpacity
       style={[styles.baseCard, layoutContainerStyle, style]}
@@ -180,113 +286,25 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
         m.isLive ? 'Live match' : m.isUpcoming ? 'Upcoming match' : 'Completed match'
       }`}
     >
-      <ImageBackground
-        source={{ uri: resolvedArtwork || m.backdropUrl }}
-        style={styles.imageBackground}
-        imageStyle={styles.imageBackgroundInner}
-        resizeMode="cover"
-      >
-        {/*
-          100% ORIGINAL IMAGE CLARITY
-          Notice: No full-card darkOverlay or blur layer.
-          The background image retains its natural brightness, clarity, and vibrancy.
-          Text readability is achieved via the solid surfaces below.
-        */}
-
-        {/* ── CARD TOP ROW: Competition Identity & Status Badge ── */}
-        <View style={styles.topRow}>
-          <View style={styles.compBadge}>
-            <CompetitionLogo
-              competitionId={m.competition}
-              uri={m.competitionLogo}
-              size={17}
-              containerStyle={{ marginRight: 5 }}
-            />
-            <Text style={styles.competitionText} numberOfLines={1}>
-              {m.competition}
-            </Text>
-          </View>
-
-          <View style={styles.topRightGroup}>
-            {m.isLive ? (
-              <View style={styles.liveBadge}>
-                <View style={styles.livePulseDot} />
-                <Text style={styles.liveBadgeText}>
-                  {m.playTime
-                    ? (m.playTime.toUpperCase().includes('LIVE') ? m.playTime.toUpperCase() : `${m.playTime} LIVE`)
-                    : m.minute > 0
-                    ? `${m.minute}' LIVE`
-                    : 'LIVE'}
-                </Text>
-              </View>
-            ) : m.isFinished ? (
-              <View style={styles.ftBadge}>
-                <Text style={styles.ftBadgeText}>FT</Text>
-              </View>
-            ) : (
-              <View style={styles.upcomingBadge}>
-                <Text style={styles.upcomingBadgeText}>UPCOMING</Text>
-              </View>
-            )}
-
-            {rightAction ? (
-              <View style={{ marginLeft: 6 }}>{rightAction}</View>
-            ) : null}
-          </View>
-        </View>
-
-        {/* ── CARD BOTTOM MATCHUP CONTAINER: Solid Surface with Authentic Crests & Scores ── */}
-        <View style={[styles.matchupSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
-          {/* Home Team */}
-          <View style={styles.teamCol}>
-            <View style={styles.crestCircle}>
-              <Image source={{ uri: m.homeCrest }} style={styles.crestImage} />
-            </View>
-            <Text style={styles.teamNameText} numberOfLines={1}>
-              {m.homeTeamName}
-            </Text>
-          </View>
-
-          {/* Center Score / VS / Status */}
-          <View style={styles.centerScoreBox}>
-            {m.isUpcoming ? (
-              <>
-                <Text style={styles.vsText}>VS</Text>
-                <Text style={styles.kickoffText} numberOfLines={1}>
-                  {m.kickoffTime}
-                </Text>
-              </>
-            ) : (
-              <>
-                <View style={styles.scoreRow}>
-                  <Text style={styles.scoreNumber}>{m.homeScore}</Text>
-                  <Text style={styles.scoreDivider}>-</Text>
-                  <Text style={styles.scoreNumber}>{m.awayScore}</Text>
-                </View>
-                <Text
-                  style={[
-                    styles.statusSubText,
-                    m.isLive ? styles.statusLiveText : styles.statusFtText,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {m.isLive ? (m.playTime || 'LIVE') : 'FINAL'}
-                </Text>
-              </>
-            )}
-          </View>
-
-          {/* Away Team */}
-          <View style={styles.teamCol}>
-            <View style={styles.crestCircle}>
-              <Image source={{ uri: m.awayCrest }} style={styles.crestImage} />
-            </View>
-            <Text style={styles.teamNameText} numberOfLines={1}>
-              {m.awayTeamName}
-            </Text>
-          </View>
-        </View>
-      </ImageBackground>
+      {hasArtwork && candidateArtwork ? (
+        <ImageBackground
+          source={{ uri: candidateArtwork }}
+          style={styles.imageBackground}
+          imageStyle={styles.imageBackgroundInner}
+          resizeMode="cover"
+        >
+          {cardInnerContent}
+        </ImageBackground>
+      ) : (
+        <LinearGradient
+          colors={['#251C3D', '#161122']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.imageBackground}
+        >
+          {cardInnerContent}
+        </LinearGradient>
+      )}
     </TouchableOpacity>
   );
 };

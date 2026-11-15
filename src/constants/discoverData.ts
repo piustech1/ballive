@@ -82,8 +82,8 @@ export interface DiscoverMatchup {
   isReminderSet?: boolean;
   streamUrl?: string;
   streams?: Array<{ id: string; name: string; url: string }>;
-  poster?: string;
-  matchBannerUrl?: string;
+  poster?: string | null;
+  matchBannerUrl?: string | null;
   fighter1?: FighterProfile;
   fighter2?: FighterProfile;
 }

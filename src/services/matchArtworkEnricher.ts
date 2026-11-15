@@ -19,6 +19,7 @@
 import { LiveMatch } from '../constants/mockData';
 import { DiscoverMatchup } from '../constants/discoverData';
 import { theSportsDbService } from './theSportsDbService';
+import { isGenuineEventArtwork, cleanServerArtworkUrl } from '../utils/sportBackgroundResolver';
 
 export type EnrichableMatch = LiveMatch | DiscoverMatchup;
 export type EnricherListener = (eventKey: string, artworkUrl: string) => void;
@@ -62,38 +63,14 @@ class MatchArtworkEnricher {
 
   /**
    * Unwraps verified, event-specific artwork from any raw URL or DAG proxy.
+   * Strictly validates that the target is genuine event artwork.
    */
   public extractVerifiedArtwork(rawUrl?: string | null): string | null {
     if (!rawUrl || typeof rawUrl !== 'string') return null;
-    const trimmed = rawUrl.trim();
-    if (trimmed.length < 12 || trimmed.includes('null') || trimmed.includes('undefined')) {
-      return null;
+    const cleaned = cleanServerArtworkUrl(rawUrl);
+    if (cleaned && isGenuineEventArtwork(cleaned)) {
+      return cleaned;
     }
-
-    // 1. Direct TheSportsDB / ondemand / ESPN event cards
-    if (
-      trimmed.includes('thesportsdb.com') ||
-      trimmed.includes('ondemand.st') ||
-      trimmed.includes('espncdn.com/i/cards')
-    ) {
-      return trimmed;
-    }
-
-    // 2. Unpack target from DAG image proxy
-    if (trimmed.includes('dag.s-u.in/img')) {
-      const urlMatch = trimmed.match(/[?&]url=([^&]+)/);
-      if (urlMatch && urlMatch[1]) {
-        const decoded = decodeURIComponent(urlMatch[1]);
-        if (
-          decoded.includes('thesportsdb.com') ||
-          decoded.includes('ondemand.st') ||
-          decoded.includes('espncdn.com')
-        ) {
-          return decoded;
-        }
-      }
-    }
-
     return null;
   }
 

@@ -31,7 +31,7 @@ export interface LiveMatch {
   competitionLogo?: string;
   score: { home: number; away: number };
   minute: number;
-  imageUrl: string;
+  imageUrl?: string | null;
   hasLiveStream: boolean;
   streamUrl?: string;
   streams?: Array<{ id: string; name: string; url: string }>;

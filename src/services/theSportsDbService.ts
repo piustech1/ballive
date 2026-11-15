@@ -17,6 +17,7 @@
  */
 
 import * as FileSystem from 'expo-file-system';
+import { isGenuineEventArtwork } from '../utils/sportBackgroundResolver';
 
 const THESPORTSDB_BASE_URL = 'https://www.thesportsdb.com/api/v1/json/123';
 const REQUEST_TIMEOUT_MS = 5000;
@@ -164,8 +165,8 @@ class TheSportsDbService {
           const parsed = JSON.parse(raw);
           if (parsed && typeof parsed === 'object') {
             Object.entries(parsed).forEach(([key, val]) => {
-              // Strictly only load valid positive HTTP image URLs, never nulls
-              if (typeof val === 'string' && val.startsWith('http')) {
+              // Strictly only load valid positive HTTP image URLs that pass genuine artwork validation
+              if (typeof val === 'string' && val.startsWith('http') && isGenuineEventArtwork(val)) {
                 this.cache.set(key, val);
               }
             });
@@ -287,7 +288,11 @@ class TheSportsDbService {
   public getCachedArtwork(homeTeam?: string, awayTeam?: string): string | null {
     if (!homeTeam || !awayTeam) return null;
     const key = this.buildCacheKey(homeTeam, awayTeam);
-    return this.cache.get(key) || null;
+    const cached = this.cache.get(key);
+    if (cached && isGenuineEventArtwork(cached)) {
+      return cached;
+    }
+    return null;
   }
 
   /**
@@ -296,6 +301,7 @@ class TheSportsDbService {
    */
   public setCachedArtwork(homeTeam: string, awayTeam: string, artworkUrl: string): void {
     if (!homeTeam || !awayTeam || !artworkUrl || !artworkUrl.startsWith('http')) return;
+    if (!isGenuineEventArtwork(artworkUrl)) return;
     const key = this.buildCacheKey(homeTeam, awayTeam);
     if (!key) return;
 
@@ -430,19 +436,22 @@ class TheSportsDbService {
             }) || events[0];
 
             // Extract verified artwork in priority order
-            const verifiedArtwork =
+            const candidateArtwork =
               matched.strThumb ||
               matched.strPoster ||
               matched.strBanner ||
               matched.strSquare ||
               null;
 
-            if (verifiedArtwork && typeof verifiedArtwork === 'string' && verifiedArtwork.startsWith('http')) {
-              this.cache.set(cacheKey, verifiedArtwork);
-              this.transientNegativeCache.delete(cacheKey);
-              this.scheduleSaveToDisk();
-              this.notifyListeners(cacheKey, verifiedArtwork);
-              return verifiedArtwork;
+            if (candidateArtwork && typeof candidateArtwork === 'string' && candidateArtwork.startsWith('http')) {
+              // Strictly validate that this is genuine event artwork and NOT an automated collage template
+              if (isGenuineEventArtwork(candidateArtwork)) {
+                this.cache.set(cacheKey, candidateArtwork);
+                this.transientNegativeCache.delete(cacheKey);
+                this.scheduleSaveToDisk();
+                this.notifyListeners(cacheKey, candidateArtwork);
+                return candidateArtwork;
+              }
             }
           }
         } catch {

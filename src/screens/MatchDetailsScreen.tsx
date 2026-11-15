@@ -22,10 +22,12 @@ import {
   Trophy,
   CheckCircle,
 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
+import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import { getTeamCrest, DEFAULT_CREST } from '../utils/teamCrestResolver';
-import { resolveSportBackground } from '../utils/sportBackgroundResolver';
+import { resolveSportBackground, isGenuineEventArtwork } from '../utils/sportBackgroundResolver';
 import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
@@ -230,8 +232,8 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     null;
 
   const heroArtworkUrl = useMemo(() => {
-    if (asyncArtwork) return asyncArtwork;
-    return resolveSportBackground(
+    if (asyncArtwork && isGenuineEventArtwork(asyncArtwork)) return asyncArtwork;
+    const resolved = resolveSportBackground(
       activeMatchup.sport,
       activeMatchup.competition,
       rawImage,
@@ -239,6 +241,8 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       activeMatchup.awayTeam.name,
       activeMatchup.id
     );
+    if (resolved && isGenuineEventArtwork(resolved)) return resolved;
+    return null;
   }, [
     asyncArtwork,
     activeMatchup.sport,
@@ -378,11 +382,34 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       >
         {/* ── 2. STATIC MATCH HERO BANNER (WELL-PROPORTIONED, NO BLUR, NO OVERLAYS) ── */}
         <View style={styles.heroContainer}>
-          <Image
-            source={{ uri: heroArtworkUrl }}
-            style={styles.heroImage}
-            resizeMode="cover"
-          />
+          {heroArtworkUrl ? (
+            <Image
+              source={{ uri: heroArtworkUrl }}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <LinearGradient
+              colors={['#251C3D', '#161122']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.heroFallback}
+            >
+              <View style={styles.heroFallbackContent}>
+                <CompetitionLogo
+                  competitionId={activeMatchup.competition}
+                  uri={activeMatchup.competitionLogo}
+                  size={32}
+                />
+                <Text style={styles.heroFallbackComp} numberOfLines={1}>
+                  {activeMatchup.competition}
+                </Text>
+                <Text style={styles.heroFallbackTeams} numberOfLines={1}>
+                  {activeMatchup.homeTeam.name} vs {activeMatchup.awayTeam.name}
+                </Text>
+              </View>
+            </LinearGradient>
+          )}
         </View>
 
         {/* ── 3. REFINED MATCHUP CARD WITH INTEGRATED METADATA STRIP ── */}
@@ -685,6 +712,30 @@ const styles = StyleSheet.create({
   heroImage: {
     width: '100%',
     height: '100%',
+  },
+  heroFallback: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  heroFallbackContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroFallbackComp: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ECE9FA',
+    marginTop: 8,
+    letterSpacing: 0.3,
+  },
+  heroFallbackTeams: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#9CA3AF',
+    marginTop: 4,
   },
 
   // ── Matchup Card ──

@@ -9,10 +9,11 @@ import {
   StyleProp,
   ViewStyle,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '../../theme/colors';
 import { LiveMatch } from '../../constants/mockData';
 import { DiscoverMatchup } from '../../constants/discoverData';
-import { resolveSportBackground } from '../../utils/sportBackgroundResolver';
+import { resolveSportBackground, isGenuineEventArtwork } from '../../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../../utils/matchStatus';
 
 export type UniversalMatchItem = LiveMatch | DiscoverMatchup;
@@ -106,106 +107,125 @@ export const MMAFightCard: React.FC<MMAFightCardProps> = ({
     ? (rawKickoff.includes('EAT') ? rawKickoff : formatKickoffEAT(rawKickoff))
     : rawKickoff;
 
+  const hasArtwork = Boolean(backdropUrl && isGenuineEventArtwork(backdropUrl));
+
+  const fightCardInner = (
+    <>
+      {/* Top Header Row */}
+      <View style={styles.topRow}>
+        <View style={styles.eventBadge}>
+          <View style={styles.ufcTag}>
+            <Text style={styles.ufcTagText}>UFC</Text>
+          </View>
+          <Text style={styles.eventText} numberOfLines={1}>
+            {competition}
+          </Text>
+        </View>
+
+        {isLive ? (
+          <View style={styles.liveBadge}>
+            <View style={styles.livePulseDot} />
+            <Text style={styles.liveBadgeText}>
+              {playTime ? `${playTime} LIVE` : 'LIVE BOUT'}
+            </Text>
+          </View>
+        ) : isFinished ? (
+          <View style={styles.ftBadge}>
+            <Text style={styles.ftBadgeText}>FINAL</Text>
+          </View>
+        ) : (
+          <View style={styles.upcomingBadge}>
+            <Text style={styles.upcomingBadgeText}>UPCOMING BOUT</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Bout Card Surface */}
+      <View style={styles.boutSurface}>
+        {/* Red Corner (Fighter A) */}
+        <View style={styles.cornerCol}>
+          <View style={styles.cornerIndicatorRed}>
+            <Text style={styles.cornerIndicatorText}>RED CORNER</Text>
+          </View>
+          <View style={[styles.avatarCircle, styles.redBorder]}>
+            <Image source={{ uri: fighterAAvatar }} style={styles.avatarImage} />
+            {badgeA && (
+              <View style={[styles.rankPill, badgeA === 'C' ? styles.champPill : styles.contenderPill]}>
+                <Text style={styles.rankPillText}>{badgeA}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.fighterNameText} numberOfLines={1}>
+            {displayA}
+          </Text>
+        </View>
+
+        {/* Center VS & Bout Timing */}
+        <View style={styles.centerBox}>
+          <View style={styles.octagonBadge}>
+            <Text style={styles.vsText}>VS</Text>
+          </View>
+          {isUpcoming ? (
+            <Text style={styles.kickoffText} numberOfLines={1}>
+              {kickoffTime}
+            </Text>
+          ) : isLive ? (
+            <Text style={styles.liveRoundText}>
+              {playTime || 'IN PROGRESS'}
+            </Text>
+          ) : (
+            <Text style={styles.finalText}>DECISION / KO</Text>
+          )}
+          <View style={styles.hdPill}>
+            <Text style={styles.hdPillText}>OCTAGON LIVE</Text>
+          </View>
+        </View>
+
+        {/* Blue Corner (Fighter B) */}
+        <View style={styles.cornerCol}>
+          <View style={styles.cornerIndicatorBlue}>
+            <Text style={styles.cornerIndicatorText}>BLUE CORNER</Text>
+          </View>
+          <View style={[styles.avatarCircle, styles.blueBorder]}>
+            <Image source={{ uri: fighterBAvatar }} style={styles.avatarImage} />
+            {badgeB && (
+              <View style={[styles.rankPill, badgeB === 'C' ? styles.champPill : styles.contenderPill]}>
+                <Text style={styles.rankPillText}>{badgeB}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.fighterNameText} numberOfLines={1}>
+            {displayB}
+          </Text>
+        </View>
+      </View>
+    </>
+  );
+
   return (
     <TouchableOpacity
       activeOpacity={0.88}
       onPress={onPress}
       style={[styles.container, style]}
     >
-      <ImageBackground
-        source={{ uri: backdropUrl }}
-        style={styles.imageBackground}
-        imageStyle={styles.imageBackgroundInner}
-      >
-        {/* Top Header Row */}
-        <View style={styles.topRow}>
-          <View style={styles.eventBadge}>
-            <View style={styles.ufcTag}>
-              <Text style={styles.ufcTagText}>UFC</Text>
-            </View>
-            <Text style={styles.eventText} numberOfLines={1}>
-              {competition}
-            </Text>
-          </View>
-
-          {isLive ? (
-            <View style={styles.liveBadge}>
-              <View style={styles.livePulseDot} />
-              <Text style={styles.liveBadgeText}>
-                {playTime ? `${playTime} LIVE` : 'LIVE BOUT'}
-              </Text>
-            </View>
-          ) : isFinished ? (
-            <View style={styles.ftBadge}>
-              <Text style={styles.ftBadgeText}>FINAL</Text>
-            </View>
-          ) : (
-            <View style={styles.upcomingBadge}>
-              <Text style={styles.upcomingBadgeText}>UPCOMING BOUT</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Bout Card Surface */}
-        <View style={styles.boutSurface}>
-          {/* Red Corner (Fighter A) */}
-          <View style={styles.cornerCol}>
-            <View style={styles.cornerIndicatorRed}>
-              <Text style={styles.cornerIndicatorText}>RED CORNER</Text>
-            </View>
-            <View style={[styles.avatarCircle, styles.redBorder]}>
-              <Image source={{ uri: fighterAAvatar }} style={styles.avatarImage} />
-              {badgeA && (
-                <View style={[styles.rankPill, badgeA === 'C' ? styles.champPill : styles.contenderPill]}>
-                  <Text style={styles.rankPillText}>{badgeA}</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.fighterNameText} numberOfLines={1}>
-              {displayA}
-            </Text>
-          </View>
-
-          {/* Center VS & Bout Timing */}
-          <View style={styles.centerBox}>
-            <View style={styles.octagonBadge}>
-              <Text style={styles.vsText}>VS</Text>
-            </View>
-            {isUpcoming ? (
-              <Text style={styles.kickoffText} numberOfLines={1}>
-                {kickoffTime}
-              </Text>
-            ) : isLive ? (
-              <Text style={styles.liveRoundText}>
-                {playTime || 'IN PROGRESS'}
-              </Text>
-            ) : (
-              <Text style={styles.finalText}>DECISION / KO</Text>
-            )}
-            <View style={styles.hdPill}>
-              <Text style={styles.hdPillText}>OCTAGON LIVE</Text>
-            </View>
-          </View>
-
-          {/* Blue Corner (Fighter B) */}
-          <View style={styles.cornerCol}>
-            <View style={styles.cornerIndicatorBlue}>
-              <Text style={styles.cornerIndicatorText}>BLUE CORNER</Text>
-            </View>
-            <View style={[styles.avatarCircle, styles.blueBorder]}>
-              <Image source={{ uri: fighterBAvatar }} style={styles.avatarImage} />
-              {badgeB && (
-                <View style={[styles.rankPill, badgeB === 'C' ? styles.champPill : styles.contenderPill]}>
-                  <Text style={styles.rankPillText}>{badgeB}</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.fighterNameText} numberOfLines={1}>
-              {displayB}
-            </Text>
-          </View>
-        </View>
-      </ImageBackground>
+      {hasArtwork && backdropUrl ? (
+        <ImageBackground
+          source={{ uri: backdropUrl }}
+          style={styles.imageBackground}
+          imageStyle={styles.imageBackgroundInner}
+        >
+          {fightCardInner}
+        </ImageBackground>
+      ) : (
+        <LinearGradient
+          colors={['#251C3D', '#161122']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.imageBackground}
+        >
+          {fightCardInner}
+        </LinearGradient>
+      )}
     </TouchableOpacity>
   );
 };

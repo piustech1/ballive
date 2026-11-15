@@ -8,9 +8,10 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Trophy, Clock } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { streamingApiService } from '../../services/streamingApiService';
-import { resolveSportBackground, isVerifiedEventImage } from '../../utils/sportBackgroundResolver';
+import { resolveSportBackground, isGenuineEventArtwork, isVerifiedEventImage } from '../../utils/sportBackgroundResolver';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import { sortUpcomingChronologically } from '../../utils/matchStatus';
 import { theSportsDbService } from '../../services/theSportsDbService';
@@ -459,6 +460,62 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
     return () => unsubscribe();
   }, [match.homeTeam.name, match.awayTeam.name, match.sport]);
 
+  const candidateArtwork = (resolvedArtwork && isGenuineEventArtwork(resolvedArtwork))
+    ? resolvedArtwork
+    : (bgImage && isGenuineEventArtwork(bgImage))
+    ? bgImage
+    : null;
+  const hasArtwork = Boolean(candidateArtwork);
+
+  const topCardInner = (
+    <View style={styles.topCardOverlay}>
+      {/* Kickoff Time at Top Left */}
+      <Text style={styles.topKickoffText} numberOfLines={1}>
+        {kickoffTime}
+      </Text>
+
+      {/* Teams Vertical Stack */}
+      <View style={styles.topTeamsStack}>
+        {/* Home Team */}
+        <View style={styles.topTeamRow}>
+          <Image
+            source={{ uri: homeCrest }}
+            style={styles.topCrest}
+            resizeMode="contain"
+          />
+          <Text style={styles.topTeamName} numberOfLines={1}>
+            {homeName}
+          </Text>
+        </View>
+
+        {/* Away Team */}
+        <View style={styles.topTeamRow}>
+          <Image
+            source={{ uri: awayCrest }}
+            style={styles.topCrest}
+            resizeMode="contain"
+          />
+          <Text style={styles.topTeamName} numberOfLines={1}>
+            {awayName}
+          </Text>
+        </View>
+      </View>
+
+      {/* Competition / Sport Tag at Bottom */}
+      <View style={styles.topCompRow}>
+        <Trophy
+          size={11}
+          color="rgba(255, 255, 255, 0.9)"
+          strokeWidth={2.4}
+          style={{ marginRight: 5 }}
+        />
+        <Text style={styles.topCompText} numberOfLines={1}>
+          {match.competition}
+        </Text>
+      </View>
+    </View>
+  );
+
   return (
     <TouchableOpacity
       activeOpacity={0.88}
@@ -467,59 +524,25 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
       accessibilityRole="button"
       accessibilityLabel={`${match.homeTeam.name} vs ${match.awayTeam.name}, kickoff ${kickoffTime}`}
     >
-      <ImageBackground
-        source={{ uri: resolvedArtwork || bgImage }}
-        style={styles.topCardBg}
-        imageStyle={styles.topCardBgImage}
-        resizeMode="cover"
-      >
-        <View style={styles.topCardOverlay}>
-          {/* Kickoff Time at Top Left */}
-          <Text style={styles.topKickoffText} numberOfLines={1}>
-            {kickoffTime}
-          </Text>
-
-          {/* Teams Vertical Stack */}
-          <View style={styles.topTeamsStack}>
-            {/* Home Team */}
-            <View style={styles.topTeamRow}>
-              <Image
-                source={{ uri: homeCrest }}
-                style={styles.topCrest}
-                resizeMode="contain"
-              />
-              <Text style={styles.topTeamName} numberOfLines={1}>
-                {homeName}
-              </Text>
-            </View>
-
-            {/* Away Team */}
-            <View style={styles.topTeamRow}>
-              <Image
-                source={{ uri: awayCrest }}
-                style={styles.topCrest}
-                resizeMode="contain"
-              />
-              <Text style={styles.topTeamName} numberOfLines={1}>
-                {awayName}
-              </Text>
-            </View>
-          </View>
-
-          {/* Competition / Sport Tag at Bottom */}
-          <View style={styles.topCompRow}>
-            <Trophy
-              size={11}
-              color="rgba(255, 255, 255, 0.9)"
-              strokeWidth={2.4}
-              style={{ marginRight: 5 }}
-            />
-            <Text style={styles.topCompText} numberOfLines={1}>
-              {match.competition}
-            </Text>
-          </View>
-        </View>
-      </ImageBackground>
+      {hasArtwork && candidateArtwork ? (
+        <ImageBackground
+          source={{ uri: candidateArtwork }}
+          style={styles.topCardBg}
+          imageStyle={styles.topCardBgImage}
+          resizeMode="cover"
+        >
+          {topCardInner}
+        </ImageBackground>
+      ) : (
+        <LinearGradient
+          colors={['#251C3D', '#161122']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.topCardBg}
+        >
+          {topCardInner}
+        </LinearGradient>
+      )}
     </TouchableOpacity>
   );
 };
