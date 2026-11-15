@@ -31,6 +31,7 @@ import { navigateToMatch } from '../navigation/navHelpers';
 import { useProfile } from '../hooks/useProfile';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService, GlobalSearchResult } from '../services/sportsApiService';
+import { sortMatchesWithLiveFirst, sortUpcomingChronologically } from '../utils/matchStatus';
 
 export const DiscoverScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
@@ -44,7 +45,8 @@ export const DiscoverScreen: React.FC = () => {
     let isMounted = true;
     streamingApiService.getLiveMatches().then(matches => {
       if (isMounted && matches && matches.length > 0) {
-        setLiveHighlights(matches.map(m => streamingApiService.convertLiveMatchToMatchup(m)));
+        const converted = matches.map(m => streamingApiService.convertLiveMatchToMatchup(m));
+        setLiveHighlights(sortMatchesWithLiveFirst(converted));
       }
     }).catch(() => {});
 
@@ -54,7 +56,7 @@ export const DiscoverScreen: React.FC = () => {
           .filter(m => m.status === 'UPCOMING')
           .map(m => streamingApiService.convertLiveMatchToMatchup(m));
         if (converted.length > 0) {
-          setUpcomingScheduleMatches(converted);
+          setUpcomingScheduleMatches(sortUpcomingChronologically(converted));
         }
       }
     }).catch(() => {});
@@ -187,14 +189,15 @@ export const DiscoverScreen: React.FC = () => {
 
   const filteredMatchups = useMemo(() => {
     const list = liveHighlights.length > 0 ? liveHighlights : UPCOMING_HIGHLIGHTS;
-    if (!query) return list;
-    return list.filter(
+    if (!query) return sortMatchesWithLiveFirst(list);
+    const filtered = list.filter(
       m =>
         m.competition.toLowerCase().includes(query) ||
         m.homeTeam.name.toLowerCase().includes(query) ||
         m.awayTeam.name.toLowerCase().includes(query) ||
         m.venue.toLowerCase().includes(query)
     );
+    return sortMatchesWithLiveFirst(filtered);
   }, [liveHighlights, query]);
 
   const totalResults =

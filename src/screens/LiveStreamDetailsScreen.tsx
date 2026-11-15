@@ -47,7 +47,7 @@ import { LiveStreamPlayer } from '../components/player/LiveStreamPlayer';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
-import { normalizeMatchStatus } from '../utils/matchStatus';
+import { normalizeMatchStatus, sortMatchesWithLiveFirst } from '../utils/matchStatus';
 
 interface LiveStreamDetailsScreenProps {
   match: DiscoverMatchup;
@@ -59,7 +59,7 @@ const PLAYER_HEIGHT = Math.round((SCREEN_WIDTH * 9) / 16);
 export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = ({
   match,
 }) => {
-  const { navigate } = useAppNavigation();
+  const { navigate, isFullscreen, setIsFullscreen } = useAppNavigation();
   const { profile, toggleMatchReminder, toggleSaveMatch } = useProfile();
 
   const [activeMatch, setActiveMatch] = useState<DiscoverMatchup>(match);
@@ -70,7 +70,6 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
   const [activeStreamUrl, setActiveStreamUrl] = useState<string | undefined>(activeMatch.streamUrl);
   const [activeStreams, setActiveStreams] = useState<any[] | undefined>(activeMatch.streams);
-  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const normalizedStatus = useMemo(
     () =>
@@ -234,8 +233,9 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
       backSub.remove();
       // Restore portrait whenever leaving this screen
       ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      setIsFullscreen(false);
     };
-  }, [isFullscreen]);
+  }, [isFullscreen, setIsFullscreen]);
 
   const handleEnterFullscreen = async () => {
     try {
@@ -271,7 +271,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
         result.push(m);
       }
     }
-    return result;
+    return sortMatchesWithLiveFirst(result);
   }, [liveRelatedStreams, upcomingRelatedMatches, activeMatch.id]);
 
   const handleShare = async () => {
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
   fullscreenPlayerWrapper: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000000',
-    zIndex: 999,
+    zIndex: 99999,
   },
   scrollView: {
     flex: 1,

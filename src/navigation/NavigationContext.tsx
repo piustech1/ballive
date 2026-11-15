@@ -27,6 +27,8 @@ interface NavigationContextType {
   currentRoute: ScreenRoute;
   activeTab: TabDestination;
   stack: ScreenRoute[];
+  isFullscreen: boolean;
+  setIsFullscreen: (val: boolean) => void;
   navigate: (route: ScreenRoute) => void;
   goBack: () => boolean;
   switchTab: (tab: TabDestination) => void;
@@ -39,14 +41,20 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [stack, setStack] = useState<ScreenRoute[]>([
     { name: 'Main', tab: 'Home' },
   ]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const currentRoute = stack[stack.length - 1];
 
   const navigate = (route: ScreenRoute) => {
+    setIsFullscreen(false);
     setStack(prev => [...prev, route]);
   };
 
   const goBack = (): boolean => {
+    if (isFullscreen) {
+      setIsFullscreen(false);
+      return true;
+    }
     if (stack.length > 1) {
       setStack(prev => prev.slice(0, prev.length - 1));
       return true;
@@ -55,6 +63,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const switchTab = (tab: TabDestination) => {
+    setIsFullscreen(false);
     setActiveTab(tab);
     setStack([{ name: 'Main', tab }]);
   };
@@ -62,6 +71,10 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   // Hardware Android Back button handler
   useEffect(() => {
     const onBackPress = () => {
+      if (isFullscreen) {
+        setIsFullscreen(false);
+        return true;
+      }
       if (stack.length > 1) {
         setStack(prev => prev.slice(0, prev.length - 1));
         return true;
@@ -71,7 +84,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
 
     const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => subscription.remove();
-  }, [stack.length]);
+  }, [isFullscreen, stack.length]);
 
   return (
     <NavigationContext.Provider
@@ -79,6 +92,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         currentRoute,
         activeTab,
         stack,
+        isFullscreen,
+        setIsFullscreen,
         navigate,
         goBack,
         switchTab,

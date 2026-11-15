@@ -13,6 +13,8 @@
  * 3. Preserve 100% original visual clarity (no full-card dark overlays or blur).
  */
 
+import { theSportsDbService } from '../services/theSportsDbService';
+
 // Verified, high-resolution authentic stadium and sport action photography pools
 export const SPORT_ARTWORK_POOLS: Record<string, string[]> = {
   soccer: [
@@ -478,7 +480,15 @@ export function resolveSportBackground(
     }
   }
 
-  // Tier 1b: For soccer matches with named teams, generate authentic DAG match card with badges
+  // Tier 1b: Verified TheSportsDB event artwork if available in cache
+  if (homeTeam && awayTeam) {
+    const tsdbArt = theSportsDbService.getCachedArtwork(homeTeam, awayTeam);
+    if (tsdbArt) {
+      return tsdbArt;
+    }
+  }
+
+  // Tier 1c: For soccer matches with named teams, generate authentic DAG match card with badges
   if (sportKey === 'soccer' && homeTeam && awayTeam && homeTeam.trim() !== '' && awayTeam.trim() !== '') {
     const cleanHome = homeTeam.trim();
     const cleanAway = awayTeam.trim();

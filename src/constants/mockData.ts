@@ -41,6 +41,8 @@ export interface LiveMatch {
   status?: 'LIVE' | 'FT' | 'UPCOMING';
   kickoffTime?: string;
   time?: string;
+  kickoffTimestamp?: number;
+  rawDate?: string;
   isLive?: boolean;
   playTime?: string;
   venue?: string;

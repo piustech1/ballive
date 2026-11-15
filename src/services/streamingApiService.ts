@@ -6,7 +6,14 @@ import { LEAGUE_EMBLEMS, CLUB_CRESTS } from '../constants/crests';
 import { sportsApiService } from './sportsApiService';
 import { resolveSportBackground, isVerifiedEventImage, SPORT_ARTWORK } from '../utils/sportBackgroundResolver';
 import { resolveCompetitionLogo } from '../components/common/CompetitionLogo';
-import { formatKickoffEAT, normalizeMatchStatus } from '../utils/matchStatus';
+import {
+  formatKickoffEAT,
+  normalizeMatchStatus,
+  parseKickoffTimestamp,
+  formatMatchSchedule,
+  sortUpcomingChronologically,
+} from '../utils/matchStatus';
+import { theSportsDbService } from './theSportsDbService';
 
 export interface RawStreamSource {
   id: string;
@@ -332,7 +339,9 @@ class StreamingApiService {
               if (!isTrulyLive) {
                 // Route upcoming fixtures to upcoming collection with clean scheduled kickoff in EAT
                 const cleanKickoff = m.releaseInfo ? m.releaseInfo.replace(/^⏱️\s*/, '') : 'Upcoming';
-                const eatKickoff = cleanKickoff.includes('EAT') ? cleanKickoff : formatKickoffEAT(cleanKickoff);
+                const kickoffTimestamp = parseKickoffTimestamp(m.releaseInfo || cleanKickoff);
+                const scheduleInfo = formatMatchSchedule(m.releaseInfo || cleanKickoff);
+                const eatKickoff = scheduleInfo.fullKickoff !== 'Upcoming' ? scheduleInfo.fullKickoff : (cleanKickoff.includes('EAT') ? cleanKickoff : formatKickoffEAT(cleanKickoff));
 
                 fetchedUpcoming.push({
                   id: m.id,
@@ -354,6 +363,8 @@ class StreamingApiService {
                   sport,
                   kickoffTime: eatKickoff,
                   time: eatKickoff,
+                  kickoffTimestamp,
+                  rawDate: typeof m.releaseInfo === 'string' ? m.releaseInfo : undefined,
                   venue: isCombat ? 'Championship Octagon' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
                 });
                 return;
@@ -493,15 +504,21 @@ class StreamingApiService {
         }
       });
 
-      // Combine: Live matches first, then scheduled upcoming fixtures
-      const combined = [...fetchedMatches, ...uniqueUpcoming];
+      // Sort upcoming fixtures strictly chronologically ascending (nearest kickoff first)
+      const sortedUpcoming = sortUpcomingChronologically(uniqueUpcoming);
+
+      // Pre-fetch verified artwork from TheSportsDB for top upcoming matches in the background
+      theSportsDbService.prefetchMatchups(sortedUpcoming.slice(0, 6));
+
+      // Combine: Live matches first, then scheduled upcoming fixtures sorted chronologically
+      const combined = [...fetchedMatches, ...sortedUpcoming];
 
       if (combined.length > 0) {
         this.cachedLiveMatches = combined;
         this.lastFetchTime = now;
       }
-      if (uniqueUpcoming.length > 0) {
-        this.cachedUpcomingMatches = uniqueUpcoming;
+      if (sortedUpcoming.length > 0) {
+        this.cachedUpcomingMatches = sortedUpcoming;
       }
     } catch (err) {
       console.warn('[StreamingApiService] Error fetching live sports:', err);
@@ -761,11 +778,20 @@ class StreamingApiService {
     const homeScore = isUpcoming ? 0 : (live.score?.home ?? 0);
     const awayScore = isUpcoming ? 0 : (live.score?.away ?? 0);
 
+    const scheduleInfo = (live.kickoffTimestamp || live.rawDate || live.kickoffTime || live.time)
+      ? formatMatchSchedule(live.rawDate || live.kickoffTimestamp || live.kickoffTime || live.time)
+      : null;
+
+    const kickoffDate = scheduleInfo && scheduleInfo.dateLabel !== 'Upcoming' ? scheduleInfo.dateLabel : 'Today';
     const kickoffTime = isLive
       ? (live.playTime ? (live.playTime.toUpperCase().includes('LIVE') ? live.playTime : `${live.playTime} Live`) : (live.minute > 0 ? `${live.minute}' Live` : 'Live In-Play'))
       : isFinished
       ? 'Full Time'
-      : (live.kickoffTime?.includes('EAT') ? live.kickoffTime : formatKickoffEAT(live.kickoffTime || live.time));
+      : (scheduleInfo && scheduleInfo.timeEAT !== 'Upcoming' ? scheduleInfo.timeEAT : (live.kickoffTime?.includes('EAT') ? live.kickoffTime : formatKickoffEAT(live.kickoffTime || live.time)));
+
+    const kickoffTimestamp = live.kickoffTimestamp !== undefined && live.kickoffTimestamp !== null && live.kickoffTimestamp > 0
+      ? live.kickoffTimestamp
+      : parseKickoffTimestamp(live.rawDate || live.kickoffTime || live.time);
 
     const isUnsupported = isUnsupportedStreamingCompetition(live.competition, live.title);
     const compChannel = isUnsupported ? '' : getBroadcastChannelId(live.competition, live.sport);
@@ -795,8 +821,10 @@ class StreamingApiService {
       competitionLogo: compLogo,
       status,
       isLive,
-      kickoffDate: 'Today',
+      kickoffDate,
       kickoffTime,
+      kickoffTimestamp,
+      rawDate: live.rawDate,
       minute: isLive ? live.minute : 0,
       playTime: isLive ? live.playTime : undefined,
       sport: live.sport,

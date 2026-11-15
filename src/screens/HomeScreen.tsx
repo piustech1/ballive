@@ -25,6 +25,7 @@ import { MatchOfTheDayTicker } from '../features/home/MatchOfTheDayTicker';
 import { FilterBottomSheet } from '../features/home/FilterBottomSheet';
 import { QuickAccessLauncher } from '../features/home/QuickAccessLauncher';
 import { streamingApiService } from '../services/streamingApiService';
+import { sortMatchesWithLiveFirst } from '../utils/matchStatus';
 
 export const HomeScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
@@ -69,7 +70,7 @@ export const HomeScreen: React.FC = () => {
 
   // Filter live matches based on search query, category, and bottom sheet filter
   const filteredMatches = useMemo(() => {
-    return liveMatches.filter(match => {
+    const filtered = liveMatches.filter(match => {
       // Search query filtering
       const matchesSearch =
         !searchQuery.trim() ||
@@ -119,6 +120,8 @@ export const HomeScreen: React.FC = () => {
 
       return matchesSearch && matchesCategory && matchesStatus;
     });
+
+    return sortMatchesWithLiveFirst(filtered);
   }, [liveMatches, searchQuery, selectedCategoryId, competitionFilter, statusFilter]);
 
   // Filter featured competitions based on search query

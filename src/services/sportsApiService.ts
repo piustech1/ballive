@@ -4,7 +4,13 @@ import { getTeamCrest } from '../utils/teamCrestResolver';
 import { LEAGUE_EMBLEMS } from '../constants/crests';
 import { resolveCompetitionLogo } from '../components/common/CompetitionLogo';
 import { resolveSportBackground } from '../utils/sportBackgroundResolver';
-import { formatKickoffEAT, normalizeMatchStatus } from '../utils/matchStatus';
+import {
+  formatKickoffEAT,
+  normalizeMatchStatus,
+  parseKickoffTimestamp,
+  formatMatchSchedule,
+  sortMatchesWithLiveFirst,
+} from '../utils/matchStatus';
 import { StandingsRow } from '../constants/standingsData';
 import {
   TacticalPlayer,
@@ -700,8 +706,9 @@ class SportsApiService {
             const scoreAway = isLive ? (parseInt(away?.score || '0', 10) || 0) : 0;
 
             const sportKey = cfg.sport === 'soccer' ? 'soccer' : cfg.sport === 'basketball' ? 'basketball' : cfg.sport === 'hockey' ? 'hockey' : cfg.sport === 'football' ? 'american_football' : 'other';
-            const scheduledKickoff = formatKickoffEAT(ev.date);
-            const displayTime = isLive ? `${clockInfo.playTime} Live` : scheduledKickoff;
+            const kickoffTimestamp = parseKickoffTimestamp(ev.date);
+            const scheduleInfo = formatMatchSchedule(ev.date);
+            const displayTime = isLive ? `${clockInfo.playTime} Live` : scheduleInfo.fullKickoff;
 
             const bgImage = resolveSportBackground(
               sportKey,
@@ -727,6 +734,8 @@ class SportsApiService {
               status: clockInfo.status,
               kickoffTime: displayTime,
               time: displayTime,
+              kickoffTimestamp,
+              rawDate: ev.date,
               isLive,
               imageUrl: bgImage,
               hasLiveStream: isLive,
@@ -791,17 +800,18 @@ class SportsApiService {
           matches.slice(0, 15).forEach((m: any) => {
             const homeName = m.homeTeam?.name || 'Home Club';
             const awayName = m.awayTeam?.name || 'Away Club';
-            const dateObj = new Date(m.utcDate);
-            const dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-            const eatTime = formatKickoffEAT(m.utcDate);
+            const kickoffTimestamp = parseKickoffTimestamp(m.utcDate);
+            const scheduleInfo = formatMatchSchedule(m.utcDate);
 
             matchups.push({
               id: `sched-fd-${m.id}`,
               competition: m.competition?.name || cleanId.toUpperCase(),
               competitionLogo: LEAGUE_EMBLEMS[cleanId] || resolveCompetitionLogo(m.competition?.name || cleanId),
               status: 'UPCOMING',
-              kickoffDate: dateStr,
-              kickoffTime: eatTime,
+              kickoffDate: scheduleInfo.dateLabel,
+              kickoffTime: scheduleInfo.timeEAT,
+              kickoffTimestamp,
+              rawDate: m.utcDate,
               homeTeam: {
                 id: `team-${homeName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
                 name: homeName,
@@ -828,7 +838,7 @@ class SportsApiService {
               ),
             });
           });
-          if (matchups.length > 0) return matchups;
+          if (matchups.length > 0) return sortMatchesWithLiveFirst(matchups);
         }
       } catch (err) {
         console.warn('[SportsApiService] Error fetching FD upcoming fixtures:', err);
@@ -857,17 +867,18 @@ class SportsApiService {
             const isCompleted = Boolean(ev.status?.type?.completed || ev.status?.type?.state === 'post');
             const matchStatus = isLive ? 'LIVE' : (isCompleted ? 'FT' : 'UPCOMING');
 
-            const dateObj = new Date(ev.date || Date.now());
-            const dateStr = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-            const eatTime = formatKickoffEAT(ev.date);
+            const kickoffTimestamp = parseKickoffTimestamp(ev.date);
+            const scheduleInfo = formatMatchSchedule(ev.date);
 
             matchups.push({
               id: `sched-espn-${ev.id}`,
               competition: espnCfg.name,
               competitionLogo: espnCfg.logo,
               status: matchStatus,
-              kickoffDate: dateStr,
-              kickoffTime: isLive ? `${ev.status?.period * 15}' Live` : eatTime,
+              kickoffDate: scheduleInfo.dateLabel,
+              kickoffTime: isLive ? `${ev.status?.period * 15}' Live` : scheduleInfo.timeEAT,
+              kickoffTimestamp,
+              rawDate: ev.date,
               minute: isLive ? 45 : 0,
               homeTeam: {
                 id: `team-${homeName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
@@ -901,7 +912,7 @@ class SportsApiService {
       }
     }
 
-    return matchups;
+    return sortMatchesWithLiveFirst(matchups);
   }
 
   /**

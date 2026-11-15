@@ -28,6 +28,7 @@ import { useAppNavigation } from '../navigation/NavigationContext';
 import { navigateToMatch } from '../navigation/navHelpers';
 import { streamingApiService } from '../services/streamingApiService';
 import { MatchCardSkeleton } from '../components/common/SkeletonLoader';
+import { sortMatchesWithLiveFirst } from '../utils/matchStatus';
 
 type StreamFilter = 'all' | 'live' | 'upcoming' | 'available';
 type SportFilter = 'all' | 'football' | 'basketball' | 'hockey';
@@ -101,7 +102,7 @@ export const AllLiveStreamsScreen: React.FC = () => {
   };
 
   const filteredMatches = useMemo(() => {
-    return allStreamMatches.filter(m => {
+    const filtered = allStreamMatches.filter(m => {
       // Sport filter
       if (selectedSport === 'football') {
         const c = m.competition.toLowerCase();
@@ -119,11 +120,9 @@ export const AllLiveStreamsScreen: React.FC = () => {
       if (selectedFilter === 'upcoming') return m.status === 'UPCOMING';
       if (selectedFilter === 'available') return m.hasLiveBroadcast;
       return true;
-    }).sort((a, b) => {
-      if (a.status === 'LIVE' && b.status !== 'LIVE') return -1;
-      if (a.status !== 'LIVE' && b.status === 'LIVE') return 1;
-      return 0;
     });
+
+    return sortMatchesWithLiveFirst(filtered);
   }, [allStreamMatches, selectedFilter, selectedSport]);
 
   const liveCount = allStreamMatches.filter(m => m.status === 'LIVE').length;

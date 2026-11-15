@@ -60,6 +60,8 @@ export interface DiscoverMatchup {
   isLive?: boolean;
   kickoffDate: string;
   kickoffTime: string;
+  kickoffTimestamp?: number;
+  rawDate?: string;
   playTime?: string;
   minute?: number;
   sport?: SportType;

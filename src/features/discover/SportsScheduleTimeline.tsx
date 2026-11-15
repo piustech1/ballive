@@ -12,6 +12,7 @@ import { DiscoverMatchup } from '../../constants/discoverData';
 import { streamingApiService } from '../../services/streamingApiService';
 import { resolveSportBackground } from '../../utils/sportBackgroundResolver';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
+import { sortUpcomingChronologically } from '../../utils/matchStatus';
 
 // Team name dictionary for Large Card (readable display names)
 const TEAM_DISPLAY_NAMES: Record<string, string> = {
@@ -294,7 +295,7 @@ export const SportsScheduleTimeline: React.FC<SportsScheduleTimelineProps> = ({
     let isMounted = true;
 
     if (propMatches && propMatches.length > 0) {
-      setInternalMatches(propMatches);
+      setInternalMatches(sortUpcomingChronologically(propMatches));
       return;
     }
 
@@ -307,7 +308,7 @@ export const SportsScheduleTimeline: React.FC<SportsScheduleTimelineProps> = ({
             .filter(m => m.status === 'UPCOMING')
             .map(m => streamingApiService.convertLiveMatchToMatchup(m));
           if (converted.length > 0) {
-            setInternalMatches(converted);
+            setInternalMatches(sortUpcomingChronologically(converted));
             return;
           }
         }
@@ -326,7 +327,7 @@ export const SportsScheduleTimeline: React.FC<SportsScheduleTimelineProps> = ({
 
   const displayMatches = useMemo(() => {
     const list = internalMatches.length > 0 ? internalMatches : FALLBACK_TIMELINE_MATCHES;
-    return list.slice(0, 4);
+    return sortUpcomingChronologically(list).slice(0, 4);
   }, [internalMatches]);
 
   if (displayMatches.length === 0) {

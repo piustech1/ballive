@@ -29,7 +29,7 @@ import {
 } from './src/components/navigation/BottomNavigation';
 
 const AppContent: React.FC = () => {
-  const { currentRoute, activeTab, switchTab } = useAppNavigation();
+  const { currentRoute, activeTab, switchTab, isFullscreen } = useAppNavigation();
 
   const renderActiveScreen = () => {
     switch (currentRoute.name) {
@@ -85,19 +85,25 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <View style={styles.rootContainer}>
-      <StatusBar style="light" backgroundColor={Colors.headerPurple} />
+    <View style={isFullscreen ? styles.fullscreenRootContainer : styles.rootContainer}>
+      <StatusBar
+        hidden={isFullscreen}
+        style="light"
+        backgroundColor={isFullscreen ? '#000000' : Colors.headerPurple}
+      />
 
       {/* Active Screen View */}
-      <View style={styles.screenContainer}>
+      <View style={isFullscreen ? styles.fullscreenScreenContainer : styles.screenContainer}>
         {renderActiveScreen()}
       </View>
 
-      {/* Anchored Bottom Navigation Bar */}
-      <BottomNavigation
-        activeTab={activeTab}
-        onTabChange={switchTab}
-      />
+      {/* Anchored Bottom Navigation Bar - hidden during fullscreen video streaming */}
+      {!isFullscreen && (
+        <BottomNavigation
+          activeTab={activeTab}
+          onTabChange={switchTab}
+        />
+      )}
     </View>
   );
 };
@@ -117,7 +123,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  fullscreenRootContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
   screenContainer: {
     flex: 1,
+  },
+  fullscreenScreenContainer: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+    zIndex: 9999,
   },
 });

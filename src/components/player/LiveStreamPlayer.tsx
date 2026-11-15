@@ -377,18 +377,18 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
         )}
 
         {/* ── FLOATING CONTROLS (UNOBTRUSIVE FULLSCREEN TOGGLE) ── */}
-        <View style={styles.topOverlay} pointerEvents="box-none">
+        <View style={[styles.topOverlay, isFullscreen && styles.topOverlayFullscreen]} pointerEvents="box-none">
           <View style={{ flex: 1 }} />
 
           {onToggleFullscreen && (
             <TouchableOpacity
               activeOpacity={0.8}
-              style={styles.fullscreenBtn}
+              style={[styles.fullscreenBtn, isFullscreen && styles.fullscreenBtnActive]}
               onPress={onToggleFullscreen}
               accessibilityLabel={isFullscreen ? 'Exit full screen' : 'Full screen'}
             >
               {isFullscreen ? (
-                <Minimize2 size={18} color="#FFFFFF" strokeWidth={2.4} />
+                <Minimize2 size={20} color="#FFFFFF" strokeWidth={2.4} />
               ) : (
                 <Maximize2 size={18} color="#FFFFFF" strokeWidth={2.4} />
               )}
@@ -513,6 +513,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     zIndex: 20,
   },
+  topOverlayFullscreen: {
+    top: 16,
+    left: 20,
+    right: 20,
+  },
   liveIndicatorPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -535,12 +540,15 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   fullscreenBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: 'rgba(14, 13, 20, 0.75)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  fullscreenBtnActive: {
+    backgroundColor: 'rgba(121, 82, 252, 0.85)',
   },
   fullscreenMirrorBar: {
     position: 'absolute',

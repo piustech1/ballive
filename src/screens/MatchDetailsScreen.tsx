@@ -33,7 +33,8 @@ import { navigateToMatch } from '../navigation/navHelpers';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
-import { normalizeMatchStatus } from '../utils/matchStatus';
+import { normalizeMatchStatus, sortMatchesWithLiveFirst } from '../utils/matchStatus';
+import { theSportsDbService } from '../services/theSportsDbService';
 
 export type NormalizedSport =
   | 'football'
@@ -178,6 +179,23 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     DEFAULT_CREST;
 
   // Resolve authentic, sharp, unblurred sport-specific background
+  const [asyncArtwork, setAsyncArtwork] = useState<string | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    theSportsDbService
+      .fetchEventArtwork(activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, activeMatchup.sport)
+      .then(art => {
+        if (isMounted && art) {
+          setAsyncArtwork(art);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      isMounted = false;
+    };
+  }, [activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, activeMatchup.sport]);
+
   const rawImage =
     activeMatchup.poster ||
     (activeMatchup as any).imageUrl ||
@@ -185,6 +203,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     null;
 
   const heroArtworkUrl = useMemo(() => {
+    if (asyncArtwork) return asyncArtwork;
     return resolveSportBackground(
       activeMatchup.sport,
       activeMatchup.competition,
@@ -194,6 +213,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       activeMatchup.id
     );
   }, [
+    asyncArtwork,
     activeMatchup.sport,
     activeMatchup.competition,
     rawImage,
@@ -248,16 +268,20 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       const pool = allFetched.length > 0 ? allFetched : UPCOMING_HIGHLIGHTS;
       const filtered = pool.filter(m => m.id !== activeMatchup.id);
 
-      // Prioritize same competition, then same sport
+      // Prioritize same competition, then same sport, sorted chronologically with live first
       const sameComp = filtered.filter(m => m.competition.toLowerCase() === activeMatchup.competition.toLowerCase());
       const sameSport = filtered.filter(m => m.sport === activeMatchup.sport && m.competition.toLowerCase() !== activeMatchup.competition.toLowerCase());
       const others = filtered.filter(m => m.sport !== activeMatchup.sport && m.competition.toLowerCase() !== activeMatchup.competition.toLowerCase());
 
-      const sorted = [...sameComp, ...sameSport, ...others];
+      const sorted = [
+        ...sortMatchesWithLiveFirst(sameComp),
+        ...sortMatchesWithLiveFirst(sameSport),
+        ...sortMatchesWithLiveFirst(others),
+      ];
       setMoreMatches(sorted.slice(0, 6));
     }).catch(() => {
       if (isMounted) {
-        setMoreMatches(UPCOMING_HIGHLIGHTS.filter(m => m.id !== activeMatchup.id).slice(0, 6));
+        setMoreMatches(sortMatchesWithLiveFirst(UPCOMING_HIGHLIGHTS.filter(m => m.id !== activeMatchup.id)).slice(0, 6));
       }
     });
 
