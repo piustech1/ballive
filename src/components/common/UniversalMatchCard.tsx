@@ -2,25 +2,21 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
-  ImageBackground,
   Image,
   TouchableOpacity,
   StyleSheet,
   StyleProp,
   ViewStyle,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '../../theme/colors';
 import { LiveMatch } from '../../constants/mockData';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { CompetitionLogo } from './CompetitionLogo';
+import { MatchArtworkBackground } from './MatchArtworkBackground';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import {
   resolveSportBackground,
-  isGenuineEventArtwork,
   isVerifiedEventImage,
-  getDeterministicSportArtwork,
-  normalizeSportKey,
 } from '../../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../../utils/matchStatus';
 import { theSportsDbService } from '../../services/theSportsDbService';
@@ -177,28 +173,6 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
       ? styles.fullContainer
       : styles.carouselContainer;
 
-  const sportKey = normalizeSportKey(m.sport, m.competition, m.homeTeamName, m.awayTeamName);
-  const seed = m.id || `${m.homeTeamName} ${m.awayTeamName} ${m.competition}`;
-  const fallbackBackdrop = useMemo(() => {
-    return getDeterministicSportArtwork(sportKey, seed);
-  }, [sportKey, seed]);
-
-  const [imageError, setImageError] = useState(false);
-
-  useEffect(() => {
-    setImageError(false);
-  }, [resolvedArtwork, m.backdropUrl]);
-
-  const candidateArtwork = useMemo(() => {
-    if (imageError) return null;
-    if (resolvedArtwork && isGenuineEventArtwork(resolvedArtwork)) {
-      return resolvedArtwork;
-    }
-    if (m.backdropUrl && isGenuineEventArtwork(m.backdropUrl)) {
-      return m.backdropUrl;
-    }
-    return null;
-  }, [resolvedArtwork, m.backdropUrl, imageError]);
 
   const cardInnerContent = (
     <>
@@ -308,43 +282,18 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
         m.isLive ? 'Live match' : m.isUpcoming ? 'Upcoming match' : 'Completed match'
       }`}
     >
-      {/* ── Base Layer: Authentic Sports Stadium/Arena Atmosphere ── */}
-      <ImageBackground
-        source={{ uri: fallbackBackdrop }}
-        style={styles.imageBackground}
-        imageStyle={styles.imageBackgroundInner}
-        resizeMode="cover"
+      <MatchArtworkBackground
+        matchId={m.id}
+        homeTeamName={m.homeTeamName}
+        awayTeamName={m.awayTeamName}
+        homeCrest={m.homeCrest}
+        awayCrest={m.awayCrest}
+        competition={m.competition}
+        competitionLogo={m.competitionLogo}
+        originalArtworkUrl={resolvedArtwork || m.backdropUrl}
       >
-        {/* Darkening tint to maintain visual depth and ensure contrast */}
-        <LinearGradient
-          colors={['rgba(22, 17, 34, 0.45)', 'rgba(18, 14, 28, 0.72)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-
-        {/* ── Overlay Layer: Genuine Match-Specific Artwork (when available) ── */}
-        {candidateArtwork ? (
-          <Image
-            source={{ uri: candidateArtwork }}
-            style={[StyleSheet.absoluteFillObject, styles.imageBackgroundInner]}
-            resizeMode="cover"
-            onError={() => setImageError(true)}
-          />
-        ) : null}
-
-        {/* Subtle bottom vignette to ensure team crests and text stand out crisply */}
-        <LinearGradient
-          colors={['transparent', 'rgba(15, 11, 24, 0.7)']}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
-
-        {/* ── Card Inner Content ── */}
         {cardInnerContent}
-      </ImageBackground>
+      </MatchArtworkBackground>
     </TouchableOpacity>
   );
 };

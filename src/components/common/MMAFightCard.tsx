@@ -1,20 +1,19 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
-  ImageBackground,
   Image,
   TouchableOpacity,
   StyleSheet,
   StyleProp,
   ViewStyle,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '../../theme/colors';
 import { LiveMatch } from '../../constants/mockData';
 import { DiscoverMatchup } from '../../constants/discoverData';
-import { resolveSportBackground, isGenuineEventArtwork, getDeterministicSportArtwork } from '../../utils/sportBackgroundResolver';
+import { resolveSportBackground } from '../../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../../utils/matchStatus';
+import { MatchArtworkBackground } from './MatchArtworkBackground';
 
 export type UniversalMatchItem = LiveMatch | DiscoverMatchup;
 
@@ -107,24 +106,6 @@ export const MMAFightCard: React.FC<MMAFightCardProps> = ({
     ? (rawKickoff.includes('EAT') ? rawKickoff : formatKickoffEAT(rawKickoff))
     : rawKickoff;
 
-  const seed = match.id || `${fighterAName} ${fighterBName} ${competition}`;
-  const fallbackBackdrop = useMemo(() => {
-    return getDeterministicSportArtwork('mma', seed);
-  }, [seed]);
-
-  const [imageError, setImageError] = useState(false);
-
-  useEffect(() => {
-    setImageError(false);
-  }, [backdropUrl]);
-
-  const candidateArtwork = useMemo(() => {
-    if (imageError) return null;
-    if (backdropUrl && isGenuineEventArtwork(backdropUrl)) {
-      return backdropUrl;
-    }
-    return null;
-  }, [backdropUrl, imageError]);
 
   const fightCardInner = (
     <>
@@ -225,42 +206,19 @@ export const MMAFightCard: React.FC<MMAFightCardProps> = ({
       onPress={onPress}
       style={[styles.container, style]}
     >
-      {/* ── Base Layer: Authentic Combat Sports Arena Atmosphere ── */}
-      <ImageBackground
-        source={{ uri: fallbackBackdrop }}
-        style={styles.imageBackground}
-        imageStyle={styles.imageBackgroundInner}
-        resizeMode="cover"
+      <MatchArtworkBackground
+        matchId={match.id}
+        homeTeamName={fighterAName}
+        awayTeamName={fighterBName}
+        homeCrest={fighterAAvatar}
+        awayCrest={fighterBAvatar}
+        homeColor="#B91C1C"
+        awayColor="#1D4ED8"
+        competition={competition}
+        originalArtworkUrl={backdropUrl}
       >
-        {/* Darkening tint for high contrast */}
-        <LinearGradient
-          colors={['rgba(22, 17, 34, 0.45)', 'rgba(18, 14, 28, 0.75)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-        />
-
-        {/* ── Overlay Layer: Genuine Fight Card Artwork (when available) ── */}
-        {candidateArtwork ? (
-          <Image
-            source={{ uri: candidateArtwork }}
-            style={[StyleSheet.absoluteFillObject, styles.imageBackgroundInner]}
-            resizeMode="cover"
-            onError={() => setImageError(true)}
-          />
-        ) : null}
-
-        {/* Subtle bottom vignette to ensure fighter names and avatars stand out crisply */}
-        <LinearGradient
-          colors={['transparent', 'rgba(15, 11, 24, 0.7)']}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
-
         {fightCardInner}
-      </ImageBackground>
+      </MatchArtworkBackground>
     </TouchableOpacity>
   );
 };

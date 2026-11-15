@@ -27,12 +27,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
 import { CompetitionLogo } from '../components/common/CompetitionLogo';
+import { MatchArtworkBackground } from '../components/common/MatchArtworkBackground';
 import { getTeamCrest, DEFAULT_CREST } from '../utils/teamCrestResolver';
 import {
   resolveSportBackground,
   isGenuineEventArtwork,
-  getDeterministicSportArtwork,
-  normalizeSportKey,
 } from '../utils/sportBackgroundResolver';
 import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
@@ -237,21 +236,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     activeMatchup.matchBannerUrl ||
     null;
 
-  const sportKey = normalizeSportKey(
-    activeMatchup.sport,
-    activeMatchup.competition,
-    activeMatchup.homeTeam.name,
-    activeMatchup.awayTeam.name
-  );
-  const seed = activeMatchup.id || `${activeMatchup.homeTeam.name} ${activeMatchup.awayTeam.name}`;
-  const fallbackBackdrop = useMemo(() => {
-    return getDeterministicSportArtwork(sportKey, seed);
-  }, [sportKey, seed]);
-
-  const [heroImageError, setHeroImageError] = useState(false);
-
   const heroArtworkUrl = useMemo(() => {
-    if (heroImageError) return null;
     if (asyncArtwork && isGenuineEventArtwork(asyncArtwork)) return asyncArtwork;
     const resolved = resolveSportBackground(
       activeMatchup.sport,
@@ -264,7 +249,6 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     if (resolved && isGenuineEventArtwork(resolved)) return resolved;
     return null;
   }, [
-    heroImageError,
     asyncArtwork,
     activeMatchup.sport,
     activeMatchup.competition,
@@ -273,10 +257,6 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     activeMatchup.awayTeam.name,
     activeMatchup.id,
   ]);
-
-  useEffect(() => {
-    setHeroImageError(false);
-  }, [asyncArtwork, rawImage]);
 
   const isReminderSet = profile.matchReminderIds.includes(activeMatchup.id);
   const isSaved = profile.savedMatchIds.includes(activeMatchup.id);
@@ -407,55 +387,17 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       >
         {/* ── 2. STATIC MATCH HERO BANNER (WELL-PROPORTIONED, NO BLUR, NO OVERLAYS) ── */}
         <View style={styles.heroContainer}>
-          <ImageBackground
-            source={{ uri: fallbackBackdrop }}
+          <MatchArtworkBackground
+            matchId={activeMatchup.id}
+            homeTeamName={activeMatchup.homeTeam.name}
+            awayTeamName={activeMatchup.awayTeam.name}
+            homeCrest={homeCrest}
+            awayCrest={awayCrest}
+            competition={activeMatchup.competition}
+            competitionLogo={activeMatchup.competitionLogo}
+            originalArtworkUrl={heroArtworkUrl}
             style={styles.heroImage}
-            resizeMode="cover"
-          >
-            {/* Subtle dark gradient overlay to ensure stadium atmosphere has rich contrast */}
-            <LinearGradient
-              colors={['rgba(22, 17, 34, 0.45)', 'rgba(18, 14, 28, 0.75)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-            />
-
-            {heroArtworkUrl && !heroImageError ? (
-              <Image
-                source={{ uri: heroArtworkUrl }}
-                style={StyleSheet.absoluteFillObject}
-                resizeMode="cover"
-                onError={() => setHeroImageError(true)}
-              />
-            ) : null}
-
-            {/* Subtle bottom vignette to ensure competition info and text stand out crisply */}
-            <LinearGradient
-              colors={['transparent', 'rgba(15, 11, 24, 0.85)']}
-              start={{ x: 0, y: 0.4 }}
-              end={{ x: 0, y: 1 }}
-              style={StyleSheet.absoluteFillObject}
-              pointerEvents="none"
-            />
-
-            {!heroArtworkUrl || heroImageError ? (
-              <View style={styles.heroFallback}>
-                <View style={styles.heroFallbackContent}>
-                  <CompetitionLogo
-                    competitionId={activeMatchup.competition}
-                    uri={activeMatchup.competitionLogo}
-                    size={32}
-                  />
-                  <Text style={styles.heroFallbackComp} numberOfLines={1}>
-                    {activeMatchup.competition}
-                  </Text>
-                  <Text style={styles.heroFallbackTeams} numberOfLines={1}>
-                    {activeMatchup.homeTeam.name} vs {activeMatchup.awayTeam.name}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-          </ImageBackground>
+          />
         </View>
 
         {/* ── 3. REFINED MATCHUP CARD WITH INTEGRATED METADATA STRIP ── */}
