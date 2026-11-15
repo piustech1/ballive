@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { BackHandler } from 'react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import { TabDestination } from '../components/navigation/BottomNavigation';
 import {
   DiscoverMatchup,
@@ -46,12 +47,16 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const currentRoute = stack[stack.length - 1];
 
   const navigate = (route: ScreenRoute) => {
-    setIsFullscreen(false);
+    if (isFullscreen) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      setIsFullscreen(false);
+    }
     setStack(prev => [...prev, route]);
   };
 
   const goBack = (): boolean => {
     if (isFullscreen) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
       setIsFullscreen(false);
       return true;
     }
@@ -63,7 +68,10 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const switchTab = (tab: TabDestination) => {
-    setIsFullscreen(false);
+    if (isFullscreen) {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      setIsFullscreen(false);
+    }
     setActiveTab(tab);
     setStack([{ name: 'Main', tab }]);
   };
@@ -72,6 +80,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   useEffect(() => {
     const onBackPress = () => {
       if (isFullscreen) {
+        ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
         setIsFullscreen(false);
         return true;
       }

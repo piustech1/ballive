@@ -393,6 +393,173 @@ export function sortMatchesWithLiveFirst<T extends {
   return [...liveMatches, ...sortedUpcoming, ...finishedMatches];
 }
 
+/**
+ * Builds a canonical event identity string across diverse provider formats
+ * (ESPN, Football-Data, DAG Sports, etc.).
+ */
+export function getCanonicalEventId(options: {
+  id?: string;
+  sport?: string;
+  competition?: string;
+  homeTeam?: string;
+  awayTeam?: string;
+  kickoffTimestamp?: number;
+  rawDate?: string;
+  kickoffDate?: string;
+}): string {
+  const {
+    id,
+    sport = 'soccer',
+    homeTeam = '',
+    awayTeam = '',
+    kickoffTimestamp,
+    rawDate,
+    kickoffDate,
+  } = options;
+
+  const clean = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, ' ')
+      .replace(/\b(fc|cf|sc|afc|club|united|city|women|ladies|men)\b/g, '')
+      .trim();
+
+  const cleanH = clean(homeTeam);
+  const cleanA = clean(awayTeam);
+
+  // Normalize date down to calendar day YYYY-MM-DD
+  let dateKey = 'upcoming';
+  if (kickoffTimestamp && kickoffTimestamp < Number.MAX_SAFE_INTEGER) {
+    const d = new Date(kickoffTimestamp);
+    if (!isNaN(d.getTime())) {
+      dateKey = d.toISOString().split('T')[0];
+    }
+  } else if (rawDate) {
+    const d = new Date(rawDate);
+    if (!isNaN(d.getTime())) {
+      dateKey = d.toISOString().split('T')[0];
+    } else {
+      dateKey = rawDate.replace(/\s+/g, '_');
+    }
+  } else if (kickoffDate) {
+    dateKey = kickoffDate.replace(/\s+/g, '_');
+  }
+
+  // Canonical pair representation: sort team keys so reverse pairings and cross-provider entries match
+  if (cleanH && cleanA) {
+    const pairKey = [cleanH, cleanA].sort().join('_vs_');
+    return `${sport}_${pairKey}_${dateKey}`;
+  }
+
+  // Fallback to provider id if teams are not available
+  const cleanProviderId = (id || 'unknown').replace(/^(sched-espn-|espn-|sched-fd-|fd-)/, '');
+  return `${sport}_${cleanProviderId}_${dateKey}`;
+}
+
+/**
+ * Checks whether two match objects represent the exact same real-world fixture.
+ */
+export function isSameFixture(
+  matchA: {
+    id?: string;
+    homeTeam?: any;
+    awayTeam?: any;
+    kickoffTimestamp?: number;
+    rawDate?: string;
+  },
+  matchB: {
+    id?: string;
+    homeTeam?: any;
+    awayTeam?: any;
+    kickoffTimestamp?: number;
+    rawDate?: string;
+  }
+): boolean {
+  if (!matchA || !matchB) return false;
+  if (matchA.id && matchB.id && matchA.id === matchB.id) return true;
+
+  const hA = typeof matchA.homeTeam === 'string' ? matchA.homeTeam : matchA.homeTeam?.name || '';
+  const aA = typeof matchA.awayTeam === 'string' ? matchA.awayTeam : matchA.awayTeam?.name || '';
+  const hB = typeof matchB.homeTeam === 'string' ? matchB.homeTeam : matchB.homeTeam?.name || '';
+  const aB = typeof matchB.awayTeam === 'string' ? matchB.awayTeam : matchB.awayTeam?.name || '';
+
+  const clean = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, ' ')
+      .replace(/\b(fc|cf|sc|afc|club|united|city|women|ladies|men)\b/g, '')
+      .trim();
+
+  const chA = clean(hA);
+  const caA = clean(aA);
+  const chB = clean(hB);
+  const caB = clean(aB);
+
+  if (!chA || !caA || !chB || !caB) return false;
+
+  const directMatch = chA === chB && caA === caB;
+  const reverseMatch = chA === caB && caA === chB;
+
+  if (!directMatch && !reverseMatch) return false;
+
+  // If both have timestamps, verify they are within 18 hours of each other
+  if (matchA.kickoffTimestamp && matchB.kickoffTimestamp) {
+    const diffHours = Math.abs(matchA.kickoffTimestamp - matchB.kickoffTimestamp) / (1000 * 60 * 60);
+    return diffHours < 18;
+  }
+
+  return true;
+}
+
+/**
+ * Deduplicates fixture collections by canonical event identity and unique IDs.
+ */
+export function deduplicateMatchups<T extends {
+  id?: string;
+  sport?: string;
+  competition?: string;
+  homeTeam?: string | { name?: string; id?: string };
+  awayTeam?: string | { name?: string; id?: string };
+  kickoffTimestamp?: number;
+  rawDate?: string;
+  kickoffDate?: string;
+  time?: string;
+}>(matchups: T[]): T[] {
+  if (!Array.isArray(matchups)) return [];
+  const seenCanonical = new Set<string>();
+  const seenIds = new Set<string>();
+  const result: T[] = [];
+
+  for (const m of matchups) {
+    if (!m) continue;
+    const homeName = typeof m.homeTeam === 'string' ? m.homeTeam : m.homeTeam?.name || '';
+    const awayName = typeof m.awayTeam === 'string' ? m.awayTeam : m.awayTeam?.name || '';
+
+    // If both teams are missing, skip
+    if (!homeName && !awayName) continue;
+
+    const canonicalKey = getCanonicalEventId({
+      id: m.id,
+      sport: m.sport,
+      competition: m.competition,
+      homeTeam: homeName,
+      awayTeam: awayName,
+      kickoffTimestamp: m.kickoffTimestamp,
+      rawDate: m.rawDate,
+      kickoffDate: m.kickoffDate || m.time,
+    });
+
+    if (m.id && seenIds.has(m.id)) continue;
+    if (seenCanonical.has(canonicalKey)) continue;
+
+    if (m.id) seenIds.add(m.id);
+    seenCanonical.add(canonicalKey);
+    result.push(m);
+  }
+
+  return result;
+}
+
 export default {
   parseKickoffTimestamp,
   formatMatchSchedule,
@@ -400,4 +567,7 @@ export default {
   normalizeMatchStatus,
   sortUpcomingChronologically,
   sortMatchesWithLiveFirst,
+  getCanonicalEventId,
+  isSameFixture,
+  deduplicateMatchups,
 };

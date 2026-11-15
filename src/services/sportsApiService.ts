@@ -18,6 +18,7 @@ import {
   MatchIntelResponse,
   assignPitchCoordinates,
 } from './footballApiService';
+import { theSportsDbService } from './theSportsDbService';
 import { LiveMatch } from '../constants/mockData';
 import { DiscoverMatchup } from '../constants/discoverData';
 
@@ -565,15 +566,27 @@ class SportsApiService {
         const homeComp = c0.homeAway === 'home' ? c0 : c1;
         const awayComp = c0.homeAway === 'home' ? c1 : c0;
 
+        // Check which competitor corresponds to requested homeName vs awayName
+        const tHome = clean(homeComp?.team?.displayName || '');
+        const isRequestedHomeActuallyHome = homeTokens.some(tok => tHome.includes(tok));
+
+        let scoreForRequestedHome = parseInt(homeComp?.score || '0', 10) || 0;
+        let scoreForRequestedAway = parseInt(awayComp?.score || '0', 10) || 0;
+
+        if (!isRequestedHomeActuallyHome) {
+          scoreForRequestedHome = parseInt(awayComp?.score || '0', 10) || 0;
+          scoreForRequestedAway = parseInt(homeComp?.score || '0', 10) || 0;
+        }
+
         const clockInfo = parseClockAndStatus(ev, ev._sport || preferredSport);
         return {
           id: ev.id,
           sport: ev._sport || preferredSport,
           league: ev._league || 'all',
-          homeTeam: homeComp?.team?.displayName || homeName,
-          awayTeam: awayComp?.team?.displayName || awayName,
-          scoreHome: parseInt(homeComp?.score || '0', 10) || 0,
-          scoreAway: parseInt(awayComp?.score || '0', 10) || 0,
+          homeTeam: isRequestedHomeActuallyHome ? (homeComp?.team?.displayName || homeName) : (awayComp?.team?.displayName || homeName),
+          awayTeam: isRequestedHomeActuallyHome ? (awayComp?.team?.displayName || awayName) : (homeComp?.team?.displayName || awayName),
+          scoreHome: scoreForRequestedHome,
+          scoreAway: scoreForRequestedAway,
           minute: clockInfo.minute,
           playTime: clockInfo.playTime,
           isLive: clockInfo.isLive,
@@ -608,15 +621,28 @@ class SportsApiService {
       if (hMatch || aMatch) {
         const c0 = comp.competitors[0];
         const c1 = comp.competitors[1];
+        const homeComp = c0.homeAway === 'home' ? c0 : c1;
+        const awayComp = c0.homeAway === 'home' ? c1 : c0;
+        const tHome = clean(homeComp?.team?.displayName || '');
+        const isRequestedHomeActuallyHome = homeTokens.some(tok => tHome.includes(tok));
+
+        let scoreForRequestedHome = parseInt(homeComp?.score || '0', 10) || 0;
+        let scoreForRequestedAway = parseInt(awayComp?.score || '0', 10) || 0;
+
+        if (!isRequestedHomeActuallyHome) {
+          scoreForRequestedHome = parseInt(awayComp?.score || '0', 10) || 0;
+          scoreForRequestedAway = parseInt(homeComp?.score || '0', 10) || 0;
+        }
+
         const clockInfo = parseClockAndStatus(ev, ev._sport || preferredSport);
         return {
           id: ev.id,
           sport: ev._sport || preferredSport,
           league: ev._league || 'all',
-          homeTeam: c0.team?.displayName || homeName,
-          awayTeam: c1.team?.displayName || awayName,
-          scoreHome: parseInt(c0.score || '0', 10) || 0,
-          scoreAway: parseInt(c1.score || '0', 10) || 0,
+          homeTeam: isRequestedHomeActuallyHome ? (homeComp?.team?.displayName || homeName) : (awayComp?.team?.displayName || homeName),
+          awayTeam: isRequestedHomeActuallyHome ? (awayComp?.team?.displayName || awayName) : (homeComp?.team?.displayName || awayName),
+          scoreHome: scoreForRequestedHome,
+          scoreAway: scoreForRequestedAway,
           minute: clockInfo.minute,
           playTime: clockInfo.playTime,
           isLive: clockInfo.isLive,
@@ -767,6 +793,12 @@ class SportsApiService {
       }
     });
 
+    if (matches.length > 0) {
+      theSportsDbService.enqueueMatches(
+        matches.map(m => ({ homeTeam: m.homeTeam, awayTeam: m.awayTeam, sport: m.sport }))
+      );
+    }
+
     return matches;
   }
 
@@ -910,6 +942,12 @@ class SportsApiService {
       } catch (err) {
         console.warn('[SportsApiService] Error fetching ESPN fixtures:', err);
       }
+    }
+
+    if (matchups.length > 0) {
+      theSportsDbService.enqueueMatches(
+        matchups.map(m => ({ homeTeam: m.homeTeam.name, awayTeam: m.awayTeam.name, sport: m.sport }))
+      );
     }
 
     return sortMatchesWithLiveFirst(matchups);

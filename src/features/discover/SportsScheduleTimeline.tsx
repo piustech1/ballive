@@ -13,6 +13,7 @@ import { streamingApiService } from '../../services/streamingApiService';
 import { resolveSportBackground } from '../../utils/sportBackgroundResolver';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import { sortUpcomingChronologically } from '../../utils/matchStatus';
+import { theSportsDbService } from '../../services/theSportsDbService';
 
 // Team name dictionary for Large Card (readable display names)
 const TEAM_DISPLAY_NAMES: Record<string, string> = {
@@ -433,6 +434,38 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
     match.id
   );
 
+  const [resolvedArtwork, setResolvedArtwork] = useState<string | null>(() => {
+    return theSportsDbService.getCachedArtwork(match.homeTeam.name, match.awayTeam.name);
+  });
+
+  useEffect(() => {
+    const key = theSportsDbService.buildCacheKey(match.homeTeam.name, match.awayTeam.name);
+    if (!key) return;
+
+    const cached = theSportsDbService.getCachedArtwork(match.homeTeam.name, match.awayTeam.name);
+    if (cached && cached !== resolvedArtwork) {
+      setResolvedArtwork(cached);
+    }
+
+    const unsubscribe = theSportsDbService.subscribe((eventKey, url) => {
+      if (eventKey === key && url) {
+        setResolvedArtwork(url);
+      }
+    });
+
+    if (!cached) {
+      theSportsDbService.enqueueMatches([
+        {
+          homeTeam: match.homeTeam.name,
+          awayTeam: match.awayTeam.name,
+          sport: match.sport,
+        },
+      ]);
+    }
+
+    return () => unsubscribe();
+  }, [match.homeTeam.name, match.awayTeam.name, match.sport]);
+
   return (
     <TouchableOpacity
       activeOpacity={0.88}
@@ -442,7 +475,7 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
       accessibilityLabel={`${match.homeTeam.name} vs ${match.awayTeam.name}, kickoff ${kickoffTime}`}
     >
       <ImageBackground
-        source={{ uri: bgImage }}
+        source={{ uri: resolvedArtwork || bgImage }}
         style={styles.topCardBg}
         imageStyle={styles.topCardBgImage}
         resizeMode="cover"

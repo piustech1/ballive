@@ -35,13 +35,27 @@ function cleanMatchName(name: string): string {
 
 /**
  * Attempts to parse Home and Away team names from a fixture title.
+ * Strictly respects 'Team A at Team B' and 'Team A @ Team B' conventions (B is HOME, A is AWAY),
+ * as well as traditional 'Team A vs Team B' (A is HOME, B is AWAY).
  */
 function parseTeams(name: string): { home: string; away: string } {
   const clean = cleanMatchName(name);
-  const parts = clean.split(/\s+(?:vs\.?|–|-|v|at)\s+/i);
-  if (parts.length >= 2) {
+
+  // Check for 'at' or '@' delimiter (American sports: Away at Home)
+  const atMatch = clean.match(/\s+(?:at|@)\s+/i);
+  if (atMatch) {
+    const parts = clean.split(/\s+(?:at|@)\s+/i);
+    if (parts.length >= 2 && parts[0].trim() && parts[1].trim()) {
+      return { home: parts[1].trim(), away: parts[0].trim() };
+    }
+  }
+
+  // Standard 'vs', 'vs.', '–', '-', 'v' delimiter (Home vs Away)
+  const parts = clean.split(/\s+(?:vs\.?|–|-|v)\s+/i);
+  if (parts.length >= 2 && parts[0].trim() && parts[1].trim()) {
     return { home: parts[0].trim(), away: parts[1].trim() };
   }
+
   return { home: clean, away: 'Opponent' };
 }
 
@@ -386,18 +400,23 @@ class StreamingApiService {
               let playTime: string | undefined = undefined;
               let kickoffTime = 'Live In-Play';
 
-              if (matchedEspn && matchedEspn.isLive) {
-                scoreHome = matchedEspn.score.home;
-                scoreAway = matchedEspn.score.away;
+              if (matchedEspn && (matchedEspn.isLive || matchedEspn.score)) {
+                // Ensure scores strictly match home and away team orientations
+                const emH = cleanName(matchedEspn.homeTeam);
+                const hClean = cleanName(home);
+                const isDirectOrder = emH.includes(hClean) || hClean.includes(emH) || hToks.some(t => emH.includes(t));
+
+                if (isDirectOrder) {
+                  scoreHome = matchedEspn.score?.home ?? 0;
+                  scoreAway = matchedEspn.score?.away ?? 0;
+                } else {
+                  // Teams were listed in reverse in DAG vs ESPN
+                  scoreHome = matchedEspn.score?.away ?? 0;
+                  scoreAway = matchedEspn.score?.home ?? 0;
+                }
                 minute = matchedEspn.minute;
                 playTime = matchedEspn.playTime;
                 kickoffTime = matchedEspn.kickoffTime || (matchedEspn.playTime ? `${matchedEspn.playTime} Live` : 'Live In-Play');
-              } else if (matchedEspn && matchedEspn.score) {
-                scoreHome = matchedEspn.score.home;
-                scoreAway = matchedEspn.score.away;
-                minute = matchedEspn.minute;
-                playTime = matchedEspn.playTime || 'Live';
-                kickoffTime = matchedEspn.kickoffTime || 'Live In-Play';
               } else {
                 scoreHome = 0;
                 scoreAway = 0;
@@ -507,11 +526,13 @@ class StreamingApiService {
       // Sort upcoming fixtures strictly chronologically ascending (nearest kickoff first)
       const sortedUpcoming = sortUpcomingChronologically(uniqueUpcoming);
 
-      // Pre-fetch verified artwork from TheSportsDB for top upcoming matches in the background
-      theSportsDbService.prefetchMatchups(sortedUpcoming.slice(0, 6));
-
       // Combine: Live matches first, then scheduled upcoming fixtures sorted chronologically
       const combined = [...fetchedMatches, ...sortedUpcoming];
+
+      // Proactively resolve authentic event artwork from TheSportsDB in the background queue
+      theSportsDbService.enqueueMatches(
+        combined.map(m => ({ homeTeam: m.homeTeam, awayTeam: m.awayTeam, sport: m.sport }))
+      );
 
       if (combined.length > 0) {
         this.cachedLiveMatches = combined;

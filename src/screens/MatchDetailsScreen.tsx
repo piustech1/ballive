@@ -33,7 +33,12 @@ import { navigateToMatch } from '../navigation/navHelpers';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
-import { normalizeMatchStatus, sortMatchesWithLiveFirst } from '../utils/matchStatus';
+import {
+  normalizeMatchStatus,
+  sortMatchesWithLiveFirst,
+  deduplicateMatchups,
+  isSameFixture,
+} from '../utils/matchStatus';
 import { theSportsDbService } from '../services/theSportsDbService';
 
 export type NormalizedSport =
@@ -252,43 +257,59 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   useEffect(() => {
     let isMounted = true;
 
-    Promise.allSettled([
-      streamingApiService.getUpcomingMatches(),
-      streamingApiService.getLiveMatches(),
-    ]).then(results => {
-      if (!isMounted) return;
-      const upcomingRes = results[0].status === 'fulfilled' ? results[0].value : [];
-      const liveRes = results[1].status === 'fulfilled' ? results[1].value : [];
+    streamingApiService
+      .getLiveMatches()
+      .then(liveMatches => {
+        if (!isMounted) return;
+        const converted = (liveMatches || []).map(m => streamingApiService.convertLiveMatchToMatchup(m));
+        const pool = converted.length > 0 ? converted : UPCOMING_HIGHLIGHTS;
 
-      const allFetched: DiscoverMatchup[] = [
-        ...upcomingRes.map(m => streamingApiService.convertLiveMatchToMatchup(m)),
-        ...liveRes.map(m => streamingApiService.convertLiveMatchToMatchup(m)),
-      ];
+        // Strictly exclude active fixture by canonical identity and ID
+        const filtered = pool.filter(m => !isSameFixture(m, activeMatchup));
 
-      const pool = allFetched.length > 0 ? allFetched : UPCOMING_HIGHLIGHTS;
-      const filtered = pool.filter(m => m.id !== activeMatchup.id);
+        // Deduplicate fixtures by canonical event identity
+        const deduplicated = deduplicateMatchups(filtered);
 
-      // Prioritize same competition, then same sport, sorted chronologically with live first
-      const sameComp = filtered.filter(m => m.competition.toLowerCase() === activeMatchup.competition.toLowerCase());
-      const sameSport = filtered.filter(m => m.sport === activeMatchup.sport && m.competition.toLowerCase() !== activeMatchup.competition.toLowerCase());
-      const others = filtered.filter(m => m.sport !== activeMatchup.sport && m.competition.toLowerCase() !== activeMatchup.competition.toLowerCase());
+        // Prioritize same competition, then same sport, sorted chronologically with live first
+        const sameComp = deduplicated.filter(
+          m => m.competition.toLowerCase() === activeMatchup.competition.toLowerCase()
+        );
+        const sameSport = deduplicated.filter(
+          m =>
+            m.sport === activeMatchup.sport &&
+            m.competition.toLowerCase() !== activeMatchup.competition.toLowerCase()
+        );
+        const others = deduplicated.filter(
+          m =>
+            m.sport !== activeMatchup.sport &&
+            m.competition.toLowerCase() !== activeMatchup.competition.toLowerCase()
+        );
 
-      const sorted = [
-        ...sortMatchesWithLiveFirst(sameComp),
-        ...sortMatchesWithLiveFirst(sameSport),
-        ...sortMatchesWithLiveFirst(others),
-      ];
-      setMoreMatches(sorted.slice(0, 6));
-    }).catch(() => {
-      if (isMounted) {
-        setMoreMatches(sortMatchesWithLiveFirst(UPCOMING_HIGHLIGHTS.filter(m => m.id !== activeMatchup.id)).slice(0, 6));
-      }
-    });
+        const sorted = [
+          ...sortMatchesWithLiveFirst(sameComp),
+          ...sortMatchesWithLiveFirst(sameSport),
+          ...sortMatchesWithLiveFirst(others),
+        ];
+
+        setMoreMatches(deduplicateMatchups(sorted).slice(0, 6));
+      })
+      .catch(() => {
+        if (isMounted) {
+          const fallbackFiltered = UPCOMING_HIGHLIGHTS.filter(m => !isSameFixture(m, activeMatchup));
+          setMoreMatches(deduplicateMatchups(sortMatchesWithLiveFirst(fallbackFiltered)).slice(0, 6));
+        }
+      });
 
     return () => {
       isMounted = false;
     };
-  }, [activeMatchup.id, activeMatchup.competition, activeMatchup.sport]);
+  }, [
+    activeMatchup.id,
+    activeMatchup.competition,
+    activeMatchup.sport,
+    activeMatchup.homeTeam.name,
+    activeMatchup.awayTeam.name,
+  ]);
 
   const handleShare = async () => {
     try {

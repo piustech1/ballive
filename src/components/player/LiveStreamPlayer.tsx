@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import {
@@ -92,6 +93,41 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
   const [hasError, setHasError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [retryKey, setRetryKey] = useState(0);
+
+  // Auto-hide controls in landscape fullscreen (4 second inactivity timeout)
+  const [areControlsVisible, setAreControlsVisible] = useState(true);
+  const controlsTimerRef = useRef<any>(null);
+
+  const resetControlsTimer = useCallback(() => {
+    setAreControlsVisible(true);
+    if (controlsTimerRef.current) {
+      clearTimeout(controlsTimerRef.current);
+    }
+    if (isFullscreen) {
+      controlsTimerRef.current = setTimeout(() => {
+        setAreControlsVisible(false);
+      }, 4000);
+    }
+  }, [isFullscreen]);
+
+  useEffect(() => {
+    resetControlsTimer();
+    return () => {
+      if (controlsTimerRef.current) {
+        clearTimeout(controlsTimerRef.current);
+      }
+    };
+  }, [isFullscreen, resetControlsTimer]);
+
+  const toggleControls = () => {
+    if (!isFullscreen) return;
+    if (areControlsVisible) {
+      if (controlsTimerRef.current) clearTimeout(controlsTimerRef.current);
+      setAreControlsVisible(false);
+    } else {
+      resetControlsTimer();
+    }
+  };
 
   // Reset server index when stream source props change
   useEffect(() => {
@@ -376,15 +412,50 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
           </View>
         )}
 
-        {/* ── FLOATING CONTROLS (UNOBTRUSIVE FULLSCREEN TOGGLE) ── */}
-        <View style={[styles.topOverlay, isFullscreen && styles.topOverlayFullscreen]} pointerEvents="box-none">
-          <View style={{ flex: 1 }} />
+        {/* ── FLOATING CONTROLS (UNOBTRUSIVE FULLSCREEN TOGGLE & AUTO-HIDE) ── */}
+        <View
+          style={[
+            styles.topOverlay,
+            isFullscreen && styles.topOverlayFullscreen,
+            isFullscreen && !areControlsVisible && { opacity: 0.35 },
+          ]}
+          pointerEvents="box-none"
+        >
+          {isFullscreen && title && areControlsVisible ? (
+            <View style={styles.fullscreenTitleBadge}>
+              <Text style={styles.fullscreenTitleText} numberOfLines={1}>
+                {title}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ flex: 1 }} />
+          )}
+
+          {isFullscreen && availableServers.length > 1 && areControlsVisible && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={styles.fullscreenMirrorPill}
+              onPress={() => {
+                resetControlsTimer();
+                const nextIdx = (selectedServerIndex + 1) % availableServers.length;
+                handleServerChange(nextIdx);
+              }}
+            >
+              <Tv size={13} color="#FFFFFF" strokeWidth={2.2} />
+              <Text style={styles.fullscreenMirrorText}>
+                {availableServers[selectedServerIndex]?.name || 'Next Mirror'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           {onToggleFullscreen && (
             <TouchableOpacity
               activeOpacity={0.8}
               style={[styles.fullscreenBtn, isFullscreen && styles.fullscreenBtnActive]}
-              onPress={onToggleFullscreen}
+              onPress={() => {
+                resetControlsTimer();
+                onToggleFullscreen();
+              }}
               accessibilityLabel={isFullscreen ? 'Exit full screen' : 'Full screen'}
             >
               {isFullscreen ? (
@@ -517,6 +588,35 @@ const styles = StyleSheet.create({
     top: 16,
     left: 20,
     right: 20,
+  },
+  fullscreenTitleBadge: {
+    backgroundColor: 'rgba(14, 13, 20, 0.75)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    maxWidth: '55%',
+    marginRight: 10,
+  },
+  fullscreenTitleText: {
+    color: '#ECE6F0',
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  fullscreenMirrorPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(121, 82, 252, 0.85)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  fullscreenMirrorText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   liveIndicatorPill: {
     flexDirection: 'row',

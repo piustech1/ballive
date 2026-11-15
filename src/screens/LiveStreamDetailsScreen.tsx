@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -43,11 +43,16 @@ import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData'
 import { useProfile } from '../hooks/useProfile';
 import { getAllLiveStreamMatches, resolveLiveMatchToMatchup, determineMatchRoute } from '../navigation/navHelpers';
 import { useAppNavigation } from '../navigation/NavigationContext';
+import {
+  normalizeMatchStatus,
+  sortMatchesWithLiveFirst,
+  deduplicateMatchups,
+  isSameFixture,
+} from '../utils/matchStatus';
 import { LiveStreamPlayer } from '../components/player/LiveStreamPlayer';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
-import { normalizeMatchStatus, sortMatchesWithLiveFirst } from '../utils/matchStatus';
 
 interface LiveStreamDetailsScreenProps {
   match: DiscoverMatchup;
@@ -217,7 +222,33 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     };
   }, [activeMatch.id, activeMatch.streamUrl, activeMatch.homeTeam.name, activeMatch.awayTeam.name, activeMatch.sport]);
 
-  // Fullscreen orientation and hardware back button management
+  const handleEnterFullscreen = useCallback(async () => {
+    try {
+      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
+    } catch {
+      // ignore
+    }
+    setIsFullscreen(true);
+  }, [setIsFullscreen]);
+
+  const handleExitFullscreen = useCallback(async () => {
+    try {
+      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
+    } catch {
+      // ignore
+    }
+    setIsFullscreen(false);
+  }, [setIsFullscreen]);
+
+  // Unmount safety: restore portrait orientation ONLY when component unmounts
+  useEffect(() => {
+    return () => {
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+      setIsFullscreen(false);
+    };
+  }, [setIsFullscreen]);
+
+  // Hardware Android Back button handler - cleanly exits fullscreen back to portrait
   useEffect(() => {
     const onBackPress = () => {
       if (isFullscreen) {
@@ -228,51 +259,27 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     };
 
     const backSub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
     return () => {
       backSub.remove();
-      // Restore portrait whenever leaving this screen
-      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
-      setIsFullscreen(false);
     };
-  }, [isFullscreen, setIsFullscreen]);
-
-  const handleEnterFullscreen = async () => {
-    try {
-      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.LANDSCAPE);
-    } catch {
-      // ignore
-    }
-    setIsFullscreen(true);
-  };
-
-  const handleExitFullscreen = async () => {
-    try {
-      await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP);
-    } catch {
-      // ignore
-    }
-    setIsFullscreen(false);
-  };
-
+  }, [isFullscreen, handleExitFullscreen]);
 
   const otherMatches = useMemo(() => {
     let combined = [...liveRelatedStreams, ...upcomingRelatedMatches];
     if (combined.length === 0) {
-      const fallbackLive = getAllLiveStreamMatches().filter(m => m.id !== activeMatch.id);
-      const fallbackUpcoming = UPCOMING_HIGHLIGHTS.filter(m => m.id !== activeMatch.id);
+      const fallbackLive = getAllLiveStreamMatches().filter(m => !isSameFixture(m, activeMatch));
+      const fallbackUpcoming = UPCOMING_HIGHLIGHTS.filter(m => !isSameFixture(m, activeMatch));
       combined = [...fallbackLive, ...fallbackUpcoming];
     }
-    const seen = new Set<string>();
-    const result: DiscoverMatchup[] = [];
-    for (const m of combined) {
-      if (m.id !== activeMatch.id && !seen.has(m.id)) {
-        seen.add(m.id);
-        result.push(m);
-      }
-    }
-    return sortMatchesWithLiveFirst(result);
-  }, [liveRelatedStreams, upcomingRelatedMatches, activeMatch.id]);
+
+    // Exclude the currently opened match using canonical fixture comparison
+    const filtered = combined.filter(m => !isSameFixture(m, activeMatch));
+
+    // Deduplicate fixtures by canonical event identity
+    const deduplicated = deduplicateMatchups(filtered);
+
+    return sortMatchesWithLiveFirst(deduplicated);
+  }, [liveRelatedStreams, upcomingRelatedMatches, activeMatch]);
 
   const handleShare = async () => {
     try {

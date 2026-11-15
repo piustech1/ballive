@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { CompetitionLogo } from './CompetitionLogo';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import { resolveSportBackground } from '../../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../../utils/matchStatus';
+import { theSportsDbService } from '../../services/theSportsDbService';
 
 export type UniversalMatchItem = LiveMatch | DiscoverMatchup;
 
@@ -134,6 +135,38 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
 }) => {
   const m = normalizeMatchItem(match);
 
+  const [resolvedArtwork, setResolvedArtwork] = useState<string | null>(() => {
+    return theSportsDbService.getCachedArtwork(m.homeTeamName, m.awayTeamName);
+  });
+
+  useEffect(() => {
+    const key = theSportsDbService.buildCacheKey(m.homeTeamName, m.awayTeamName);
+    if (!key) return;
+
+    const cached = theSportsDbService.getCachedArtwork(m.homeTeamName, m.awayTeamName);
+    if (cached && cached !== resolvedArtwork) {
+      setResolvedArtwork(cached);
+    }
+
+    const unsubscribe = theSportsDbService.subscribe((eventKey, url) => {
+      if (eventKey === key && url) {
+        setResolvedArtwork(url);
+      }
+    });
+
+    if (!cached) {
+      theSportsDbService.enqueueMatches([
+        {
+          homeTeam: m.homeTeamName,
+          awayTeam: m.awayTeamName,
+          sport: m.sport,
+        },
+      ]);
+    }
+
+    return () => unsubscribe();
+  }, [m.homeTeamName, m.awayTeamName, m.sport]);
+
   // Layout sizing
   const layoutContainerStyle =
     layout === 'grid'
@@ -155,7 +188,7 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
       }`}
     >
       <ImageBackground
-        source={{ uri: m.backdropUrl }}
+        source={{ uri: resolvedArtwork || m.backdropUrl }}
         style={styles.imageBackground}
         imageStyle={styles.imageBackgroundInner}
         resizeMode="cover"
