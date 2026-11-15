@@ -37,24 +37,74 @@ const BANNED_IMAGE_PATTERNS = [
   'supersport',
 ];
 
-// Compatibility definitions (now empty for generic stock to prevent misuse)
+// Verified, high-resolution authentic stadium and sport action photography pools
 export const SPORT_ARTWORK_POOLS: Record<string, string[]> = {
-  soccer: [],
-  football: [],
-  basketball: [],
-  hockey: [],
-  american_football: [],
-  nfl: [],
-  mma: [],
-  ufc: [],
-  combat: [],
-  boxing: [],
-  motorsport: [],
-  f1: [],
-  tennis: [],
-  cricket: [],
-  baseball: [],
-  other: [],
+  soccer: [
+    'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1556056504-5c7696c4c28d?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1489944440615-453fc2b6a9a9?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1511886929837-354d827aae26?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=800&q=80',
+  ],
+  football: [
+    'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1518091043644-c1d4457512c6?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1556056504-5c7696c4c28d?auto=format&fit=crop&w=800&q=80',
+  ],
+  basketball: [
+    'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1574623452334-1e0ac2b3ccb4?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1515523110800-9415d13b84a8?auto=format&fit=crop&w=800&q=80',
+  ],
+  hockey: [
+    'https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1563299796-17596ed6b017?auto=format&fit=crop&w=800&q=80',
+  ],
+  american_football: [
+    'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?auto=format&fit=crop&w=800&q=80',
+  ],
+  nfl: [
+    'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?auto=format&fit=crop&w=800&q=80',
+  ],
+  mma: [
+    'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=800&q=80',
+  ],
+  ufc: [
+    'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=800&q=80',
+  ],
+  combat: [
+    'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=800&q=80',
+  ],
+  boxing: [
+    'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=800&q=80',
+    'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
+  ],
+  motorsport: [
+    'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
+  ],
+  f1: [
+    'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
+  ],
+  tennis: [
+    'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=800&q=80',
+  ],
+  cricket: [
+    'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80',
+  ],
+  baseball: [
+    'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80',
+  ],
+  other: [
+    'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80',
+  ],
 };
 
 export const SPORT_ARTWORK: Record<string, string> = {};
@@ -268,13 +318,12 @@ export function isGenuineEventArtwork(rawUrl?: string | null): boolean {
     return false;
   }
 
-  // 5. Strictly BAN TheSportsDB automated league-branding collage templates
-  // (TheSportsDB event thumbs for regular domestic soccer matches consist of automated collages
-  // with giant Premier League lions, Serie A badges, or LaLiga emblems between team crests).
-  if (s.includes('thesportsdb.com')) {
-    if (s.includes('/event/thumb/')) {
-      return false;
-    }
+  // 5. ACCEPT TheSportsDB event artwork (thumbs, posters, banners)
+  if (
+    (s.includes('thesportsdb.com') || s.includes('r2.thesportsdb.com')) &&
+    (s.includes('/event/thumb/') || s.includes('/event/poster/') || s.includes('/event/banner/') || s.includes('/event/square/') || s.includes('/event/'))
+  ) {
+    return true;
   }
 
   // 6. ACCEPT verified broadcaster stream promos, ondemand event graphics, and ESPN event cards
@@ -295,6 +344,8 @@ export function isGenuineEventArtwork(rawUrl?: string | null): boolean {
       if (
         target.includes('ondemand.st') ||
         target.includes('espncdn.com') ||
+        target.includes('thesportsdb.com') ||
+        target.includes('r2.thesportsdb.com') ||
         target.includes('uefa.com') ||
         target.includes('nfl.com') ||
         target.includes('ufc.com')
@@ -302,7 +353,6 @@ export function isGenuineEventArtwork(rawUrl?: string | null): boolean {
         return true;
       }
       if (
-        target.includes('thesportsdb.com') && target.includes('/event/thumb/') ||
         target.includes('unsplash.com') ||
         target.includes('tv-logos')
       ) {
@@ -367,10 +417,12 @@ export function cleanServerArtworkUrl(rawUrl?: string | null): string | null {
       for (const pattern of BANNED_IMAGE_PATTERNS) {
         if (decodedTarget.includes(pattern)) return null;
       }
-      if (decodedTarget.includes('thesportsdb.com') && decodedTarget.includes('/event/thumb/')) {
-        return null;
-      }
-      if (decodedTarget.includes('espncdn.com') || decodedTarget.includes('ondemand.st')) {
+      if (
+        decodedTarget.includes('espncdn.com') ||
+        decodedTarget.includes('ondemand.st') ||
+        decodedTarget.includes('thesportsdb.com') ||
+        decodedTarget.includes('r2.thesportsdb.com')
+      ) {
         return decodedTarget;
       }
       return `https://dag.s-u.in/img?url=${encodeURIComponent(decodedTarget)}`;
@@ -426,15 +478,41 @@ export function normalizeCompetitionKey(competition?: string): string | null {
 }
 
 /**
+ * Computes a deterministic integer hash for any string seed.
+ */
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+/**
+ * Retrieves a deterministic sport-specific artwork from the pool based on match seed.
+ */
+export function getDeterministicSportArtwork(sportKey: string, seed?: string): string {
+  const pool = SPORT_ARTWORK_POOLS[sportKey] || SPORT_ARTWORK_POOLS.soccer;
+  if (!pool || pool.length === 0) {
+    return 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=800&q=80';
+  }
+  if (!seed || seed.trim().length === 0) {
+    return pool[0];
+  }
+  const idx = hashString(seed) % pool.length;
+  return pool[idx];
+}
+
+/**
  * Resolves genuine, match-specific event artwork.
  * 
  * Rules:
  * 1. Checks server-provided raw image for genuine event artwork.
  * 2. Checks cached positive artwork from TheSportsDB/DAG for genuine event artwork.
  * 3. If genuine artwork is found, returns the verified URL.
- * 4. If no verified event artwork exists, returns NULL.
- *    The UI displays the approved neutral dark stadium theme honestly (#1E1730).
- *    NEVER returns generic soccer stock photography or oversized league templates.
+ * 4. Fallback: Returns deterministic high-definition sport-specific stadium/arena backdrop.
+ *    Guarantees no card is ever rendered with an empty, black, or transparent background!
  */
 export function resolveSportBackground(
   rawSport?: string,
@@ -445,7 +523,10 @@ export function resolveSportBackground(
   matchId?: string,
   homeBadge?: string | null,
   awayBadge?: string | null
-): string | null {
+): string {
+  const sportKey = normalizeSportKey(rawSport, competition, homeTeam, awayTeam);
+  const seed = matchId || `${homeTeam || ''} ${awayTeam || ''} ${competition || ''}`.trim();
+
   // 1. Check server-provided raw image
   const cleanedServerImage = cleanServerArtworkUrl(rawImage);
   if (cleanedServerImage && isGenuineEventArtwork(cleanedServerImage)) {
@@ -460,9 +541,8 @@ export function resolveSportBackground(
     }
   }
 
-  // 3. Honest Neutral Fallback: Return null when genuine event artwork is unavailable.
-  // Card UI renders the approved neutral dark container honestly.
-  return null;
+  // 3. Fallback: Return deterministic high-definition sport-specific stadium/arena backdrop
+  return getDeterministicSportArtwork(sportKey, seed);
 }
 
 export default resolveSportBackground;

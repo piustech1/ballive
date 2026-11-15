@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,7 +15,13 @@ import { LiveMatch } from '../../constants/mockData';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { CompetitionLogo } from './CompetitionLogo';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
-import { resolveSportBackground, isGenuineEventArtwork, isVerifiedEventImage } from '../../utils/sportBackgroundResolver';
+import {
+  resolveSportBackground,
+  isGenuineEventArtwork,
+  isVerifiedEventImage,
+  getDeterministicSportArtwork,
+  normalizeSportKey,
+} from '../../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../../utils/matchStatus';
 import { theSportsDbService } from '../../services/theSportsDbService';
 
@@ -171,12 +177,28 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
       ? styles.fullContainer
       : styles.carouselContainer;
 
-  const candidateArtwork = (resolvedArtwork && isGenuineEventArtwork(resolvedArtwork))
-    ? resolvedArtwork
-    : (m.backdropUrl && isGenuineEventArtwork(m.backdropUrl))
-    ? m.backdropUrl
-    : null;
-  const hasArtwork = Boolean(candidateArtwork);
+  const sportKey = normalizeSportKey(m.sport, m.competition, m.homeTeamName, m.awayTeamName);
+  const seed = m.id || `${m.homeTeamName} ${m.awayTeamName} ${m.competition}`;
+  const fallbackBackdrop = useMemo(() => {
+    return getDeterministicSportArtwork(sportKey, seed);
+  }, [sportKey, seed]);
+
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [resolvedArtwork, m.backdropUrl]);
+
+  const candidateArtwork = useMemo(() => {
+    if (imageError) return null;
+    if (resolvedArtwork && isGenuineEventArtwork(resolvedArtwork)) {
+      return resolvedArtwork;
+    }
+    if (m.backdropUrl && isGenuineEventArtwork(m.backdropUrl)) {
+      return m.backdropUrl;
+    }
+    return null;
+  }, [resolvedArtwork, m.backdropUrl, imageError]);
 
   const cardInnerContent = (
     <>
@@ -286,25 +308,43 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
         m.isLive ? 'Live match' : m.isUpcoming ? 'Upcoming match' : 'Completed match'
       }`}
     >
-      {hasArtwork && candidateArtwork ? (
-        <ImageBackground
-          source={{ uri: candidateArtwork }}
-          style={styles.imageBackground}
-          imageStyle={styles.imageBackgroundInner}
-          resizeMode="cover"
-        >
-          {cardInnerContent}
-        </ImageBackground>
-      ) : (
+      {/* ── Base Layer: Authentic Sports Stadium/Arena Atmosphere ── */}
+      <ImageBackground
+        source={{ uri: fallbackBackdrop }}
+        style={styles.imageBackground}
+        imageStyle={styles.imageBackgroundInner}
+        resizeMode="cover"
+      >
+        {/* Darkening tint to maintain visual depth and ensure contrast */}
         <LinearGradient
-          colors={['#251C3D', '#161122']}
+          colors={['rgba(22, 17, 34, 0.45)', 'rgba(18, 14, 28, 0.72)']}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.imageBackground}
-        >
-          {cardInnerContent}
-        </LinearGradient>
-      )}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+
+        {/* ── Overlay Layer: Genuine Match-Specific Artwork (when available) ── */}
+        {candidateArtwork ? (
+          <Image
+            source={{ uri: candidateArtwork }}
+            style={[StyleSheet.absoluteFillObject, styles.imageBackgroundInner]}
+            resizeMode="cover"
+            onError={() => setImageError(true)}
+          />
+        ) : null}
+
+        {/* Subtle bottom vignette to ensure team crests and text stand out crisply */}
+        <LinearGradient
+          colors={['transparent', 'rgba(15, 11, 24, 0.7)']}
+          start={{ x: 0, y: 0.5 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+
+        {/* ── Card Inner Content ── */}
+        {cardInnerContent}
+      </ImageBackground>
     </TouchableOpacity>
   );
 };

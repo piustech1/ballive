@@ -11,7 +11,13 @@ import { Trophy, Clock } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { streamingApiService } from '../../services/streamingApiService';
-import { resolveSportBackground, isGenuineEventArtwork, isVerifiedEventImage } from '../../utils/sportBackgroundResolver';
+import {
+  resolveSportBackground,
+  isGenuineEventArtwork,
+  isVerifiedEventImage,
+  getDeterministicSportArtwork,
+  normalizeSportKey,
+} from '../../utils/sportBackgroundResolver';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import { sortUpcomingChronologically } from '../../utils/matchStatus';
 import { theSportsDbService } from '../../services/theSportsDbService';
@@ -460,12 +466,28 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
     return () => unsubscribe();
   }, [match.homeTeam.name, match.awayTeam.name, match.sport]);
 
-  const candidateArtwork = (resolvedArtwork && isGenuineEventArtwork(resolvedArtwork))
-    ? resolvedArtwork
-    : (bgImage && isGenuineEventArtwork(bgImage))
-    ? bgImage
-    : null;
-  const hasArtwork = Boolean(candidateArtwork);
+  const sportKey = normalizeSportKey(match.sport, match.competition, match.homeTeam.name, match.awayTeam.name);
+  const seed = match.id || `${match.homeTeam.name} ${match.awayTeam.name}`;
+  const fallbackBackdrop = useMemo(() => {
+    return getDeterministicSportArtwork(sportKey, seed);
+  }, [sportKey, seed]);
+
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [resolvedArtwork, bgImage]);
+
+  const candidateArtwork = useMemo(() => {
+    if (imageError) return null;
+    if (resolvedArtwork && isGenuineEventArtwork(resolvedArtwork)) {
+      return resolvedArtwork;
+    }
+    if (bgImage && isGenuineEventArtwork(bgImage)) {
+      return bgImage;
+    }
+    return null;
+  }, [resolvedArtwork, bgImage, imageError]);
 
   const topCardInner = (
     <View style={styles.topCardOverlay}>
@@ -524,25 +546,42 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
       accessibilityRole="button"
       accessibilityLabel={`${match.homeTeam.name} vs ${match.awayTeam.name}, kickoff ${kickoffTime}`}
     >
-      {hasArtwork && candidateArtwork ? (
-        <ImageBackground
-          source={{ uri: candidateArtwork }}
-          style={styles.topCardBg}
-          imageStyle={styles.topCardBgImage}
-          resizeMode="cover"
-        >
-          {topCardInner}
-        </ImageBackground>
-      ) : (
+      {/* ── Base Layer: Authentic Sports Stadium/Arena Atmosphere ── */}
+      <ImageBackground
+        source={{ uri: fallbackBackdrop }}
+        style={styles.topCardBg}
+        imageStyle={styles.topCardBgImage}
+        resizeMode="cover"
+      >
+        {/* Darkening tint for high contrast */}
         <LinearGradient
-          colors={['#251C3D', '#161122']}
+          colors={['rgba(22, 17, 34, 0.45)', 'rgba(18, 14, 28, 0.72)']}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.topCardBg}
-        >
-          {topCardInner}
-        </LinearGradient>
-      )}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+
+        {/* ── Overlay Layer: Genuine Match-Specific Artwork ── */}
+        {candidateArtwork ? (
+          <Image
+            source={{ uri: candidateArtwork }}
+            style={[StyleSheet.absoluteFillObject, styles.topCardBgImage]}
+            resizeMode="cover"
+            onError={() => setImageError(true)}
+          />
+        ) : null}
+
+        {/* Subtle bottom vignette */}
+        <LinearGradient
+          colors={['transparent', 'rgba(15, 11, 24, 0.75)']}
+          start={{ x: 0, y: 0.4 }}
+          end={{ x: 0, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+
+        {topCardInner}
+      </ImageBackground>
     </TouchableOpacity>
   );
 };
