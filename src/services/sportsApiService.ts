@@ -19,6 +19,7 @@ import {
   assignPitchCoordinates,
 } from './footballApiService';
 import { theSportsDbService } from './theSportsDbService';
+import { matchArtworkEnricher } from './matchArtworkEnricher';
 import { LiveMatch } from '../constants/mockData';
 import { DiscoverMatchup } from '../constants/discoverData';
 
@@ -794,9 +795,7 @@ class SportsApiService {
     });
 
     if (matches.length > 0) {
-      theSportsDbService.enqueueMatches(
-        matches.map(m => ({ homeTeam: m.homeTeam, awayTeam: m.awayTeam, sport: m.sport }))
-      );
+      matchArtworkEnricher.enrichMatches(matches);
     }
 
     return matches;
@@ -945,9 +944,7 @@ class SportsApiService {
     }
 
     if (matchups.length > 0) {
-      theSportsDbService.enqueueMatches(
-        matchups.map(m => ({ homeTeam: m.homeTeam.name, awayTeam: m.awayTeam.name, sport: m.sport }))
-      );
+      matchArtworkEnricher.enrichMatches(matchups);
     }
 
     return sortMatchesWithLiveFirst(matchups);

@@ -184,22 +184,44 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     DEFAULT_CREST;
 
   // Resolve authentic, sharp, unblurred sport-specific background
-  const [asyncArtwork, setAsyncArtwork] = useState<string | null>(null);
+  const [asyncArtwork, setAsyncArtwork] = useState<string | null>(() => {
+    return theSportsDbService.getCachedArtwork(activeMatchup.homeTeam.name, activeMatchup.awayTeam.name);
+  });
 
   useEffect(() => {
     let isMounted = true;
+    const key = theSportsDbService.buildCacheKey(activeMatchup.homeTeam.name, activeMatchup.awayTeam.name);
+
+    const cached = theSportsDbService.getCachedArtwork(activeMatchup.homeTeam.name, activeMatchup.awayTeam.name);
+    if (cached && cached !== asyncArtwork) {
+      setAsyncArtwork(cached);
+    }
+
+    const unsubscribe = theSportsDbService.subscribe((eventKey, url) => {
+      if (isMounted && eventKey === key && url) {
+        setAsyncArtwork(url);
+      }
+    });
+
     theSportsDbService
-      .fetchEventArtwork(activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, activeMatchup.sport)
+      .fetchEventArtwork(
+        activeMatchup.homeTeam.name,
+        activeMatchup.awayTeam.name,
+        activeMatchup.sport,
+        (activeMatchup as any).rawDate || activeMatchup.kickoffDate
+      )
       .then(art => {
         if (isMounted && art) {
           setAsyncArtwork(art);
         }
       })
       .catch(() => {});
+
     return () => {
       isMounted = false;
+      unsubscribe();
     };
-  }, [activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, activeMatchup.sport]);
+  }, [activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, activeMatchup.sport, activeMatchup.kickoffDate]);
 
   const rawImage =
     activeMatchup.poster ||

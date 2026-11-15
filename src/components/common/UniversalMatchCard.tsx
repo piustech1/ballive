@@ -14,7 +14,7 @@ import { LiveMatch } from '../../constants/mockData';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { CompetitionLogo } from './CompetitionLogo';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
-import { resolveSportBackground } from '../../utils/sportBackgroundResolver';
+import { resolveSportBackground, isVerifiedEventImage } from '../../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../../utils/matchStatus';
 import { theSportsDbService } from '../../services/theSportsDbService';
 
@@ -136,7 +136,10 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
   const m = normalizeMatchItem(match);
 
   const [resolvedArtwork, setResolvedArtwork] = useState<string | null>(() => {
-    return theSportsDbService.getCachedArtwork(m.homeTeamName, m.awayTeamName);
+    const cached = theSportsDbService.getCachedArtwork(m.homeTeamName, m.awayTeamName);
+    if (cached) return cached;
+    if (isVerifiedEventImage(m.backdropUrl)) return m.backdropUrl;
+    return null;
   });
 
   useEffect(() => {
@@ -153,16 +156,6 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
         setResolvedArtwork(url);
       }
     });
-
-    if (!cached) {
-      theSportsDbService.enqueueMatches([
-        {
-          homeTeam: m.homeTeamName,
-          awayTeam: m.awayTeamName,
-          sport: m.sport,
-        },
-      ]);
-    }
 
     return () => unsubscribe();
   }, [m.homeTeamName, m.awayTeamName, m.sport]);

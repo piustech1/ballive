@@ -488,24 +488,8 @@ export function resolveSportBackground(
     }
   }
 
-  // Tier 1c: For soccer matches with named teams, generate authentic DAG match card with badges
-  if (sportKey === 'soccer' && homeTeam && awayTeam && homeTeam.trim() !== '' && awayTeam.trim() !== '') {
-    const cleanHome = homeTeam.trim();
-    const cleanAway = awayTeam.trim();
-    if (cleanHome.toLowerCase() !== 'home team' && cleanAway.toLowerCase() !== 'away team') {
-      const b1 = homeBadge && typeof homeBadge === 'string' && !homeBadge.includes('default-team-logo') && !homeBadge.includes('default_crest') ? `&b1=${encodeURIComponent(homeBadge)}` : '';
-      const b2 = awayBadge && typeof awayBadge === 'string' && !awayBadge.includes('default-team-logo') && !awayBadge.includes('default_crest') ? `&b2=${encodeURIComponent(awayBadge)}` : '';
-      return `https://dag.s-u.in/img/match?title=${encodeURIComponent(`${cleanHome} vs ${cleanAway}`)}&cat=football${b1}${b2}`;
-    }
-  }
-
-  // Tier 2: Authentic competition-specific hero backdrop
-  const compKey = normalizeCompetitionKey(competition);
-  if (compKey && COMPETITION_BACKDROPS[compKey]) {
-    return COMPETITION_BACKDROPS[compKey];
-  }
-
-  // Tier 3 & 4: Deterministic high-definition sport-authentic fallback from pool
+  // Tier 2: Honest neutral sport-authentic fallback from pool
+  // (Phase 3 compliance: Never masquerade competition logos or generic league branding as event artwork)
   return getDeterministicSportArtwork(sportKey, seed);
 }
 

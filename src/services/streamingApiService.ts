@@ -14,6 +14,7 @@ import {
   sortUpcomingChronologically,
 } from '../utils/matchStatus';
 import { theSportsDbService } from './theSportsDbService';
+import { matchArtworkEnricher } from './matchArtworkEnricher';
 
 export interface RawStreamSource {
   id: string;
@@ -529,16 +530,14 @@ class StreamingApiService {
       // Combine: Live matches first, then scheduled upcoming fixtures sorted chronologically
       const combined = [...fetchedMatches, ...sortedUpcoming];
 
-      // Proactively resolve authentic event artwork from TheSportsDB in the background queue
-      theSportsDbService.enqueueMatches(
-        combined.map(m => ({ homeTeam: m.homeTeam, awayTeam: m.awayTeam, sport: m.sport }))
-      );
-
       if (combined.length > 0) {
+        // Eagerly enrich matches at data level with verified artwork & persistent caching
+        matchArtworkEnricher.enrichMatches(combined);
         this.cachedLiveMatches = combined;
         this.lastFetchTime = now;
       }
       if (sortedUpcoming.length > 0) {
+        matchArtworkEnricher.enrichMatches(sortedUpcoming);
         this.cachedUpcomingMatches = sortedUpcoming;
       }
     } catch (err) {

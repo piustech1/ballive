@@ -10,7 +10,7 @@ import {
 import { Trophy, Clock } from 'lucide-react-native';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { streamingApiService } from '../../services/streamingApiService';
-import { resolveSportBackground } from '../../utils/sportBackgroundResolver';
+import { resolveSportBackground, isVerifiedEventImage } from '../../utils/sportBackgroundResolver';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import { sortUpcomingChronologically } from '../../utils/matchStatus';
 import { theSportsDbService } from '../../services/theSportsDbService';
@@ -435,7 +435,10 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
   );
 
   const [resolvedArtwork, setResolvedArtwork] = useState<string | null>(() => {
-    return theSportsDbService.getCachedArtwork(match.homeTeam.name, match.awayTeam.name);
+    const cached = theSportsDbService.getCachedArtwork(match.homeTeam.name, match.awayTeam.name);
+    if (cached) return cached;
+    if (isVerifiedEventImage(bgImage)) return bgImage;
+    return null;
   });
 
   useEffect(() => {
@@ -452,16 +455,6 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
         setResolvedArtwork(url);
       }
     });
-
-    if (!cached) {
-      theSportsDbService.enqueueMatches([
-        {
-          homeTeam: match.homeTeam.name,
-          awayTeam: match.awayTeam.name,
-          sport: match.sport,
-        },
-      ]);
-    }
 
     return () => unsubscribe();
   }, [match.homeTeam.name, match.awayTeam.name, match.sport]);
