@@ -4,23 +4,16 @@ import {
   ScrollView,
   StyleSheet,
   StatusBar,
-  Alert,
   RefreshControl,
 } from 'react-native';
 import Colors from '../theme/colors';
 import { Header } from '../components/common/Header';
 import { CompetitionCategories } from '../features/home/CompetitionCategories';
 import { LiveStreamsSection } from '../features/home/LiveStreamsSection';
-import { FeaturedCompetitions } from '../features/home/FeaturedCompetitions';
-import {
-  LIVE_MATCHES,
-  FEATURED_COMPETITIONS,
-  LiveMatch,
-  FeaturedCompetition,
-} from '../constants/mockData';
+import { LiveMatch } from '../constants/mockData';
 
 import { useAppNavigation } from '../navigation/NavigationContext';
-import { resolveLiveMatchToMatchup, findCompetitionById, getMarqueeMatchOfTheDay, navigateToMatch } from '../navigation/navHelpers';
+import { getMarqueeMatchOfTheDay, navigateToMatch } from '../navigation/navHelpers';
 import { MatchOfTheDayTicker } from '../features/home/MatchOfTheDayTicker';
 import { FilterBottomSheet } from '../features/home/FilterBottomSheet';
 import { QuickAccessLauncher } from '../features/home/QuickAccessLauncher';
@@ -44,7 +37,7 @@ export const HomeScreen: React.FC = () => {
       if (real && real.length > 0) {
         setLiveMatches(real);
       }
-    } catch (e) {
+    } catch {
       // Keep existing matches on network error
     } finally {
       setIsLoading(false);
@@ -80,7 +73,7 @@ export const HomeScreen: React.FC = () => {
         match.homeTeam.toLowerCase().includes(searchQuery.toLowerCase()) ||
         match.awayTeam.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // Category filtering (from circular pills)
+      // Category filtering (from rectangular tiles)
       let matchesCategory = true;
       const cat = selectedCategoryId || (competitionFilter !== 'all' ? competitionFilter : null);
       if (cat) {
@@ -100,9 +93,9 @@ export const HomeScreen: React.FC = () => {
         } else if (cat === 'tennis') {
           matchesCategory = canonical === 'tennis';
         } else if (cat === 'pl') {
-          matchesCategory = match.competition.toLowerCase().includes('premier');
+          matchesCategory = match.competition.toLowerCase().includes('premier') || match.competition.toLowerCase().includes('epl');
         } else if (cat === 'ucl') {
-          matchesCategory = match.competition.toLowerCase().includes('champions');
+          matchesCategory = match.competition.toLowerCase().includes('champions') || match.competition.toLowerCase().includes('ucl');
         } else if (cat === 'laliga') {
           matchesCategory = match.competition.toLowerCase().includes('laliga');
         } else if (cat === 'seriea') {
@@ -128,27 +121,8 @@ export const HomeScreen: React.FC = () => {
     return sortMatchesWithLiveFirst(filtered);
   }, [liveMatches, searchQuery, selectedCategoryId, competitionFilter, statusFilter]);
 
-  // Filter featured competitions based on search query
-  const filteredCompetitions = useMemo(() => {
-    return FEATURED_COMPETITIONS.filter(comp => {
-      const matchesSearch =
-        !searchQuery.trim() ||
-        comp.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        comp.country.toLowerCase().includes(searchQuery.toLowerCase());
-
-      return matchesSearch;
-    });
-  }, [searchQuery]);
-
   const handleMatchPress = (match: LiveMatch) => {
     navigateToMatch(navigate, match);
-  };
-
-  const handleCompetitionPress = (comp: FeaturedCompetition) => {
-    navigate({
-      name: 'CompetitionDetails',
-      params: { competition: findCompetitionById(comp.id) },
-    });
   };
 
   const handleFilterPress = () => {
@@ -163,8 +137,6 @@ export const HomeScreen: React.FC = () => {
     navigate({ name: 'Notifications' });
   };
 
-  const motdMatch = useMemo(() => getMarqueeMatchOfTheDay(liveMatches), [liveMatches]);
-
   const isFilterApplied = Boolean(
     searchQuery.trim() ||
     selectedCategoryId ||
@@ -172,6 +144,11 @@ export const HomeScreen: React.FC = () => {
     competitionFilter !== 'all'
   );
   const displayedMatches = isFilterApplied ? filteredMatches : liveMatches;
+
+  const motdMatch = useMemo(
+    () => getMarqueeMatchOfTheDay(displayedMatches.length > 0 ? displayedMatches : liveMatches),
+    [displayedMatches, liveMatches]
+  );
 
   return (
     <View style={styles.container}>
@@ -201,34 +178,26 @@ export const HomeScreen: React.FC = () => {
           />
         }
       >
-        {/* 1. Football Competition Categories (Circular Colored Badges) */}
+        {/* 1. Categories Section (Rectangular Branded Tiles) */}
         <CompetitionCategories
           selectedCategoryId={selectedCategoryId}
           onSelectCategory={setSelectedCategoryId}
         />
 
-        {/* 2. Live Streams Section (Wide Horizontal Cards) */}
+        {/* 2. Live & Upcoming Streams Section */}
         <LiveStreamsSection
           matches={displayedMatches}
           isLoading={isLoading}
           onViewAllPress={() => {
-            navigate({ name: 'AllLiveStreams' });
+            navigate({
+              name: 'AllLiveStreams',
+              params: { initialSport: selectedCategoryId || 'all' },
+            });
           }}
           onMatchPress={handleMatchPress}
         />
 
-        {/* 3. Featured Competitions Section */}
-        <FeaturedCompetitions
-          competitions={
-            filteredCompetitions.length > 0 ? filteredCompetitions : FEATURED_COMPETITIONS
-          }
-          onViewAllPress={() => {
-            navigate({ name: 'AllCompetitions' });
-          }}
-          onCompetitionPress={handleCompetitionPress}
-        />
-
-        {/* 4. Match of the Day Countdown Ticker (Compact 52dp height, directly beneath Featured Competitions) */}
+        {/* 3. Match of the Day (Positioned directly below Live & Upcoming Streams) */}
         <MatchOfTheDayTicker match={motdMatch} />
       </ScrollView>
 

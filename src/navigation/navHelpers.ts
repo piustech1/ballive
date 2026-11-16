@@ -224,7 +224,18 @@ export function findCompetitionById(id: string): DiscoverCompetition {
     };
   }
   if (clean === 'football' || clean === 'soccer') {
-    return EXPLORE_COMPETITIONS.find(c => c.id === 'pl') || EXPLORE_COMPETITIONS[0];
+    return {
+      id: 'football',
+      name: 'World Football',
+      shortName: 'Football',
+      country: 'Global',
+      region: 'International',
+      logoUrl: LEAGUE_EMBLEMS['football'],
+      accentColor: '#10B981',
+      season: '2024/25 Season',
+      teamsCount: 200,
+      sport: 'soccer',
+    };
   }
   if (clean === 'motorsport' || clean === 'f1' || clean === 'formula-1' || clean === 'formula1') {
     const f1 = EXPLORE_COMPETITIONS.find(c => c.id === 'f1');

@@ -11,7 +11,7 @@ import {
 
 export type ScreenRoute =
   | { name: 'Main'; tab: TabDestination }
-  | { name: 'AllLiveStreams' }
+  | { name: 'AllLiveStreams'; params?: { initialSport?: string } }
   | { name: 'LiveStreamDetails'; params: { match: DiscoverMatchup } }
   | { name: 'MatchDetails'; params: { matchup: DiscoverMatchup } }
   | { name: 'TeamDetails'; params: { team: PopularTeam } }

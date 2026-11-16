@@ -32,7 +32,7 @@ import { sortMatchesWithLiveFirst } from '../utils/matchStatus';
 import { getCanonicalSport } from '../utils/sportClassifier';
 
 type StreamFilter = 'all' | 'live' | 'upcoming' | 'available';
-type SportFilter = 'all' | 'football' | 'american_football' | 'basketball' | 'hockey';
+type SportFilter = 'all' | 'football' | 'american_football' | 'basketball' | 'hockey' | 'mma' | 'motorsport' | 'tennis';
 
 interface FilterOption {
   id: StreamFilter;
@@ -65,17 +65,41 @@ const SPORT_TABS: SportTab[] = [
   { id: 'american_football', label: 'American Football', icon: Shield },
   { id: 'basketball', label: 'Basketball', icon: Activity },
   { id: 'hockey', label: 'Hockey', icon: Shield },
+  { id: 'mma', label: 'MMA / UFC', icon: Shield },
+  { id: 'motorsport', label: 'Motorsport', icon: Activity },
+  { id: 'tennis', label: 'Tennis', icon: Trophy },
 ];
 
+function parseInitialSport(raw?: string): SportFilter {
+  if (!raw) return 'all';
+  const s = raw.toLowerCase().trim();
+  if (s === 'football' || s === 'soccer' || s === 'pl' || s === 'ucl' || s === 'laliga' || s === 'seriea' || s === 'bundesliga') return 'football';
+  if (s === 'nfl' || s === 'american_football') return 'american_football';
+  if (s === 'nba' || s === 'basketball') return 'basketball';
+  if (s === 'nhl' || s === 'hockey') return 'hockey';
+  if (s === 'mma' || s === 'ufc' || s === 'combat') return 'mma';
+  if (s === 'motorsport' || s === 'f1') return 'motorsport';
+  if (s === 'tennis') return 'tennis';
+  return 'all';
+}
+
 export const AllLiveStreamsScreen: React.FC = () => {
-  const { navigate } = useAppNavigation();
+  const { navigate, currentRoute } = useAppNavigation();
+  const routeParams = currentRoute.name === 'AllLiveStreams' ? currentRoute.params : undefined;
+  const initialSport = useMemo(() => parseInitialSport(routeParams?.initialSport), [routeParams?.initialSport]);
 
   const [allStreamMatches, setAllStreamMatches] = useState<DiscoverMatchup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<StreamFilter>('all');
-  const [selectedSport, setSelectedSport] = useState<SportFilter>('all');
+  const [selectedSport, setSelectedSport] = useState<SportFilter>(initialSport);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    if (routeParams?.initialSport) {
+      setSelectedSport(parseInitialSport(routeParams.initialSport));
+    }
+  }, [routeParams?.initialSport]);
 
   const loadMatches = useCallback(async () => {
     try {
@@ -116,6 +140,12 @@ export const AllLiveStreamsScreen: React.FC = () => {
           if (canonical !== 'basketball') return false;
         } else if (selectedSport === 'hockey') {
           if (canonical !== 'hockey') return false;
+        } else if (selectedSport === 'mma') {
+          if (canonical !== 'mma') return false;
+        } else if (selectedSport === 'motorsport') {
+          if (canonical !== 'motorsport') return false;
+        } else if (selectedSport === 'tennis') {
+          if (canonical !== 'tennis') return false;
         }
       }
 
