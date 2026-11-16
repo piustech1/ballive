@@ -7,12 +7,17 @@
  * 2. Original thumbnail missing, null, empty, invalid, or failed to load
  *    -> Renders the authentic solid team-color match versus artwork matching reference geometry.
  * 
+ * Continuous Background Presence:
+ * - Solid team-color artwork is always mounted as the reliable base canvas.
+ * - When remote genuine artwork is fetching, users immediately see the authentic versus artwork
+ *   instead of a black or blank void.
+ * - Once genuine artwork successfully decodes, it cleanly overlays the canvas without layout shifts.
+ * 
  * Proportional Geometry (Reference Image: media_1794769783467.png):
  * - Sharp 50/50 vertical division between home and away team brand colors.
  * - Home team's official crest centered horizontally & vertically in left 50%.
  * - Away team's official crest centered horizontally & vertically in right 50%.
  * - Official competition emblem badge centered on the dividing line seam.
- * - Responsive percentage-based sizing adapts to any card size without distortion.
  * - Subtle bottom contrast vignette ensures card text and live scores remain razor-sharp.
  */
 
@@ -35,6 +40,9 @@ export interface MatchArtworkBackgroundProps {
   matchId?: string;
   homeTeamName: string;
   awayTeamName: string;
+  homeTeamId?: string;
+  awayTeamId?: string;
+  sport?: string;
   homeCrest?: string;
   awayCrest?: string;
   homeColor?: string;
@@ -51,6 +59,9 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
   matchId,
   homeTeamName,
   awayTeamName,
+  homeTeamId,
+  awayTeamId,
+  sport,
   homeCrest,
   awayCrest,
   homeColor: propHomeColor,
@@ -76,20 +87,20 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
     setImageLoaded(false);
   }, [originalArtworkUrl]);
 
-  // Determine whether to use original artwork or fallback versus graphic
+  // Determine whether to show overlay genuine artwork
   const shouldUseOriginal = isOriginalGenuine && !imageLoadFailed;
 
-  // 2. Resolve team primary & secondary brand colors with collision avoidance
+  // 2. Resolve team brand colors with scientific collision avoidance
   const { homeColor, awayColor } = useMemo(() => {
     if (propHomeColor && propAwayColor) {
       return { homeColor: propHomeColor, awayColor: propAwayColor };
     }
-    const resolved = getMatchupColors(homeTeamName, awayTeamName);
+    const resolved = getMatchupColors(homeTeamName, awayTeamName, homeTeamId, awayTeamId);
     return {
       homeColor: propHomeColor || resolved.homeColor,
       awayColor: propAwayColor || resolved.awayColor,
     };
-  }, [homeTeamName, awayTeamName, propHomeColor, propAwayColor]);
+  }, [homeTeamName, awayTeamName, homeTeamId, awayTeamId, propHomeColor, propAwayColor]);
 
   // 3. Resolve team crests
   const resolvedHomeCrest = useMemo(() => {
@@ -106,61 +117,61 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
 
   return (
     <View style={[styles.container, style]}>
-      {/* ── PRIORITY 1: ORIGINAL GENUINE EVENT ARTWORK ── */}
-      {shouldUseOriginal && originalArtworkUrl ? (
-        <View style={StyleSheet.absoluteFillObject}>
-          {/* Neutral base while remote image is fetching */}
-          {!imageLoaded && <View style={[StyleSheet.absoluteFillObject, styles.neutralBase]} />}
-
-          <Image
-            source={{ uri: originalArtworkUrl }}
-            style={[StyleSheet.absoluteFillObject, styles.originalImage, imageStyle]}
-            resizeMode="cover"
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageLoadFailed(true)}
-          />
-        </View>
-      ) : (
-        /* ── PRIORITY 2: SOLID TEAM-COLOR MATCH VERSUS ARTWORK (Reference Geometry) ── */
-        <View style={[StyleSheet.absoluteFillObject, styles.splitCanvas]}>
-          {/* Left Half: Home Team Primary Solid Brand Color */}
-          <View style={[styles.halfSection, { backgroundColor: homeColor }]}>
-            <View style={styles.crestWrapper}>
-              <Image
-                source={{ uri: resolvedHomeCrest }}
-                style={styles.crestImage}
-                resizeMode="contain"
-              />
-            </View>
-          </View>
-
-          {/* Right Half: Away Team Primary Solid Brand Color */}
-          <View style={[styles.halfSection, { backgroundColor: awayColor }]}>
-            <View style={styles.crestWrapper}>
-              <Image
-                source={{ uri: resolvedAwayCrest }}
-                style={styles.crestImage}
-                resizeMode="contain"
-              />
-            </View>
-          </View>
-
-          {/* Center Seam: Official Competition Emblem Badge */}
-          <View style={styles.centerBadgeContainer}>
-            <CompetitionLogo
-              competitionId={competition}
-              uri={resolvedCompLogo}
-              size={20}
+      {/* ── BASE LAYER: SOLID TEAM-COLOR MATCH VERSUS ARTWORK (Always present underneath) ── */}
+      <View style={[StyleSheet.absoluteFillObject, styles.splitCanvas]}>
+        {/* Left Half: Home Team Primary Solid Brand Color */}
+        <View style={[styles.halfSection, { backgroundColor: homeColor }]}>
+          <View style={styles.crestWrapper}>
+            <Image
+              source={{ uri: resolvedHomeCrest }}
+              style={styles.crestImage}
+              resizeMode="contain"
             />
           </View>
         </View>
-      )}
+
+        {/* Right Half: Away Team Primary Solid Brand Color */}
+        <View style={[styles.halfSection, { backgroundColor: awayColor }]}>
+          <View style={styles.crestWrapper}>
+            <Image
+              source={{ uri: resolvedAwayCrest }}
+              style={styles.crestImage}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
+
+        {/* Center Seam: Official Competition Emblem Badge */}
+        <View style={styles.centerBadgeContainer}>
+          <CompetitionLogo
+            competitionId={competition}
+            uri={resolvedCompLogo}
+            size={20}
+          />
+        </View>
+      </View>
+
+      {/* ── OVERLAY LAYER: ORIGINAL GENUINE EVENT ARTWORK (When available & loaded) ── */}
+      {shouldUseOriginal && originalArtworkUrl ? (
+        <Image
+          source={{ uri: originalArtworkUrl }}
+          style={[
+            StyleSheet.absoluteFillObject,
+            styles.originalImage,
+            imageStyle,
+            { opacity: imageLoaded ? 1 : 0 },
+          ]}
+          resizeMode="cover"
+          onLoad={() => setImageLoaded(true)}
+          onError={() => setImageLoadFailed(true)}
+        />
+      ) : null}
 
       {/* Subtle bottom vignette to ensure team crests, scores, and text remain sharp */}
       <LinearGradient
         colors={['transparent', 'rgba(12, 9, 18, 0.65)']}
         start={{ x: 0, y: 0.55 }}
-        end={{ x: 0, y: 1 }}
+        end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
@@ -179,9 +190,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'space-between',
     backgroundColor: '#161224',
-  },
-  neutralBase: {
-    backgroundColor: '#1E1730',
   },
   originalImage: {
     width: '100%',

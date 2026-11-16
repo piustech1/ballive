@@ -26,6 +26,7 @@ import { FilterBottomSheet } from '../features/home/FilterBottomSheet';
 import { QuickAccessLauncher } from '../features/home/QuickAccessLauncher';
 import { streamingApiService } from '../services/streamingApiService';
 import { sortMatchesWithLiveFirst } from '../utils/matchStatus';
+import { getCanonicalSport } from '../utils/sportClassifier';
 
 export const HomeScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
@@ -82,30 +83,33 @@ export const HomeScreen: React.FC = () => {
       // Category filtering (from circular pills)
       let matchesCategory = true;
       const cat = selectedCategoryId || (competitionFilter !== 'all' ? competitionFilter : null);
-      if (cat === 'football') {
-        matchesCategory = match.sport === 'soccer' || !match.sport || match.competition.toLowerCase().includes('league') || match.competition.toLowerCase().includes('fc');
-      } else if (cat === 'nba' || cat === 'basketball') {
-        matchesCategory = match.sport === 'basketball' || match.competition.toLowerCase().includes('nba') || match.competition.toLowerCase().includes('basketball');
-      } else if (cat === 'nhl' || cat === 'hockey') {
-        matchesCategory = match.sport === 'hockey' || match.competition.toLowerCase().includes('nhl') || match.competition.toLowerCase().includes('hockey');
-      } else if (cat === 'mma' || cat === 'ufc') {
-        matchesCategory = match.sport === 'mma' || match.competition.toLowerCase().includes('ufc') || match.competition.toLowerCase().includes('mma') || match.competition.toLowerCase().includes('wwe') || match.competition.toLowerCase().includes('fighting');
-      } else if (cat === 'nfl' || cat === 'american_football') {
-        matchesCategory = match.sport === 'american_football' || match.competition.toLowerCase().includes('nfl');
-      } else if (cat === 'motorsport' || cat === 'f1') {
-        matchesCategory = match.sport === 'motorsport' || match.competition.toLowerCase().includes('f1') || match.competition.toLowerCase().includes('formula') || match.competition.toLowerCase().includes('grand prix');
-      } else if (cat === 'tennis') {
-        matchesCategory = match.sport === 'tennis' || match.competition.toLowerCase().includes('tennis') || match.competition.toLowerCase().includes('atp') || match.competition.toLowerCase().includes('wta');
-      } else if (cat === 'pl') {
-        matchesCategory = match.competition.toLowerCase().includes('premier');
-      } else if (cat === 'ucl') {
-        matchesCategory = match.competition.toLowerCase().includes('champions');
-      } else if (cat === 'laliga') {
-        matchesCategory = match.competition.toLowerCase().includes('laliga');
-      } else if (cat === 'seriea') {
-        matchesCategory = match.competition.toLowerCase().includes('serie a');
-      } else if (cat === 'bundesliga') {
-        matchesCategory = match.competition.toLowerCase().includes('bundesliga');
+      if (cat) {
+        const canonical = getCanonicalSport(match.sport, match.competition);
+        if (cat === 'football') {
+          matchesCategory = canonical === 'soccer';
+        } else if (cat === 'nba' || cat === 'basketball') {
+          matchesCategory = canonical === 'basketball';
+        } else if (cat === 'nhl' || cat === 'hockey') {
+          matchesCategory = canonical === 'hockey';
+        } else if (cat === 'mma' || cat === 'ufc') {
+          matchesCategory = canonical === 'mma';
+        } else if (cat === 'nfl' || cat === 'american_football') {
+          matchesCategory = canonical === 'american_football';
+        } else if (cat === 'motorsport' || cat === 'f1') {
+          matchesCategory = canonical === 'motorsport';
+        } else if (cat === 'tennis') {
+          matchesCategory = canonical === 'tennis';
+        } else if (cat === 'pl') {
+          matchesCategory = match.competition.toLowerCase().includes('premier');
+        } else if (cat === 'ucl') {
+          matchesCategory = match.competition.toLowerCase().includes('champions');
+        } else if (cat === 'laliga') {
+          matchesCategory = match.competition.toLowerCase().includes('laliga');
+        } else if (cat === 'seriea') {
+          matchesCategory = match.competition.toLowerCase().includes('serie a');
+        } else if (cat === 'bundesliga') {
+          matchesCategory = match.competition.toLowerCase().includes('bundesliga');
+        }
       }
 
       // Status filtering (from bottom sheet)

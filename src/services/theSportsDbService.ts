@@ -251,11 +251,25 @@ class TheSportsDbService {
   /**
    * Builds canonical cache key for a fixture.
    * Distinctly preserves City and United to prevent cache collisions.
+   * Optionally incorporates sport or eventId for strict association.
    */
-  public buildCacheKey(homeTeam?: string, awayTeam?: string): string {
+  public buildCacheKey(
+    homeTeam?: string,
+    awayTeam?: string,
+    sport?: string,
+    competition?: string,
+    eventId?: string
+  ): string {
+    if (eventId) {
+      return `event_${eventId}`;
+    }
     if (!homeTeam || !awayTeam) return '';
     const h = this.cleanTeamName(homeTeam).toLowerCase().replace(/\s+/g, '_');
     const a = this.cleanTeamName(awayTeam).toLowerCase().replace(/\s+/g, '_');
+    const s = sport ? sport.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+    if (s && s !== 'soccer' && s !== 'football') {
+      return `${s}_${h}_vs_${a}`;
+    }
     return `${h}_vs_${a}`;
   }
 
@@ -285,12 +299,28 @@ class TheSportsDbService {
   /**
    * Synchronously checks if verified event artwork is already cached in memory.
    */
-  public getCachedArtwork(homeTeam?: string, awayTeam?: string): string | null {
+  public getCachedArtwork(
+    homeTeam?: string,
+    awayTeam?: string,
+    sport?: string,
+    competition?: string,
+    eventId?: string
+  ): string | null {
+    if (eventId) {
+      const byId = this.cache.get(`event_${eventId}`);
+      if (byId && isGenuineEventArtwork(byId)) return byId;
+    }
     if (!homeTeam || !awayTeam) return null;
-    const key = this.buildCacheKey(homeTeam, awayTeam);
+    const key = this.buildCacheKey(homeTeam, awayTeam, sport, competition);
     const cached = this.cache.get(key);
     if (cached && isGenuineEventArtwork(cached)) {
       return cached;
+    }
+    // Fallback to base key without sport prefix for backward compatibility
+    const baseKey = this.buildCacheKey(homeTeam, awayTeam);
+    const baseCached = this.cache.get(baseKey);
+    if (baseCached && isGenuineEventArtwork(baseCached)) {
+      return baseCached;
     }
     return null;
   }
@@ -299,18 +329,32 @@ class TheSportsDbService {
    * Directly sets a verified artwork URL into cache and disk storage.
    * Useful when upstream DAG catalogs already bundle verified TheSportsDB thumbnails.
    */
-  public setCachedArtwork(homeTeam: string, awayTeam: string, artworkUrl: string): void {
-    if (!homeTeam || !awayTeam || !artworkUrl || !artworkUrl.startsWith('http')) return;
+  public setCachedArtwork(
+    homeTeam: string,
+    awayTeam: string,
+    artworkUrl: string,
+    sport?: string,
+    competition?: string,
+    eventId?: string
+  ): void {
+    if (!artworkUrl || !artworkUrl.startsWith('http')) return;
     if (!isGenuineEventArtwork(artworkUrl)) return;
-    const key = this.buildCacheKey(homeTeam, awayTeam);
-    if (!key) return;
-
-    if (this.cache.get(key) !== artworkUrl) {
-      this.cache.set(key, artworkUrl);
-      this.transientNegativeCache.delete(key);
-      this.scheduleSaveToDisk();
-      this.notifyListeners(key, artworkUrl);
+    if (eventId) {
+      this.cache.set(`event_${eventId}`, artworkUrl);
     }
+    if (homeTeam && awayTeam) {
+      const key = this.buildCacheKey(homeTeam, awayTeam, sport, competition);
+      if (key) {
+        this.cache.set(key, artworkUrl);
+        this.transientNegativeCache.delete(key);
+        this.notifyListeners(key, artworkUrl);
+      }
+      const baseKey = this.buildCacheKey(homeTeam, awayTeam);
+      if (baseKey && baseKey !== key) {
+        this.cache.set(baseKey, artworkUrl);
+      }
+    }
+    this.scheduleSaveToDisk();
   }
 
   /**

@@ -149,13 +149,47 @@ class MatchArtworkEnricher {
   private handleArtworkResolved(eventKey: string, artworkUrl: string): void {
     this.activeMatches.forEach(m => {
       const { home, away } = this.getTeamNames(m);
-      const key = theSportsDbService.buildCacheKey(home, away);
-      if (key === eventKey) {
+      const key = theSportsDbService.buildCacheKey(home, away, m.sport, m.competition, m.id);
+      const baseKey = theSportsDbService.buildCacheKey(home, away);
+      if (key === eventKey || baseKey === eventKey) {
         this.applyArtworkToMatch(m, artworkUrl);
       }
     });
 
     this.notifyListeners(eventKey, artworkUrl);
+  }
+
+  private periodicTimer: any = null;
+
+  /**
+   * Starts periodic background revalidation of active matches missing genuine artwork.
+   * Runs every 60 seconds politely so that newly uploaded artwork or cleared rate limits
+   * are automatically picked up without user interaction.
+   */
+  public startPeriodicEnrichment(intervalMs = 60000): void {
+    if (this.periodicTimer) return;
+    this.periodicTimer = setInterval(() => {
+      this.recheckPendingMatches();
+    }, intervalMs);
+  }
+
+  public stopPeriodicEnrichment(): void {
+    if (this.periodicTimer) {
+      clearInterval(this.periodicTimer);
+      this.periodicTimer = null;
+    }
+  }
+
+  private recheckPendingMatches(): void {
+    if (this.activeMatches.size === 0) return;
+    const pendingMatches = Array.from(this.activeMatches).filter(m => {
+      const current = (m as any).imageUrl || (m as any).matchBannerUrl || (m as any).poster;
+      return !isGenuineEventArtwork(current);
+    });
+
+    if (pendingMatches.length > 0) {
+      this.enrichMatches(pendingMatches);
+    }
   }
 
   /**
@@ -183,4 +217,6 @@ class MatchArtworkEnricher {
 }
 
 export const matchArtworkEnricher = new MatchArtworkEnricher();
+// Automatically start polite background revalidation
+matchArtworkEnricher.startPeriodicEnrichment(60000);
 export default matchArtworkEnricher;

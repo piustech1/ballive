@@ -101,8 +101,8 @@ export const COMPETITION_CATEGORIES: CompetitionCategory[] = [
   },
   {
     id: 'nfl',
-    name: 'NFL Football',
-    shortLabel: 'NFL',
+    name: 'American Football',
+    shortLabel: 'American Football',
     color: '#F59E0B',
     iconName: 'shield',
     sport: 'american_football',

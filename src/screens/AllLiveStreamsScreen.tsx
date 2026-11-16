@@ -29,9 +29,10 @@ import { navigateToMatch } from '../navigation/navHelpers';
 import { streamingApiService } from '../services/streamingApiService';
 import { MatchCardSkeleton } from '../components/common/SkeletonLoader';
 import { sortMatchesWithLiveFirst } from '../utils/matchStatus';
+import { getCanonicalSport } from '../utils/sportClassifier';
 
 type StreamFilter = 'all' | 'live' | 'upcoming' | 'available';
-type SportFilter = 'all' | 'football' | 'basketball' | 'hockey';
+type SportFilter = 'all' | 'football' | 'american_football' | 'basketball' | 'hockey';
 
 interface FilterOption {
   id: StreamFilter;
@@ -61,6 +62,7 @@ interface SportTab {
 const SPORT_TABS: SportTab[] = [
   { id: 'all', label: 'All Sports', icon: Flame },
   { id: 'football', label: 'Football', icon: Trophy },
+  { id: 'american_football', label: 'American Football', icon: Shield },
   { id: 'basketball', label: 'Basketball', icon: Activity },
   { id: 'hockey', label: 'Hockey', icon: Shield },
 ];
@@ -104,15 +106,17 @@ export const AllLiveStreamsScreen: React.FC = () => {
   const filteredMatches = useMemo(() => {
     const filtered = allStreamMatches.filter(m => {
       // Sport filter
-      if (selectedSport === 'football') {
-        const c = m.competition.toLowerCase();
-        if (c.includes('basketball') || c.includes('nba') || c.includes('hockey') || c.includes('nhl')) return false;
-      } else if (selectedSport === 'basketball') {
-        const c = m.competition.toLowerCase();
-        if (!c.includes('basketball') && !c.includes('nba')) return false;
-      } else if (selectedSport === 'hockey') {
-        const c = m.competition.toLowerCase();
-        if (!c.includes('hockey') && !c.includes('nhl')) return false;
+      if (selectedSport !== 'all') {
+        const canonical = getCanonicalSport(m.sport, m.competition);
+        if (selectedSport === 'football') {
+          if (canonical !== 'soccer') return false;
+        } else if (selectedSport === 'american_football') {
+          if (canonical !== 'american_football') return false;
+        } else if (selectedSport === 'basketball') {
+          if (canonical !== 'basketball') return false;
+        } else if (selectedSport === 'hockey') {
+          if (canonical !== 'hockey') return false;
+        }
       }
 
       // Status filter

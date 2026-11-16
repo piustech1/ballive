@@ -17,6 +17,12 @@ import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import { sortUpcomingChronologically } from '../../utils/matchStatus';
 import { theSportsDbService } from '../../services/theSportsDbService';
 import { MatchArtworkBackground } from '../../components/common/MatchArtworkBackground';
+import {
+  getCanonicalSport,
+  getSportDisplayName,
+  isCombatSport,
+  isMotorsport,
+} from '../../utils/sportClassifier';
 
 // Team name dictionary for Large Card (readable display names)
 const TEAM_DISPLAY_NAMES: Record<string, string> = {
@@ -170,20 +176,26 @@ function formatKickoffTime(rawTime?: string): string {
 
 function getShortCompetition(comp?: string, sport?: string): string {
   if (!comp) return 'MATCH';
-  const c = comp.toUpperCase();
-  if (c.includes('NHL') || sport === 'hockey') return 'NHL';
-  if (c.includes('NBA') || sport === 'basketball') return 'NBA';
-  if (c.includes('NFL') || sport === 'american_football') {
+  const canonical = getCanonicalSport(sport, comp);
+  if (canonical === 'american_football') {
     if (comp.includes('Super Bowl') || comp.includes('Superbowl')) {
       return comp;
     }
-    return 'NFL';
+    return 'American Football';
   }
-  if (c.includes('CHAMPIONS LEAGUE')) return 'UCL';
-  if (c.includes('PREMIER LEAGUE')) return 'Premier League';
-  if (c.includes('LA LIGA')) return 'La Liga';
-  if (c.includes('SERIE A')) return 'Serie A';
-  if (c.includes('BUNDESLIGA')) return 'Bundesliga';
+  if (canonical === 'hockey') return 'NHL';
+  if (canonical === 'basketball') return 'NBA';
+  if (canonical === 'mma') return 'UFC & Combat';
+  if (canonical === 'motorsport') return 'Formula 1';
+  if (canonical === 'soccer') {
+    const c = comp.toUpperCase();
+    if (c.includes('CHAMPIONS LEAGUE')) return 'UCL';
+    if (c.includes('PREMIER LEAGUE')) return 'Premier League';
+    if (c.includes('LA LIGA')) return 'La Liga';
+    if (c.includes('SERIE A')) return 'Serie A';
+    if (c.includes('BUNDESLIGA')) return 'Bundesliga';
+    return 'Football';
+  }
   if (comp.length <= 14) return comp;
   return comp.split('•')[0].trim().substring(0, 14);
 }
@@ -427,6 +439,13 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
 
   const kickoffTime = formatKickoffTime(match.kickoffTime);
 
+  const isMotor = isMotorsport(match.sport, match.competition);
+  const isCombat = isCombatSport(match.sport, match.competition);
+  const cleanAway = match.awayTeam.name.trim().toLowerCase();
+  const isPlaceholderAway =
+    !cleanAway ||
+    ['opponent', 'tbd', 'tba', 'unknown', 'none', 'f1', 'formula 1', 'grand prix', 'red corner', 'blue corner'].includes(cleanAway);
+
   // Match artwork or sport background
   const bgImage = resolveSportBackground(
     match.sport,
@@ -438,29 +457,30 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
   );
 
   const [resolvedArtwork, setResolvedArtwork] = useState<string | null>(() => {
-    const cached = theSportsDbService.getCachedArtwork(match.homeTeam.name, match.awayTeam.name);
+    const cached = theSportsDbService.getCachedArtwork(match.homeTeam.name, match.awayTeam.name, match.sport, match.competition, match.id);
     if (cached) return cached;
     if (isVerifiedEventImage(bgImage)) return bgImage;
     return null;
   });
 
   useEffect(() => {
-    const key = theSportsDbService.buildCacheKey(match.homeTeam.name, match.awayTeam.name);
+    const key = theSportsDbService.buildCacheKey(match.homeTeam.name, match.awayTeam.name, match.sport, match.competition, match.id);
     if (!key) return;
 
-    const cached = theSportsDbService.getCachedArtwork(match.homeTeam.name, match.awayTeam.name);
+    const cached = theSportsDbService.getCachedArtwork(match.homeTeam.name, match.awayTeam.name, match.sport, match.competition, match.id);
     if (cached && cached !== resolvedArtwork) {
       setResolvedArtwork(cached);
     }
 
     const unsubscribe = theSportsDbService.subscribe((eventKey, url) => {
-      if (eventKey === key && url) {
+      const baseKey = theSportsDbService.buildCacheKey(match.homeTeam.name, match.awayTeam.name);
+      if ((eventKey === key || eventKey === baseKey) && url) {
         setResolvedArtwork(url);
       }
     });
 
     return () => unsubscribe();
-  }, [match.homeTeam.name, match.awayTeam.name, match.sport]);
+  }, [match.homeTeam.name, match.awayTeam.name, match.sport, match.competition, match.id]);
 
   const topCardInner = (
     <View style={styles.topCardOverlay}>
@@ -470,31 +490,53 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
       </Text>
 
       {/* Teams Vertical Stack */}
-      <View style={styles.topTeamsStack}>
-        {/* Home Team */}
-        <View style={styles.topTeamRow}>
-          <Image
-            source={{ uri: homeCrest }}
-            style={styles.topCrest}
-            resizeMode="contain"
-          />
-          <Text style={styles.topTeamName} numberOfLines={1}>
-            {homeName}
+      {isMotor ? (
+        <View style={styles.topTeamsStack}>
+          <Text style={[styles.topTeamName, { fontSize: 13, fontWeight: '800' }]} numberOfLines={1}>
+            {match.homeTeam.name || match.competition}
+          </Text>
+          <Text style={[styles.topTeamName, { fontSize: 11, color: '#A5B4FC', marginTop: 2 }]} numberOfLines={1}>
+            {!isPlaceholderAway && match.awayTeam.name ? match.awayTeam.name : 'Grand Prix Session'}
           </Text>
         </View>
+      ) : isCombat && isPlaceholderAway ? (
+        <View style={styles.topTeamsStack}>
+          <Text style={[styles.topTeamName, { fontSize: 13, fontWeight: '800' }]} numberOfLines={1}>
+            {match.homeTeam.name}
+          </Text>
+          <Text style={[styles.topTeamName, { fontSize: 11, color: '#A5B4FC', marginTop: 2 }]} numberOfLines={1}>
+            {match.competition}
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.topTeamsStack}>
+          {/* Home Team */}
+          <View style={styles.topTeamRow}>
+            <Image
+              source={{ uri: homeCrest }}
+              style={styles.topCrest}
+              resizeMode="contain"
+            />
+            <Text style={styles.topTeamName} numberOfLines={1}>
+              {homeName}
+            </Text>
+            {isCombat && <Text style={{ fontSize: 8, color: '#EF4444', fontWeight: '800', marginLeft: 5 }}>RED</Text>}
+          </View>
 
-        {/* Away Team */}
-        <View style={styles.topTeamRow}>
-          <Image
-            source={{ uri: awayCrest }}
-            style={styles.topCrest}
-            resizeMode="contain"
-          />
-          <Text style={styles.topTeamName} numberOfLines={1}>
-            {awayName}
-          </Text>
+          {/* Away Team */}
+          <View style={styles.topTeamRow}>
+            <Image
+              source={{ uri: awayCrest }}
+              style={styles.topCrest}
+              resizeMode="contain"
+            />
+            <Text style={styles.topTeamName} numberOfLines={1}>
+              {awayName}
+            </Text>
+            {isCombat && <Text style={{ fontSize: 8, color: '#3B82F6', fontWeight: '800', marginLeft: 5 }}>BLUE</Text>}
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Competition / Sport Tag at Bottom */}
       <View style={styles.topCompRow}>
@@ -505,7 +547,7 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
           style={{ marginRight: 5 }}
         />
         <Text style={styles.topCompText} numberOfLines={1}>
-          {match.competition}
+          {getSportDisplayName(match.sport, match.competition)}
         </Text>
       </View>
     </View>
@@ -521,6 +563,9 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
     >
       <MatchArtworkBackground
         matchId={match.id}
+        homeTeamId={match.homeTeam.id}
+        awayTeamId={match.awayTeam.id}
+        sport={match.sport}
         homeTeamName={match.homeTeam.name}
         awayTeamName={match.awayTeam.name}
         homeCrest={homeCrest}
@@ -553,6 +598,13 @@ const SmallMatchCard: React.FC<SmallMatchCardProps> = ({
   const homeAbbr = getTeamAbbr(match.homeTeam.name);
   const awayAbbr = getTeamAbbr(match.awayTeam.name);
 
+  const isMotor = isMotorsport(match.sport, match.competition);
+  const isCombat = isCombatSport(match.sport, match.competition);
+  const cleanAway = match.awayTeam.name.trim().toLowerCase();
+  const isPlaceholderAway =
+    !cleanAway ||
+    ['opponent', 'tbd', 'tba', 'unknown', 'none', 'f1', 'formula 1', 'grand prix', 'red corner', 'blue corner'].includes(cleanAway);
+
   const homeCrest =
     match.homeTeam.crestUrl ||
     (match as any).homeBadge ||
@@ -583,31 +635,45 @@ const SmallMatchCard: React.FC<SmallMatchCardProps> = ({
         </Text>
 
         {/* Teams Vertical Stack with Abbreviated Names */}
-        <View style={styles.smallTeamsStack}>
-          {/* Home Team */}
-          <View style={styles.smallTeamRow}>
-            <Image
-              source={{ uri: homeCrest }}
-              style={styles.smallCrest}
-              resizeMode="contain"
-            />
-            <Text style={styles.smallTeamText} numberOfLines={1}>
-              {homeAbbr}
+        {isMotor ? (
+          <View style={styles.smallTeamsStack}>
+            <Text style={[styles.smallTeamText, { fontSize: 11.5, fontWeight: '800' }]} numberOfLines={2}>
+              {match.homeTeam.name || 'Formula 1'}
             </Text>
           </View>
+        ) : isCombat && isPlaceholderAway ? (
+          <View style={styles.smallTeamsStack}>
+            <Text style={[styles.smallTeamText, { fontSize: 11.5, fontWeight: '800' }]} numberOfLines={2}>
+              {match.homeTeam.name}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.smallTeamsStack}>
+            {/* Home Team */}
+            <View style={styles.smallTeamRow}>
+              <Image
+                source={{ uri: homeCrest }}
+                style={styles.smallCrest}
+                resizeMode="contain"
+              />
+              <Text style={styles.smallTeamText} numberOfLines={1}>
+                {homeAbbr}
+              </Text>
+            </View>
 
-          {/* Away Team */}
-          <View style={styles.smallTeamRow}>
-            <Image
-              source={{ uri: awayCrest }}
-              style={styles.smallCrest}
-              resizeMode="contain"
-            />
-            <Text style={styles.smallTeamText} numberOfLines={1}>
-              {awayAbbr}
-            </Text>
+            {/* Away Team */}
+            <View style={styles.smallTeamRow}>
+              <Image
+                source={{ uri: awayCrest }}
+                style={styles.smallCrest}
+                resizeMode="contain"
+              />
+              <Text style={styles.smallTeamText} numberOfLines={1}>
+                {awayAbbr}
+              </Text>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Sport / Competition Identifier at Bottom */}
         <Text style={styles.smallCompText} numberOfLines={1}>

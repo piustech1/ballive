@@ -20,6 +20,10 @@ import {
 } from '../../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../../utils/matchStatus';
 import { theSportsDbService } from '../../services/theSportsDbService';
+import {
+  isCombatSport,
+  isMotorsport,
+} from '../../utils/sportClassifier';
 
 export type UniversalMatchItem = LiveMatch | DiscoverMatchup;
 
@@ -44,6 +48,14 @@ function normalizeMatchItem(item: UniversalMatchItem) {
   const awayTeamName = isDiscover
     ? (item.awayTeam as any).name || ''
     : (item.awayTeam as string) || '';
+
+  const homeTeamId = isDiscover
+    ? (item.homeTeam as any).id
+    : (item as any).homeTeamId;
+
+  const awayTeamId = isDiscover
+    ? (item.awayTeam as any).id
+    : (item as any).awayTeamId;
 
   const homeCrest = isDiscover
     ? (item.homeTeam as any).crestUrl || (item as any).homeBadge || getTeamCrest(homeTeamName)
@@ -106,6 +118,24 @@ function normalizeMatchItem(item: UniversalMatchItem) {
     ? (rawKickoff.includes('EAT') ? rawKickoff : formatKickoffEAT(rawKickoff))
     : rawKickoff;
 
+  const isMotor = isMotorsport(sport, competition);
+  const isCombat = isCombatSport(sport, competition);
+  const cleanAway = awayTeamName.trim().toLowerCase();
+  const isPlaceholderOpponent =
+    !cleanAway ||
+    [
+      'opponent',
+      'tbd',
+      'tba',
+      'unknown',
+      'none',
+      'f1',
+      'formula 1',
+      'grand prix',
+      'red corner',
+      'blue corner',
+    ].includes(cleanAway);
+
   return {
     id: item.id,
     competition,
@@ -119,6 +149,8 @@ function normalizeMatchItem(item: UniversalMatchItem) {
     displayStatus,
     homeTeamName,
     awayTeamName,
+    homeTeamId,
+    awayTeamId,
     homeCrest: homeCrest || DEFAULT_CREST,
     awayCrest: awayCrest || DEFAULT_CREST,
     homeScore,
@@ -126,6 +158,9 @@ function normalizeMatchItem(item: UniversalMatchItem) {
     kickoffTime,
     backdropUrl,
     sport,
+    isMotor,
+    isCombat,
+    isPlaceholderOpponent,
   };
 }
 
@@ -139,29 +174,30 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
   const m = normalizeMatchItem(match);
 
   const [resolvedArtwork, setResolvedArtwork] = useState<string | null>(() => {
-    const cached = theSportsDbService.getCachedArtwork(m.homeTeamName, m.awayTeamName);
+    const cached = theSportsDbService.getCachedArtwork(m.homeTeamName, m.awayTeamName, m.sport, m.competition, m.id);
     if (cached) return cached;
     if (isVerifiedEventImage(m.backdropUrl)) return m.backdropUrl;
     return null;
   });
 
   useEffect(() => {
-    const key = theSportsDbService.buildCacheKey(m.homeTeamName, m.awayTeamName);
+    const key = theSportsDbService.buildCacheKey(m.homeTeamName, m.awayTeamName, m.sport, m.competition, m.id);
     if (!key) return;
 
-    const cached = theSportsDbService.getCachedArtwork(m.homeTeamName, m.awayTeamName);
+    const cached = theSportsDbService.getCachedArtwork(m.homeTeamName, m.awayTeamName, m.sport, m.competition, m.id);
     if (cached && cached !== resolvedArtwork) {
       setResolvedArtwork(cached);
     }
 
     const unsubscribe = theSportsDbService.subscribe((eventKey, url) => {
-      if (eventKey === key && url) {
+      const baseKey = theSportsDbService.buildCacheKey(m.homeTeamName, m.awayTeamName);
+      if ((eventKey === key || eventKey === baseKey) && url) {
         setResolvedArtwork(url);
       }
     });
 
     return () => unsubscribe();
-  }, [m.homeTeamName, m.awayTeamName, m.sport]);
+  }, [m.homeTeamName, m.awayTeamName, m.sport, m.competition, m.id]);
 
   // Layout sizing
   const layoutContainerStyle =
@@ -172,7 +208,6 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
       : layout === 'full'
       ? styles.fullContainer
       : styles.carouselContainer;
-
 
   const cardInnerContent = (
     <>
@@ -218,57 +253,163 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
         </View>
       </View>
 
-      {/* ── CARD BOTTOM MATCHUP CONTAINER: Solid Surface with Authentic Crests & Scores ── */}
-      <View style={[styles.matchupSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
-        {/* Home Team */}
-        <View style={styles.teamCol}>
-          <View style={styles.crestCircle}>
-            <Image source={{ uri: m.homeCrest }} style={styles.crestImage} />
+      {/* ── CARD BOTTOM MATCHUP CONTAINER: Sport-Aware Surface ── */}
+      {m.isMotor ? (
+        /* Motorsport Layout: Grand Prix, Venue, and Session info — NO fake scores */
+        <View style={[styles.matchupSurface, styles.racingSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
+          <View style={styles.racingDetailsCol}>
+            <Text style={styles.racingEventTitle} numberOfLines={1}>
+              {m.homeTeamName || m.competition}
+            </Text>
+            <Text style={styles.racingVenueText} numberOfLines={1}>
+              {!m.isPlaceholderOpponent && m.awayTeamName ? m.awayTeamName : 'Official Grand Prix Session'}
+            </Text>
           </View>
-          <Text style={styles.teamNameText} numberOfLines={1}>
-            {m.homeTeamName}
-          </Text>
-        </View>
-
-        {/* Center Score / VS / Status */}
-        <View style={styles.centerScoreBox}>
-          {m.isUpcoming ? (
-            <>
-              <Text style={styles.vsText}>VS</Text>
-              <Text style={styles.kickoffText} numberOfLines={1}>
-                {m.kickoffTime}
-              </Text>
-            </>
-          ) : (
-            <>
-              <View style={styles.scoreRow}>
-                <Text style={styles.scoreNumber}>{m.homeScore}</Text>
-                <Text style={styles.scoreDivider}>-</Text>
-                <Text style={styles.scoreNumber}>{m.awayScore}</Text>
+          <View style={styles.racingStatusCol}>
+            {m.isLive ? (
+              <View style={styles.racingLivePill}>
+                <View style={styles.livePulseDot} />
+                <Text style={styles.racingLivePillText}>RACE LIVE</Text>
               </View>
-              <Text
-                style={[
-                  styles.statusSubText,
-                  m.isLive ? styles.statusLiveText : styles.statusFtText,
-                ]}
-                numberOfLines={1}
-              >
-                {m.isLive ? (m.playTime || 'LIVE') : 'FINAL'}
-              </Text>
-            </>
-          )}
-        </View>
-
-        {/* Away Team */}
-        <View style={styles.teamCol}>
-          <View style={styles.crestCircle}>
-            <Image source={{ uri: m.awayCrest }} style={styles.crestImage} />
+            ) : m.isFinished ? (
+              <View style={styles.racingFtPill}>
+                <Text style={styles.racingFtPillText}>COMPLETED</Text>
+              </View>
+            ) : (
+              <View style={styles.racingTimePill}>
+                <Text style={styles.racingTimePillText} numberOfLines={1}>
+                  {m.kickoffTime}
+                </Text>
+              </View>
+            )}
           </View>
-          <Text style={styles.teamNameText} numberOfLines={1}>
-            {m.awayTeamName}
-          </Text>
         </View>
-      </View>
+      ) : m.isCombat ? (
+        /* Combat Sport: Red Corner vs Blue Corner or Event Banner — NO fake 0-0 scores */
+        m.isPlaceholderOpponent ? (
+          <View style={[styles.matchupSurface, styles.combatSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
+            <View style={styles.combatDetailsCol}>
+              <Text style={styles.combatEventTitle} numberOfLines={1}>
+                {m.homeTeamName}
+              </Text>
+              <Text style={styles.combatSubtitle} numberOfLines={1}>
+                {m.competition}
+              </Text>
+            </View>
+            <View style={styles.combatStatusCol}>
+              {m.isLive ? (
+                <View style={styles.racingLivePill}>
+                  <View style={styles.livePulseDot} />
+                  <Text style={styles.racingLivePillText}>BOUT LIVE</Text>
+                </View>
+              ) : (
+                <View style={styles.racingTimePill}>
+                  <Text style={styles.racingTimePillText} numberOfLines={1}>
+                    {m.kickoffTime}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.matchupSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
+            {/* Fighter 1 (Red Corner) */}
+            <View style={styles.teamCol}>
+              <View style={[styles.crestCircle, styles.redCornerCircle]}>
+                <Image source={{ uri: m.homeCrest }} style={styles.crestImage} />
+              </View>
+              <Text style={styles.teamNameText} numberOfLines={1}>
+                {m.homeTeamName}
+              </Text>
+              <Text style={styles.cornerSubLabelRed}>RED CORNER</Text>
+            </View>
+
+            {/* Center Bout Status (No fake football 0 - 0) */}
+            <View style={styles.centerScoreBox}>
+              {m.isLive ? (
+                <View style={styles.boutBadge}>
+                  <View style={styles.livePulseDot} />
+                  <Text style={styles.boutBadgeText}>LIVE</Text>
+                </View>
+              ) : m.isFinished ? (
+                <View style={styles.ftBadge}>
+                  <Text style={styles.ftBadgeText}>DEC</Text>
+                </View>
+              ) : (
+                <>
+                  <Text style={styles.boutVsText}>VS</Text>
+                  <Text style={styles.kickoffText} numberOfLines={1}>
+                    {m.kickoffTime}
+                  </Text>
+                </>
+              )}
+            </View>
+
+            {/* Fighter 2 (Blue Corner) */}
+            <View style={styles.teamCol}>
+              <View style={[styles.crestCircle, styles.blueCornerCircle]}>
+                <Image source={{ uri: m.awayCrest }} style={styles.crestImage} />
+              </View>
+              <Text style={styles.teamNameText} numberOfLines={1}>
+                {m.awayTeamName}
+              </Text>
+              <Text style={styles.cornerSubLabelBlue}>BLUE CORNER</Text>
+            </View>
+          </View>
+        )
+      ) : (
+        /* Team Score Sports (Football, American Football, Basketball, Hockey): Authentic Team-vs-Team with Scores */
+        <View style={[styles.matchupSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
+          {/* Home Team */}
+          <View style={styles.teamCol}>
+            <View style={styles.crestCircle}>
+              <Image source={{ uri: m.homeCrest }} style={styles.crestImage} />
+            </View>
+            <Text style={styles.teamNameText} numberOfLines={1}>
+              {m.homeTeamName}
+            </Text>
+          </View>
+
+          {/* Center Score / VS / Status */}
+          <View style={styles.centerScoreBox}>
+            {m.isUpcoming ? (
+              <>
+                <Text style={styles.vsText}>VS</Text>
+                <Text style={styles.kickoffText} numberOfLines={1}>
+                  {m.kickoffTime}
+                </Text>
+              </>
+            ) : (
+              <>
+                <View style={styles.scoreRow}>
+                  <Text style={styles.scoreNumber}>{m.homeScore}</Text>
+                  <Text style={styles.scoreDivider}>-</Text>
+                  <Text style={styles.scoreNumber}>{m.awayScore}</Text>
+                </View>
+                <Text
+                  style={[
+                    styles.statusSubText,
+                    m.isLive ? styles.statusLiveText : styles.statusFtText,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {m.isLive ? (m.playTime || 'LIVE') : 'FINAL'}
+                </Text>
+              </>
+            )}
+          </View>
+
+          {/* Away Team */}
+          <View style={styles.teamCol}>
+            <View style={styles.crestCircle}>
+              <Image source={{ uri: m.awayCrest }} style={styles.crestImage} />
+            </View>
+            <Text style={styles.teamNameText} numberOfLines={1}>
+              {m.awayTeamName}
+            </Text>
+          </View>
+        </View>
+      )}
     </>
   );
 
@@ -284,6 +425,9 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
     >
       <MatchArtworkBackground
         matchId={m.id}
+        homeTeamId={m.homeTeamId}
+        awayTeamId={m.awayTeamId}
+        sport={m.sport}
         homeTeamName={m.homeTeamName}
         awayTeamName={m.awayTeamName}
         homeCrest={m.homeCrest}
@@ -496,6 +640,139 @@ const styles = StyleSheet.create({
     marginTop: 2,
     maxWidth: 75,
     textAlign: 'center',
+  },
+  racingSurface: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  racingDetailsCol: {
+    flex: 1,
+    marginRight: 10,
+    justifyContent: 'center',
+  },
+  racingEventTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  racingVenueText: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    color: '#A5B4FC',
+    marginTop: 2,
+  },
+  racingStatusCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  racingLivePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 7,
+  },
+  racingLivePillText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.4,
+  },
+  racingFtPill: {
+    backgroundColor: 'rgba(75, 85, 99, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 7,
+  },
+  racingFtPillText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#E5E7EB',
+    letterSpacing: 0.4,
+  },
+  racingTimePill: {
+    backgroundColor: 'rgba(59, 130, 246, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.5)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 7,
+  },
+  racingTimePillText: {
+    fontSize: 9.5,
+    fontWeight: '700',
+    color: '#93C5FD',
+  },
+  combatSurface: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  combatDetailsCol: {
+    flex: 1,
+    marginRight: 10,
+    justifyContent: 'center',
+  },
+  combatEventTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.2,
+  },
+  combatSubtitle: {
+    fontSize: 9.5,
+    fontWeight: '600',
+    color: '#A5B4FC',
+    marginTop: 2,
+  },
+  combatStatusCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  redCornerCircle: {
+    borderWidth: 1.5,
+    borderColor: 'rgba(239, 68, 68, 0.75)',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+  },
+  blueCornerCircle: {
+    borderWidth: 1.5,
+    borderColor: 'rgba(59, 130, 246, 0.75)',
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+  },
+  cornerSubLabelRed: {
+    fontSize: 7.5,
+    fontWeight: '800',
+    color: '#F87171',
+    letterSpacing: 0.3,
+    marginTop: 2,
+  },
+  cornerSubLabelBlue: {
+    fontSize: 7.5,
+    fontWeight: '800',
+    color: '#60A5FA',
+    letterSpacing: 0.3,
+    marginTop: 2,
+  },
+  boutBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 7.5,
+    paddingVertical: 3.5,
+    borderRadius: 7,
+  },
+  boutBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.4,
+  },
+  boutVsText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#EF4444',
+    letterSpacing: 0.5,
   },
 });
 
