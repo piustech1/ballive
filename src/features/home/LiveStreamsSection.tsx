@@ -72,15 +72,15 @@ export const LiveStreamsSection: React.FC<LiveStreamsSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 24,
-    marginBottom: 8,
+    marginTop: 16,
+    marginBottom: 6,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 20,

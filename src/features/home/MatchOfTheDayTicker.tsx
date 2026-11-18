@@ -41,8 +41,8 @@ export const MatchOfTheDayTicker: React.FC<MatchOfTheDayTickerProps> = ({ match 
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 20,
-    marginBottom: 16,
+    marginTop: 18,
+    marginBottom: 0,
     paddingHorizontal: 20,
   },
   headerRow: {

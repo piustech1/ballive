@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Image,
   ImageSourcePropType,
+  useWindowDimensions,
 } from 'react-native';
 import Colors from '../../theme/colors';
 
@@ -89,6 +90,11 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
   selectedCategoryId,
   onSelectCategory,
 }) => {
+  const { width: windowWidth } = useWindowDimensions();
+  // Reference spec: ~56% of screen width, ~2.4:1 aspect ratio (width / height)
+  const cardWidth = Math.round(windowWidth * 0.56);
+  const cardHeight = Math.round(cardWidth / 2.4);
+
   const handleCategoryPress = (categoryId: string) => {
     if (!onSelectCategory) return;
     if (categoryId === 'all') {
@@ -121,6 +127,7 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
               key={cat.id}
               style={[
                 styles.tileWrapper,
+                { width: cardWidth, height: cardHeight },
                 isSelected && styles.tileWrapperSelected,
                 isDimmed && styles.tileWrapperDimmed,
               ]}
@@ -158,8 +165,8 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 18,
-    marginBottom: 10,
+    marginTop: 14,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 20,
@@ -170,13 +177,11 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   scrollContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
   },
   tileWrapper: {
-    width: 245,
-    height: 104,
     borderRadius: 14,
     marginRight: 12,
     overflow: 'hidden',
