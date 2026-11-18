@@ -8,7 +8,6 @@ import {
   Image,
   ImageSourcePropType,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '../../theme/colors';
 
 interface CategoryTile {
@@ -16,79 +15,68 @@ interface CategoryTile {
   label: string;
   name: string;
   image: ImageSourcePropType;
-  gradient: [string, string];
 }
 
 const CATEGORY_TILES: CategoryTile[] = [
   {
     id: 'all',
-    label: 'ALL',
+    label: 'All',
     name: 'All Sports',
     image: require('../../../assets/categories/all.png'),
-    gradient: ['#7952FC', '#4C1D95'],
   },
   {
     id: 'football',
-    label: 'FOOTBALL',
+    label: 'Football',
     name: 'Football / Soccer',
     image: require('../../../assets/categories/football.png'),
-    gradient: ['#059669', '#064E3B'],
   },
   {
     id: 'pl',
     label: 'EPL',
     name: 'Premier League',
     image: require('../../../assets/categories/premier_league.png'),
-    gradient: ['#38003C', '#200022'],
   },
   {
     id: 'ucl',
     label: 'UCL',
     name: 'Champions League',
     image: require('../../../assets/categories/champions_league.png'),
-    gradient: ['#0A2568', '#030E26'],
   },
   {
     id: 'nfl',
     label: 'NFL',
     name: 'American Football',
     image: require('../../../assets/categories/nfl.png'),
-    gradient: ['#0D47A1', '#01214D'],
   },
   {
     id: 'nba',
     label: 'NBA',
     name: 'Basketball',
     image: require('../../../assets/categories/nba.png'),
-    gradient: ['#1D428A', '#0F234B'],
   },
   {
     id: 'nhl',
     label: 'NHL',
     name: 'Ice Hockey',
     image: require('../../../assets/categories/nhl.png'),
-    gradient: ['#27272A', '#09090B'],
   },
   {
     id: 'mma',
     label: 'UFC',
     name: 'MMA / UFC',
     image: require('../../../assets/categories/ufc.png'),
-    gradient: ['#B91C1C', '#450A0A'],
   },
   {
     id: 'motorsport',
     label: 'F1',
     name: 'Formula 1 & Motorsport',
     image: require('../../../assets/categories/f1.png'),
-    gradient: ['#DC2626', '#7F1D1D'],
   },
   {
     id: 'tennis',
-    label: 'TENNIS',
+    label: 'Tennis',
     name: 'Tennis',
     image: require('../../../assets/categories/tennis.png'),
-    gradient: ['#0D9488', '#115E59'],
   },
 ];
 
@@ -117,7 +105,7 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
       {/* ── SECTION TITLE ── */}
       <Text style={styles.sectionTitle}>Categories</Text>
 
-      {/* ── HORIZONTALLY SCROLLABLE RECTANGULAR TILES ── */}
+      {/* ── HORIZONTALLY SCROLLABLE LANDSCAPE TILES ── */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -141,31 +129,25 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
               accessibilityLabel={`${cat.name} category`}
               accessibilityRole="button"
             >
-              <LinearGradient
-                colors={cat.gradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-                style={styles.gradientContainer}
-              >
-                {/* Active Indicator Top Strip */}
-                {isSelected && <View style={styles.activeTopIndicator} />}
+              {/* Full Tile Branded Image Artwork */}
+              <Image
+                source={cat.image}
+                style={styles.bannerImage}
+                resizeMode="cover"
+              />
 
-                {/* Centered Brand Emblem */}
-                <View style={styles.emblemContainer}>
-                  <Image
-                    source={cat.image}
-                    style={styles.emblemImage}
-                    resizeMode="contain"
-                  />
-                </View>
+              {/* Active Selection Border */}
+              {isSelected && <View style={styles.activeSelectionBorder} />}
 
-                {/* Embedded Bottom Label */}
-                <View style={styles.labelContainer}>
-                  <Text style={styles.labelText} numberOfLines={1}>
-                    {cat.label}
-                  </Text>
-                </View>
-              </LinearGradient>
+              {/* Embedded Concise Category Label */}
+              <View style={styles.labelContainer}>
+                <Text
+                  style={[styles.labelText, isSelected && styles.labelTextSelected]}
+                  numberOfLines={1}
+                >
+                  {cat.label}
+                </Text>
+              </View>
             </TouchableOpacity>
           );
         })}
@@ -176,7 +158,7 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 20,
+    marginTop: 18,
     marginBottom: 10,
   },
   sectionTitle: {
@@ -193,72 +175,61 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tileWrapper: {
-    width: 56,
-    height: 136,
-    borderRadius: 14,
+    width: 152,
+    height: 58,
+    borderRadius: 12,
     marginRight: 10,
     overflow: 'hidden',
-    backgroundColor: '#18181B',
-    elevation: 4,
+    backgroundColor: '#1E1730',
+    position: 'relative',
+    elevation: 3,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,
   },
   tileWrapperSelected: {
-    transform: [{ scale: 1.03 }],
     elevation: 6,
-    shadowOpacity: 0.38,
+    shadowOpacity: 0.42,
+    shadowRadius: 6,
+    transform: [{ scale: 1.02 }],
   },
   tileWrapperDimmed: {
-    opacity: 0.65,
+    opacity: 0.6,
   },
-  gradientContainer: {
-    flex: 1,
-    borderRadius: 14,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
-  activeTopIndicator: {
-    position: 'absolute',
-    top: 0,
-    left: 10,
-    right: 10,
-    height: 3,
-    backgroundColor: '#ECE9FA',
-    borderBottomLeftRadius: 2,
-    borderBottomRightRadius: 2,
-  },
-  emblemContainer: {
-    flex: 1,
+  bannerImage: {
     width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    height: '100%',
   },
-  emblemImage: {
-    width: 42,
-    height: 54,
+  activeSelectionBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#7952FC',
   },
   labelContainer: {
-    width: '100%',
-    backgroundColor: 'rgba(0, 0, 0, 0.42)',
-    paddingVertical: 5,
-    paddingHorizontal: 2,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.58)',
+    paddingVertical: 3,
+    paddingHorizontal: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 14,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   },
   labelText: {
-    fontSize: 9.5,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#ECE9FA',
     textAlign: 'center',
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
+  },
+  labelTextSelected: {
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
 });
 
