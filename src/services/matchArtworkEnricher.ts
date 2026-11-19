@@ -85,6 +85,10 @@ class MatchArtworkEnricher {
     const toEnqueue: Array<{ homeTeam: string; awayTeam: string; sport?: string; date?: string }> = [];
 
     matches.forEach(m => {
+      // Retain max 100 active matches to prevent unbounded memory growth
+      if (this.activeMatches.size > 100) {
+        this.activeMatches.clear();
+      }
       this.activeMatches.add(m);
 
       const { home, away } = this.getTeamNames(m);
@@ -111,14 +115,16 @@ class MatchArtworkEnricher {
         return;
       }
 
-      // 3. Queue for background resolution
-      const rawDate = (m as any).rawDate || (m as any).kickoffDate;
-      toEnqueue.push({
-        homeTeam: home,
-        awayTeam: away,
-        sport: m.sport,
-        date: rawDate,
-      });
+      // 3. Queue for background resolution (strictly cap at 6 to prevent network saturation)
+      if (toEnqueue.length < 6) {
+        const rawDate = (m as any).rawDate || (m as any).kickoffDate;
+        toEnqueue.push({
+          homeTeam: home,
+          awayTeam: away,
+          sport: m.sport,
+          date: rawDate,
+        });
+      }
     });
 
     if (toEnqueue.length > 0) {
@@ -217,6 +223,4 @@ class MatchArtworkEnricher {
 }
 
 export const matchArtworkEnricher = new MatchArtworkEnricher();
-// Automatically start polite background revalidation
-matchArtworkEnricher.startPeriodicEnrichment(60000);
 export default matchArtworkEnricher;

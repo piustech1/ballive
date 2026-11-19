@@ -121,21 +121,28 @@ export const HomeScreen: React.FC = () => {
     return sortMatchesWithLiveFirst(filtered);
   }, [liveMatches, searchQuery, selectedCategoryId, competitionFilter, statusFilter]);
 
-  const handleMatchPress = (match: LiveMatch) => {
+  const handleMatchPress = useCallback((match: LiveMatch) => {
     navigateToMatch(navigate, match);
-  };
+  }, [navigate]);
 
-  const handleFilterPress = () => {
+  const handleViewAllLiveStreams = useCallback(() => {
+    navigate({
+      name: 'AllLiveStreams',
+      params: { initialSport: selectedCategoryId || 'all' },
+    });
+  }, [navigate, selectedCategoryId]);
+
+  const handleFilterPress = useCallback(() => {
     setIsFilterSheetVisible(true);
-  };
+  }, []);
 
-  const handleMenuPress = () => {
+  const handleMenuPress = useCallback(() => {
     setIsQuickAccessVisible(true);
-  };
+  }, []);
 
-  const handleNotificationsPress = () => {
+  const handleNotificationsPress = useCallback(() => {
     navigate({ name: 'Notifications' });
-  };
+  }, [navigate]);
 
   const isFilterApplied = Boolean(
     searchQuery.trim() ||
@@ -188,12 +195,7 @@ export const HomeScreen: React.FC = () => {
         <LiveStreamsSection
           matches={displayedMatches}
           isLoading={isLoading}
-          onViewAllPress={() => {
-            navigate({
-              name: 'AllLiveStreams',
-              params: { initialSport: selectedCategoryId || 'all' },
-            });
-          }}
+          onViewAllPress={handleViewAllLiveStreams}
           onMatchPress={handleMatchPress}
         />
 

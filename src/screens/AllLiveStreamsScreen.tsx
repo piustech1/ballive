@@ -9,6 +9,7 @@ import {
   TouchableWithoutFeedback,
   Modal,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import {
   Tv,
@@ -88,8 +89,14 @@ export const AllLiveStreamsScreen: React.FC = () => {
   const routeParams = currentRoute.name === 'AllLiveStreams' ? currentRoute.params : undefined;
   const initialSport = useMemo(() => parseInitialSport(routeParams?.initialSport), [routeParams?.initialSport]);
 
-  const [allStreamMatches, setAllStreamMatches] = useState<DiscoverMatchup[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [allStreamMatches, setAllStreamMatches] = useState<DiscoverMatchup[]>(() => {
+    const cached = streamingApiService.getCachedLiveMatches();
+    if (cached && cached.length > 0) {
+      return cached.map(m => streamingApiService.convertLiveMatchToMatchup(m));
+    }
+    return [];
+  });
+  const [isLoading, setIsLoading] = useState(() => allStreamMatches.length === 0);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<StreamFilter>('all');
   const [selectedSport, setSelectedSport] = useState<SportFilter>(initialSport);
@@ -160,6 +167,19 @@ export const AllLiveStreamsScreen: React.FC = () => {
   }, [allStreamMatches, selectedFilter, selectedSport]);
 
   const liveCount = allStreamMatches.filter(m => m.status === 'LIVE').length;
+
+  const renderMatchItem = useCallback(
+    ({ item }: { item: DiscoverMatchup }) => (
+      <UniversalMatchCard
+        match={item}
+        layout="grid"
+        onPress={() => navigateToMatch(navigate, item)}
+      />
+    ),
+    [navigate]
+  );
+
+  const keyExtractor = useCallback((item: DiscoverMatchup) => item.id, []);
 
   return (
     <View style={styles.root}>
@@ -278,11 +298,16 @@ export const AllLiveStreamsScreen: React.FC = () => {
       {/* ── MAIN RESPONSIVE TWO-COLUMN MATCH-CARD GRID ── */}
       <FlatList
         data={filteredMatches}
-        keyExtractor={item => item.id}
+        keyExtractor={keyExtractor}
         numColumns={2}
         columnWrapperStyle={styles.gridRow}
         contentContainerStyle={styles.flatListContent}
         showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
+        updateCellsBatchingPeriod={50}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -291,13 +316,7 @@ export const AllLiveStreamsScreen: React.FC = () => {
             colors={['#7952FC']}
           />
         }
-        renderItem={({ item }) => (
-          <UniversalMatchCard
-            match={item}
-            layout="grid"
-            onPress={() => navigateToMatch(navigate, item)}
-          />
-        )}
+        renderItem={renderMatchItem}
         ListEmptyComponent={
           isLoading && allStreamMatches.length === 0 ? (
             <View style={styles.skeletonGrid}>

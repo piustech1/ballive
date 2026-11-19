@@ -27,6 +27,10 @@ export const LiveStreamsSection: React.FC<LiveStreamsSectionProps> = ({
   onViewAllPress,
   onMatchPress,
 }) => {
+  // Cap carousel to top 12 featured matches to guarantee high FPS and instant touch responsiveness.
+  // The full catalog is accessed without limitation via the "View all" screen.
+  const carouselMatches = React.useMemo(() => matches.slice(0, 12), [matches]);
+
   return (
     <View style={styles.container}>
       {/* ── SECTION HEADER: Live & Upcoming streams (Left) + View all (Right) ── */}
@@ -47,7 +51,7 @@ export const LiveStreamsSection: React.FC<LiveStreamsSectionProps> = ({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {isLoading && matches.length === 0 ? (
+        {isLoading && carouselMatches.length === 0 ? (
           <>
             <View style={{ width: 280, marginRight: 12 }}>
               <MatchCardSkeleton />
@@ -57,7 +61,7 @@ export const LiveStreamsSection: React.FC<LiveStreamsSectionProps> = ({
             </View>
           </>
         ) : (
-          matches.map(match => (
+          carouselMatches.map(match => (
             <LiveMatchCard
               key={match.id}
               match={match}

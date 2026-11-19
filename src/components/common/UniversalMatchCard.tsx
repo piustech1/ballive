@@ -165,7 +165,7 @@ function normalizeMatchItem(item: UniversalMatchItem) {
   };
 }
 
-export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
+const UniversalMatchCardComponent: React.FC<UniversalMatchCardProps> = ({
   match,
   layout = 'carousel',
   onPress,
@@ -182,12 +182,18 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
   });
 
   useEffect(() => {
+    // If artwork is already verified or cached, skip subscribing to avoid listener overhead
+    if (resolvedArtwork && isVerifiedEventImage(resolvedArtwork)) {
+      return;
+    }
+
     const key = theSportsDbService.buildCacheKey(m.homeTeamName, m.awayTeamName, m.sport, m.competition, m.id);
     if (!key) return;
 
     const cached = theSportsDbService.getCachedArtwork(m.homeTeamName, m.awayTeamName, m.sport, m.competition, m.id);
     if (cached && cached !== resolvedArtwork) {
       setResolvedArtwork(cached);
+      return;
     }
 
     const unsubscribe = theSportsDbService.subscribe((eventKey, url) => {
@@ -198,7 +204,7 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
     });
 
     return () => unsubscribe();
-  }, [m.homeTeamName, m.awayTeamName, m.sport, m.competition, m.id]);
+  }, [m.homeTeamName, m.awayTeamName, m.sport, m.competition, m.id, resolvedArtwork]);
 
   // Layout sizing
   const layoutContainerStyle =
@@ -781,4 +787,5 @@ const styles = StyleSheet.create({
   },
 });
 
+export const UniversalMatchCard = React.memo(UniversalMatchCardComponent);
 export default UniversalMatchCard;

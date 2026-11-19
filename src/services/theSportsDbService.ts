@@ -405,9 +405,9 @@ class TheSportsDbService {
           if (!queries.includes(q)) {
             queries.push(q);
           }
-          if (queries.length >= 4) break; // Limit query attempts per matchup
+          if (queries.length >= 2) break; // Limit query attempts per matchup to avoid network congestion
         }
-        if (queries.length >= 4) break;
+        if (queries.length >= 2) break;
       }
 
       for (const q of queries) {
@@ -529,6 +529,7 @@ class TheSportsDbService {
     if (!Array.isArray(matchups) || matchups.length === 0) return;
 
     matchups.forEach(m => {
+      if (this.queue.length >= 10) return; // Strictly cap queue size to prevent background task explosion
       if (!m.homeTeam || !m.awayTeam) return;
       const key = this.buildCacheKey(m.homeTeam, m.awayTeam);
       if (!key) return;

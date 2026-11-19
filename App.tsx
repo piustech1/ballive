@@ -31,6 +31,20 @@ import {
 const AppContent: React.FC = () => {
   const { currentRoute, activeTab, switchTab, isFullscreen } = useAppNavigation();
 
+  // Lazy tab mounting: Mount tabs on first visit, then keep them mounted in memory for 0ms switching
+  const [visitedTabs, setVisitedTabs] = React.useState<Record<TabDestination, boolean>>({
+    Home: true,
+    Discover: false,
+    Saved: false,
+    Profile: false,
+  });
+
+  React.useEffect(() => {
+    if (!visitedTabs[activeTab]) {
+      setVisitedTabs(prev => ({ ...prev, [activeTab]: true }));
+    }
+  }, [activeTab, visitedTabs]);
+
   const isMainRoute = currentRoute.name === 'Main';
 
   const renderDetailScreen = () => {
@@ -84,19 +98,19 @@ const AppContent: React.FC = () => {
 
       {/* Screen View */}
       <View style={isFullscreen ? styles.fullscreenScreenContainer : styles.screenContainer}>
-        {/* Persistent Bottom Tab Screens: Kept mounted in memory for 0ms instantaneous tab switching */}
+        {/* Persistent Bottom Tab Screens: Kept mounted in memory once visited for 0ms instantaneous tab switching */}
         <View style={[styles.mainTabsContainer, !isMainRoute && styles.hiddenPane]}>
           <View style={[styles.tabPane, activeTab === 'Home' ? styles.visiblePane : styles.hiddenPane]}>
-            <HomeScreen />
+            {visitedTabs.Home && <HomeScreen />}
           </View>
           <View style={[styles.tabPane, activeTab === 'Discover' ? styles.visiblePane : styles.hiddenPane]}>
-            <DiscoverScreen />
+            {visitedTabs.Discover && <DiscoverScreen />}
           </View>
           <View style={[styles.tabPane, activeTab === 'Saved' ? styles.visiblePane : styles.hiddenPane]}>
-            <SavedScreen onNavigateToDiscover={() => switchTab('Discover')} />
+            {visitedTabs.Saved && <SavedScreen onNavigateToDiscover={() => switchTab('Discover')} />}
           </View>
           <View style={[styles.tabPane, activeTab === 'Profile' ? styles.visiblePane : styles.hiddenPane]}>
-            <ProfileScreen />
+            {visitedTabs.Profile && <ProfileScreen />}
           </View>
         </View>
 
