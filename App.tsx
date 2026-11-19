@@ -31,7 +31,9 @@ import {
 const AppContent: React.FC = () => {
   const { currentRoute, activeTab, switchTab, isFullscreen } = useAppNavigation();
 
-  const renderActiveScreen = () => {
+  const isMainRoute = currentRoute.name === 'Main';
+
+  const renderDetailScreen = () => {
     switch (currentRoute.name) {
       case 'AllLiveStreams':
         return <AllLiveStreamsScreen />;
@@ -67,20 +69,8 @@ const AppContent: React.FC = () => {
         return <HelpSupportScreen />;
       case 'PrivacySecurity':
         return <PrivacySecurityScreen />;
-      case 'Main':
       default:
-        switch (activeTab) {
-          case 'Home':
-            return <HomeScreen />;
-          case 'Discover':
-            return <DiscoverScreen />;
-          case 'Saved':
-            return <SavedScreen onNavigateToDiscover={() => switchTab('Discover')} />;
-          case 'Profile':
-            return <ProfileScreen />;
-          default:
-            return <HomeScreen />;
-        }
+        return null;
     }
   };
 
@@ -92,9 +82,26 @@ const AppContent: React.FC = () => {
         backgroundColor={isFullscreen ? '#000000' : Colors.headerPurple}
       />
 
-      {/* Active Screen View */}
+      {/* Screen View */}
       <View style={isFullscreen ? styles.fullscreenScreenContainer : styles.screenContainer}>
-        {renderActiveScreen()}
+        {/* Persistent Bottom Tab Screens: Kept mounted in memory for 0ms instantaneous tab switching */}
+        <View style={[styles.mainTabsContainer, !isMainRoute && styles.hiddenPane]}>
+          <View style={[styles.tabPane, activeTab === 'Home' ? styles.visiblePane : styles.hiddenPane]}>
+            <HomeScreen />
+          </View>
+          <View style={[styles.tabPane, activeTab === 'Discover' ? styles.visiblePane : styles.hiddenPane]}>
+            <DiscoverScreen />
+          </View>
+          <View style={[styles.tabPane, activeTab === 'Saved' ? styles.visiblePane : styles.hiddenPane]}>
+            <SavedScreen onNavigateToDiscover={() => switchTab('Discover')} />
+          </View>
+          <View style={[styles.tabPane, activeTab === 'Profile' ? styles.visiblePane : styles.hiddenPane]}>
+            <ProfileScreen />
+          </View>
+        </View>
+
+        {/* Stack Detail Screen */}
+        {!isMainRoute && renderDetailScreen()}
       </View>
 
       {/* Anchored Bottom Navigation Bar - hidden during fullscreen video streaming */}
@@ -134,5 +141,17 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000000',
     zIndex: 9999,
+  },
+  mainTabsContainer: {
+    flex: 1,
+  },
+  tabPane: {
+    flex: 1,
+  },
+  visiblePane: {
+    display: 'flex',
+  },
+  hiddenPane: {
+    display: 'none',
   },
 });

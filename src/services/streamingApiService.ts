@@ -84,6 +84,16 @@ class StreamingApiService {
   private cachedDagMetas: any[] = [];
   private lastFetchTime = 0;
   private readonly CACHE_TTL = 30000; // 30 seconds
+  private inFlightLivePromise: Promise<LiveMatch[]> | null = null;
+  private inFlightUpcomingPromise: Promise<LiveMatch[]> | null = null;
+
+  getCachedLiveMatches(): LiveMatch[] {
+    return this.cachedLiveMatches;
+  }
+
+  getCachedUpcomingMatches(): LiveMatch[] {
+    return this.cachedUpcomingMatches;
+  }
 
   /**
    * Fetches real live sports matches and channels directly from cloud APIs.
@@ -95,14 +105,19 @@ class StreamingApiService {
       return this.cachedLiveMatches;
     }
 
-    const fetchedMatches: LiveMatch[] = [];
-    const fetchedUpcoming: LiveMatch[] = [];
-    const seenMatchIds = new Set<string>();
-    this.cachedDagMetas = [];
+    if (this.inFlightLivePromise) {
+      return this.inFlightLivePromise;
+    }
 
-    // Timeout controller for resilient multi-source fetch
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), API_CONFIG.REQUEST_TIMEOUT_MS);
+    this.inFlightLivePromise = (async () => {
+      const fetchedMatches: LiveMatch[] = [];
+      const fetchedUpcoming: LiveMatch[] = [];
+      const seenMatchIds = new Set<string>();
+      this.cachedDagMetas = [];
+
+      // Timeout controller for resilient multi-source fetch
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), API_CONFIG.REQUEST_TIMEOUT_MS);
 
     // Multi-sport catalogs from DAG Upstream
     const dagCatalogs = [
@@ -547,7 +562,12 @@ class StreamingApiService {
     }
 
     return this.cachedLiveMatches;
-  }
+  })().finally(() => {
+    this.inFlightLivePromise = null;
+  });
+
+  return this.inFlightLivePromise;
+}
 
   /**
    * Returns authenticated upcoming fixtures across sports.
@@ -556,8 +576,21 @@ class StreamingApiService {
     if (!forceRefresh && this.cachedUpcomingMatches.length > 0) {
       return this.cachedUpcomingMatches;
     }
-    await this.getLiveMatches(forceRefresh);
-    return this.cachedUpcomingMatches;
+
+    if (this.inFlightUpcomingPromise) {
+      return this.inFlightUpcomingPromise;
+    }
+
+    this.inFlightUpcomingPromise = (async () => {
+      try {
+        await this.getLiveMatches(forceRefresh);
+        return this.cachedUpcomingMatches;
+      } finally {
+        this.inFlightUpcomingPromise = null;
+      }
+    })();
+
+    return this.inFlightUpcomingPromise;
   }
 
   /**

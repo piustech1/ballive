@@ -23,6 +23,7 @@ import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeade
 import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
 import { MMAFightCard } from '../components/common/MMAFightCard';
+import { TeamCrest } from '../components/common/TeamCrest';
 import {
   DiscoverCompetition,
   PopularLeague,
@@ -650,9 +651,11 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
 
                               {/* Team Crest + Name */}
                               <View style={styles.nbaTeamCell}>
-                                <Image
-                                  source={{ uri: row.crestUrl }}
-                                  style={styles.nbaTeamCrest}
+                                <TeamCrest
+                                  uri={row.crestUrl}
+                                  teamName={row.team}
+                                  size={18}
+                                  containerStyle={{ marginRight: 8 }}
                                 />
                                 <Text style={styles.nbaTeamName} numberOfLines={1}>
                                   {row.team}
@@ -855,9 +858,11 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
 
                         {/* Club info: Crest + Name */}
                         <View style={styles.teamCellBox}>
-                          <Image
-                            source={{ uri: row.crestUrl }}
-                            style={styles.standingsCrest}
+                          <TeamCrest
+                            uri={row.crestUrl}
+                            teamName={row.team}
+                            size={18}
+                            containerStyle={{ marginRight: 8 }}
                           />
                           <Text style={styles.tableCellTeam} numberOfLines={1}>
                             {row.team}

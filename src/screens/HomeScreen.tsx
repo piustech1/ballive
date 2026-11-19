@@ -27,8 +27,8 @@ export const HomeScreen: React.FC = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   // Live match state with real API wiring (zero mock data)
-  const [liveMatches, setLiveMatches] = useState<LiveMatch[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [liveMatches, setLiveMatches] = useState<LiveMatch[]>(() => streamingApiService.getCachedLiveMatches());
+  const [isLoading, setIsLoading] = useState(() => streamingApiService.getCachedLiveMatches().length === 0);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadRealMatches = useCallback(async () => {

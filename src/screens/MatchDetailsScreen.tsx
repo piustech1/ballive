@@ -28,6 +28,7 @@ import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
 import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import { MatchArtworkBackground } from '../components/common/MatchArtworkBackground';
+import { TeamCrest } from '../components/common/TeamCrest';
 import { getTeamCrest, DEFAULT_CREST } from '../utils/teamCrestResolver';
 import {
   resolveSportBackground,
@@ -482,9 +483,12 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             <View style={styles.matchupRow}>
               {/* Red Corner Fighter */}
               <View style={styles.teamCol}>
-                <View style={[styles.crestCircle, styles.redCornerCircle]}>
-                  <Image source={{ uri: homeCrest }} style={styles.crestImage} resizeMode="contain" />
-                </View>
+                <TeamCrest
+                  uri={homeCrest}
+                  teamName={activeMatchup.homeTeam.name}
+                  size={48}
+                  containerStyle={styles.crestFlatContainer}
+                />
                 <Text style={styles.teamName} numberOfLines={2}>
                   {activeMatchup.homeTeam.name}
                 </Text>
@@ -521,9 +525,12 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
 
               {/* Blue Corner Fighter */}
               <View style={styles.teamCol}>
-                <View style={[styles.crestCircle, styles.blueCornerCircle]}>
-                  <Image source={{ uri: awayCrest }} style={styles.crestImage} resizeMode="contain" />
-                </View>
+                <TeamCrest
+                  uri={awayCrest}
+                  teamName={activeMatchup.awayTeam.name}
+                  size={48}
+                  containerStyle={styles.crestFlatContainer}
+                />
                 <Text style={styles.teamName} numberOfLines={2}>
                   {activeMatchup.awayTeam.name}
                 </Text>
@@ -535,9 +542,12 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             <View style={styles.matchupRow}>
               {/* Home Team */}
               <View style={styles.teamCol}>
-                <View style={styles.crestCircle}>
-                  <Image source={{ uri: homeCrest }} style={styles.crestImage} resizeMode="contain" />
-                </View>
+                <TeamCrest
+                  uri={homeCrest}
+                  teamName={activeMatchup.homeTeam.name}
+                  size={48}
+                  containerStyle={styles.crestFlatContainer}
+                />
                 <Text style={styles.teamName} numberOfLines={2}>
                   {activeMatchup.homeTeam.name}
                 </Text>
@@ -587,9 +597,12 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
 
               {/* Away Team */}
               <View style={styles.teamCol}>
-                <View style={styles.crestCircle}>
-                  <Image source={{ uri: awayCrest }} style={styles.crestImage} resizeMode="contain" />
-                </View>
+                <TeamCrest
+                  uri={awayCrest}
+                  teamName={activeMatchup.awayTeam.name}
+                  size={48}
+                  containerStyle={styles.crestFlatContainer}
+                />
                 <Text style={styles.teamName} numberOfLines={2}>
                   {activeMatchup.awayTeam.name}
                 </Text>
@@ -875,18 +888,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 2,
   },
-  crestCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#181524',
+  crestFlatContainer: {
+    marginBottom: 6,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
-  },
-  crestImage: {
-    width: 36,
-    height: 36,
   },
   teamName: {
     fontSize: 13,

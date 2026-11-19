@@ -13,6 +13,7 @@ import { ArrowLeft, Check, Plus, Shield } from 'lucide-react-native';
 import Colors from '../../../theme/colors';
 import { SecondaryScreenHeader } from '../../../components/common/SecondaryScreenHeader';
 import { POPULAR_TEAMS } from '../../../constants/discoverData';
+import { TeamCrest } from '../../../components/common/TeamCrest';
 
 interface FollowedTeamsModalProps {
   visible: boolean;
@@ -54,13 +55,12 @@ export const FollowedTeamsModal: React.FC<FollowedTeamsModalProps> = ({
 
             return (
               <View key={team.id} style={styles.teamCard}>
-                <View style={styles.crestWrapper}>
-                  <Image
-                    source={{ uri: team.crestUrl }}
-                    style={styles.crestImage}
-                    resizeMode="contain"
-                  />
-                </View>
+                <TeamCrest
+                  uri={team.crestUrl}
+                  teamName={team.name}
+                  size={44}
+                  containerStyle={styles.crestFlatContainer}
+                />
 
                 <View style={styles.infoCol}>
                   <Text style={styles.teamName}>{team.name}</Text>
@@ -164,19 +164,13 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 14,
   },
-  crestWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  crestFlatContainer: {
+    width: 44,
+    height: 44,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 6,
     marginRight: 14,
-  },
-  crestImage: {
-    width: '100%',
-    height: '100%',
   },
   infoCol: {
     flex: 1,

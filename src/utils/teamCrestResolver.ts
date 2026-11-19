@@ -630,12 +630,8 @@ export function getTeamCrest(teamIdentifierOrName?: string | null): string {
     }
   }
 
-  // Generate an authentic, branded team monogram crest badge for unmapped clubs (e.g. amateur / lower-tier French clubs)
-  const cleanInitials = raw
-    .replace(/\b(fc|cf|sc|afc|as|ca|us|rc|es|cs|club|de|du|la|le|les|des)\b/gi, '')
-    .trim();
-  const displayName = cleanInitials.length > 0 ? cleanInitials : raw;
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=241A45&color=A58BFC&size=256&bold=true&length=2&font-size=0.45&rounded=false`;
+  // Return default neutral sports shield for unmapped clubs
+  return DEFAULT_CREST;
 }
 
 export default getTeamCrest;

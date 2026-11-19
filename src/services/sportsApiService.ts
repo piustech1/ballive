@@ -423,6 +423,9 @@ class SportsApiService {
   private ufcRankingsCache: { data: UfcDivisionRankings[]; timestamp: number } | null = null;
   private intelCache = new Map<string, { data: MatchIntelResponse; timestamp: number }>();
   private globalEventsCache: { events: any[]; timestamp: number } | null = null;
+  private scoreboardCache = new Map<string, { data: LiveMatch[]; timestamp: number }>();
+  private inFlightScoreboardPromises = new Map<string, Promise<LiveMatch[]>>();
+  private readonly SCOREBOARD_CACHE_TTL = 30000; // 30 seconds
   private readonly CACHE_TTL = 60000; // 60 seconds
 
   /**
@@ -667,6 +670,19 @@ class SportsApiService {
     if (resolvedKey && isUnsupportedStreamingCompetition(resolvedKey)) {
       return [];
     }
+
+    const cacheKey = `${resolvedKey || 'all'}_${liveOnly}`;
+    const now = Date.now();
+    const cached = this.scoreboardCache.get(cacheKey);
+    if (cached && now - cached.timestamp < this.SCOREBOARD_CACHE_TTL) {
+      return cached.data;
+    }
+
+    const inFlight = this.inFlightScoreboardPromises.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
+    }
+
     const leaguesToFetch = resolvedKey
       ? [SUPPORTED_LEAGUES[resolvedKey]].filter(Boolean)
       : [
@@ -685,7 +701,9 @@ class SportsApiService {
           SUPPORTED_LEAGUES['nfl'],
         ].filter(Boolean);
 
-    const matches: LiveMatch[] = [];
+    const fetchPromise = (async () => {
+      try {
+        const matches: LiveMatch[] = [];
 
     const results = await Promise.allSettled(
       leaguesToFetch.map(async cfg => {
@@ -794,11 +812,19 @@ class SportsApiService {
       }
     });
 
-    if (matches.length > 0) {
-      matchArtworkEnricher.enrichMatches(matches);
-    }
+        if (matches.length > 0) {
+          matchArtworkEnricher.enrichMatches(matches);
+        }
 
-    return matches;
+        this.scoreboardCache.set(cacheKey, { data: matches, timestamp: Date.now() });
+        return matches;
+      } finally {
+        this.inFlightScoreboardPromises.delete(cacheKey);
+      }
+    })();
+
+    this.inFlightScoreboardPromises.set(cacheKey, fetchPromise);
+    return fetchPromise;
   }
 
   /**

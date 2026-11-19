@@ -12,6 +12,7 @@ import { Search, Plus, Check } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
 import { POPULAR_TEAMS, PopularTeam } from '../constants/discoverData';
+import { TeamCrest } from '../components/common/TeamCrest';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
 
@@ -76,9 +77,12 @@ export const AllTeamsScreen: React.FC = () => {
                 });
               }}
             >
-              <View style={styles.crestWrapper}>
-                <Image source={{ uri: team.crestUrl }} style={styles.crestImage} />
-              </View>
+              <TeamCrest
+                uri={team.crestUrl}
+                teamName={team.name}
+                size={42}
+                containerStyle={styles.crestFlatContainer}
+              />
 
               <View style={styles.infoWrapper}>
                 <Text style={styles.teamName} numberOfLines={1}>
@@ -185,19 +189,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 14,
   },
-  crestWrapper: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#181524',
+  crestFlatContainer: {
+    width: 44,
+    height: 44,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
-  },
-  crestImage: {
-    width: 32,
-    height: 32,
-    resizeMode: 'contain',
   },
   infoWrapper: {
     flex: 1,

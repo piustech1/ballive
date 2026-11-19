@@ -21,6 +21,7 @@ import {
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
 import { PopularTeam, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
+import { TeamCrest } from '../components/common/TeamCrest';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { navigateToMatch } from '../navigation/navHelpers';
@@ -82,9 +83,12 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
       >
         {/* Team Hero Card */}
         <View style={styles.heroCard}>
-          <View style={styles.crestContainer}>
-            <Image source={{ uri: team.crestUrl }} style={styles.crestImage} />
-          </View>
+          <TeamCrest
+            uri={team.crestUrl}
+            teamName={team.name}
+            size={72}
+            containerStyle={styles.crestFlatContainer}
+          />
           <Text style={styles.teamHeroName}>{team.name}</Text>
           <Text style={styles.teamHeroSubtitle}>{team.domesticTitle}</Text>
 
@@ -277,19 +281,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E1730',
     alignItems: 'center',
   },
-  crestContainer: {
+  crestFlatContainer: {
     width: 76,
     height: 76,
-    borderRadius: 38,
-    backgroundColor: '#181524',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
-  },
-  crestImage: {
-    width: 56,
-    height: 56,
-    resizeMode: 'contain',
   },
   teamHeroName: {
     fontSize: 20,

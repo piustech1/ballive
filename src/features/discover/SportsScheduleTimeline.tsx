@@ -14,6 +14,7 @@ import {
   isVerifiedEventImage,
 } from '../../utils/sportBackgroundResolver';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
+import { TeamCrest } from '../../components/common/TeamCrest';
 import { sortUpcomingChronologically } from '../../utils/matchStatus';
 import { theSportsDbService } from '../../services/theSportsDbService';
 import { MatchArtworkBackground } from '../../components/common/MatchArtworkBackground';
@@ -512,10 +513,11 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
         <View style={styles.topTeamsStack}>
           {/* Home Team */}
           <View style={styles.topTeamRow}>
-            <Image
-              source={{ uri: homeCrest }}
-              style={styles.topCrest}
-              resizeMode="contain"
+            <TeamCrest
+              uri={homeCrest}
+              teamName={homeName}
+              size={18}
+              containerStyle={{ marginRight: 8 }}
             />
             <Text style={styles.topTeamName} numberOfLines={1}>
               {homeName}
@@ -525,10 +527,11 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
 
           {/* Away Team */}
           <View style={styles.topTeamRow}>
-            <Image
-              source={{ uri: awayCrest }}
-              style={styles.topCrest}
-              resizeMode="contain"
+            <TeamCrest
+              uri={awayCrest}
+              teamName={awayName}
+              size={18}
+              containerStyle={{ marginRight: 8 }}
             />
             <Text style={styles.topTeamName} numberOfLines={1}>
               {awayName}
@@ -651,10 +654,11 @@ const SmallMatchCard: React.FC<SmallMatchCardProps> = ({
           <View style={styles.smallTeamsStack}>
             {/* Home Team */}
             <View style={styles.smallTeamRow}>
-              <Image
-                source={{ uri: homeCrest }}
-                style={styles.smallCrest}
-                resizeMode="contain"
+              <TeamCrest
+                uri={homeCrest}
+                teamName={homeAbbr}
+                size={15}
+                containerStyle={{ marginRight: 6 }}
               />
               <Text style={styles.smallTeamText} numberOfLines={1}>
                 {homeAbbr}
@@ -663,10 +667,11 @@ const SmallMatchCard: React.FC<SmallMatchCardProps> = ({
 
             {/* Away Team */}
             <View style={styles.smallTeamRow}>
-              <Image
-                source={{ uri: awayCrest }}
-                style={styles.smallCrest}
-                resizeMode="contain"
+              <TeamCrest
+                uri={awayCrest}
+                teamName={awayAbbr}
+                size={15}
+                containerStyle={{ marginRight: 6 }}
               />
               <Text style={styles.smallTeamText} numberOfLines={1}>
                 {awayAbbr}

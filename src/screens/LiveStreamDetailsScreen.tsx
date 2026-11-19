@@ -38,6 +38,7 @@ import {
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
 import { LiveBadge } from '../components/common/LiveBadge';
+import { TeamCrest } from '../components/common/TeamCrest';
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
@@ -374,12 +375,12 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             <View style={styles.teamsRow}>
               {/* Home Team */}
               <View style={styles.matchTeamSide}>
-                <View style={styles.crestContainer}>
-                  <Image
-                    source={{ uri: activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id) }}
-                    style={styles.crestImage}
-                  />
-                </View>
+                <TeamCrest
+                  uri={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)}
+                  teamName={activeMatch.homeTeam.name}
+                  size={48}
+                  containerStyle={styles.crestFlatContainer}
+                />
                 <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
                   {activeMatch.homeTeam.name}
                 </Text>
@@ -415,12 +416,12 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
               {/* Away Team */}
               <View style={styles.matchTeamSide}>
-                <View style={styles.crestContainer}>
-                  <Image
-                    source={{ uri: activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id) }}
-                    style={styles.crestImage}
-                  />
-                </View>
+                <TeamCrest
+                  uri={activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)}
+                  teamName={activeMatch.awayTeam.name}
+                  size={48}
+                  containerStyle={styles.crestFlatContainer}
+                />
                 <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
                   {activeMatch.awayTeam.name}
                 </Text>
@@ -764,19 +765,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  crestContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#181524',
+  crestFlatContainer: {
+    marginBottom: 6,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
-  },
-  crestImage: {
-    width: 34,
-    height: 34,
-    resizeMode: 'contain',
   },
   teamNameText: {
     fontSize: 13,

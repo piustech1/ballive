@@ -13,6 +13,7 @@ import { LiveMatch } from '../../constants/mockData';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { CompetitionLogo } from './CompetitionLogo';
 import { MatchArtworkBackground } from './MatchArtworkBackground';
+import { TeamCrest } from './TeamCrest';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import {
   resolveSportBackground,
@@ -315,9 +316,12 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
           <View style={[styles.matchupSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
             {/* Fighter 1 (Red Corner) */}
             <View style={styles.teamCol}>
-              <View style={[styles.crestCircle, styles.redCornerCircle]}>
-                <Image source={{ uri: m.homeCrest }} style={styles.crestImage} />
-              </View>
+              <TeamCrest
+                uri={m.homeCrest}
+                teamName={m.homeTeamName}
+                size={26}
+                containerStyle={styles.crestFlatContainer}
+              />
               <Text style={styles.teamNameText} numberOfLines={1}>
                 {m.homeTeamName}
               </Text>
@@ -347,9 +351,12 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
 
             {/* Fighter 2 (Blue Corner) */}
             <View style={styles.teamCol}>
-              <View style={[styles.crestCircle, styles.blueCornerCircle]}>
-                <Image source={{ uri: m.awayCrest }} style={styles.crestImage} />
-              </View>
+              <TeamCrest
+                uri={m.awayCrest}
+                teamName={m.awayTeamName}
+                size={26}
+                containerStyle={styles.crestFlatContainer}
+              />
               <Text style={styles.teamNameText} numberOfLines={1}>
                 {m.awayTeamName}
               </Text>
@@ -362,9 +369,12 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
         <View style={[styles.matchupSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
           {/* Home Team */}
           <View style={styles.teamCol}>
-            <View style={styles.crestCircle}>
-              <Image source={{ uri: m.homeCrest }} style={styles.crestImage} />
-            </View>
+            <TeamCrest
+              uri={m.homeCrest}
+              teamName={m.homeTeamName}
+              size={26}
+              containerStyle={styles.crestFlatContainer}
+            />
             <Text style={styles.teamNameText} numberOfLines={1}>
               {m.homeTeamName}
             </Text>
@@ -401,9 +411,12 @@ export const UniversalMatchCard: React.FC<UniversalMatchCardProps> = ({
 
           {/* Away Team */}
           <View style={styles.teamCol}>
-            <View style={styles.crestCircle}>
-              <Image source={{ uri: m.awayCrest }} style={styles.crestImage} />
-            </View>
+            <TeamCrest
+              uri={m.awayCrest}
+              teamName={m.awayTeamName}
+              size={26}
+              containerStyle={styles.crestFlatContainer}
+            />
             <Text style={styles.teamNameText} numberOfLines={1}>
               {m.awayTeamName}
             </Text>
@@ -574,19 +587,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  crestCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+  crestFlatContainer: {
+    marginBottom: 4,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 3,
-  },
-  crestImage: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
   },
   teamNameText: {
     fontSize: 10.5,

@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import Colors from '../../theme/colors';
 import { PopularTeam } from '../../constants/discoverData';
+import { TeamCrest } from '../../components/common/TeamCrest';
 
 interface PopularTeamsProps {
   teams: PopularTeam[];
@@ -52,13 +53,12 @@ export const PopularTeams: React.FC<PopularTeamsProps> = ({
             accessibilityLabel={`${team.name}, ${team.country}`}
           >
             {/* Centered Crest */}
-            <View style={styles.crestContainer}>
-              <Image
-                source={{ uri: team.crestUrl }}
-                style={styles.crestImage}
-                resizeMode="contain"
-              />
-            </View>
+            <TeamCrest
+              uri={team.crestUrl}
+              teamName={team.name}
+              size={52}
+              containerStyle={styles.crestFlatContainer}
+            />
 
             {/* Club Name & Subtitle */}
             <View style={styles.nameContainer}>
@@ -111,19 +111,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  crestContainer: {
+  crestFlatContainer: {
     width: 58,
     height: 58,
-    borderRadius: 29,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 8,
     marginTop: 4,
-  },
-  crestImage: {
-    width: '100%',
-    height: '100%',
   },
   nameContainer: {
     alignItems: 'center',

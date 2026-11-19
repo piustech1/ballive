@@ -12,6 +12,7 @@ import {
 import { ArrowLeft, Bell, BellRing, Calendar } from 'lucide-react-native';
 import Colors from '../../../theme/colors';
 import { SecondaryScreenHeader } from '../../../components/common/SecondaryScreenHeader';
+import { TeamCrest } from '../../../components/common/TeamCrest';
 import { UPCOMING_HIGHLIGHTS } from '../../../constants/discoverData';
 
 interface MatchRemindersModalProps {
@@ -66,13 +67,12 @@ export const MatchRemindersModal: React.FC<MatchRemindersModalProps> = ({
                 <View style={styles.teamsRow}>
                   {/* Home */}
                   <View style={styles.teamSide}>
-                    <View style={styles.crestCircle}>
-                      <Image
-                        source={{ uri: matchup.homeTeam.crestUrl }}
-                        style={styles.crestImage}
-                        resizeMode="contain"
-                      />
-                    </View>
+                    <TeamCrest
+                      uri={matchup.homeTeam.crestUrl}
+                      teamName={matchup.homeTeam.name}
+                      size={36}
+                      containerStyle={styles.crestFlatContainer}
+                    />
                     <Text style={styles.teamName} numberOfLines={1}>
                       {matchup.homeTeam.name}
                     </Text>
@@ -85,13 +85,12 @@ export const MatchRemindersModal: React.FC<MatchRemindersModalProps> = ({
 
                   {/* Away */}
                   <View style={styles.teamSide}>
-                    <View style={styles.crestCircle}>
-                      <Image
-                        source={{ uri: matchup.awayTeam.crestUrl }}
-                        style={styles.crestImage}
-                        resizeMode="contain"
-                      />
-                    </View>
+                    <TeamCrest
+                      uri={matchup.awayTeam.crestUrl}
+                      teamName={matchup.awayTeam.name}
+                      size={36}
+                      containerStyle={styles.crestFlatContainer}
+                    />
                     <Text style={styles.teamName} numberOfLines={1}>
                       {matchup.awayTeam.name}
                     </Text>
@@ -223,19 +222,11 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
-  crestCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  crestFlatContainer: {
+    marginBottom: 6,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 6,
-    marginBottom: 6,
-  },
-  crestImage: {
-    width: '100%',
-    height: '100%',
   },
   teamName: {
     fontSize: 13,
