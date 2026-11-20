@@ -21,8 +21,9 @@ import { isGenuineEventArtwork } from '../utils/sportBackgroundResolver';
 
 const THESPORTSDB_BASE_URL = 'https://www.thesportsdb.com/api/v1/json/123';
 const REQUEST_TIMEOUT_MS = 5000;
-const CACHE_STORAGE_FILE = `${FileSystem.documentDirectory || ''}thesportsdb_artwork_cache_v2.json`;
-const OLD_CACHE_FILE = `${FileSystem.documentDirectory || ''}thesportsdb_artwork_cache_v1.json`;
+const CACHE_STORAGE_FILE = `${FileSystem.documentDirectory || ''}thesportsdb_artwork_cache_v3.json`;
+const OLD_CACHE_FILE_V1 = `${FileSystem.documentDirectory || ''}thesportsdb_artwork_cache_v1.json`;
+const OLD_CACHE_FILE_V2 = `${FileSystem.documentDirectory || ''}thesportsdb_artwork_cache_v2.json`;
 
 // Common European and international club alias dictionary
 const TEAM_ALIASES: Record<string, string[]> = {
@@ -147,18 +148,12 @@ class TheSportsDbService {
   private async initDiskStorage(): Promise<void> {
     try {
       if (FileSystem && FileSystem.documentDirectory) {
-        // Check new cache file
+        // Asynchronously purge stale legacy caches to ensure zero cross-contamination
+        FileSystem.deleteAsync(OLD_CACHE_FILE_V1, { idempotent: true }).catch(() => {});
+        FileSystem.deleteAsync(OLD_CACHE_FILE_V2, { idempotent: true }).catch(() => {});
+
         let targetFile = CACHE_STORAGE_FILE;
         let fileInfo = await FileSystem.getInfoAsync(targetFile);
-
-        // Fallback to old cache file if new one doesn't exist yet
-        if (!fileInfo.exists) {
-          const oldInfo = await FileSystem.getInfoAsync(OLD_CACHE_FILE);
-          if (oldInfo.exists) {
-            targetFile = OLD_CACHE_FILE;
-            fileInfo = oldInfo;
-          }
-        }
 
         if (fileInfo.exists) {
           const raw = await FileSystem.readAsStringAsync(targetFile);
@@ -455,8 +450,12 @@ class TheSportsDbService {
 
           const events = data.event || [];
           if (events.length > 0) {
-            // Find event matching sport and optional date window
+            const isYouth = /\b(u17|u19|u20|u21|u23|youth|juvenil)\b/i.test(`${homeTeam} ${awayTeam}`);
             const matched = events.find(e => {
+              const evName = (e.strEvent || '').toLowerCase();
+              if (isYouth && !/\b(u17|u19|u20|u21|u23|youth|juvenil)\b/i.test(evName)) {
+                return false;
+              }
               if (!sport) return true;
               const evSport = (e.strSport || '').toLowerCase();
               if (sport === 'soccer' && (evSport === 'soccer' || evSport === 'football')) {
@@ -477,7 +476,11 @@ class TheSportsDbService {
               if (sport === 'hockey' && (evSport === 'ice hockey' || evSport === 'hockey')) return true;
               if (sport === 'american_football' && evSport === 'american football') return true;
               return true;
-            }) || events[0];
+            });
+
+            if (!matched) {
+              continue;
+            }
 
             // Extract verified artwork in priority order
             const candidateArtwork =

@@ -12,6 +12,7 @@ import {
   parseKickoffTimestamp,
   formatMatchSchedule,
   sortUpcomingChronologically,
+  isWithinTodayOrTomorrow,
 } from '../utils/matchStatus';
 import { theSportsDbService } from './theSportsDbService';
 import { matchArtworkEnricher } from './matchArtworkEnricher';
@@ -161,7 +162,9 @@ class StreamingApiService {
           if (!seenMatchIds.has(m.id)) {
             seenMatchIds.add(m.id);
             if (m.status === 'UPCOMING' || !m.isLive) {
-              fetchedUpcoming.push(m);
+              if (isWithinTodayOrTomorrow(m.kickoffTimestamp || m.rawDate || m.kickoffTime)) {
+                fetchedUpcoming.push(m);
+              }
             } else {
               if (!m.streamUrl) {
                 const bChannel = getBroadcastChannelId(m.competition, m.sport);
@@ -366,11 +369,19 @@ class StreamingApiService {
               }
 
               // Check live status strictly - prioritize confirmed live ESPN scoreboard or explicit live release
-              const isReleaseLive = m.releaseInfo === 'LIVE' || cleanTitle.includes('🔴 LIVE') || Boolean(m.description && m.description.includes('LIVE NOW'));
+              const cleanKickoff = m.releaseInfo ? m.releaseInfo.replace(/^⏱️\s*/, '') : 'Upcoming';
+              const kickoffTimestamp = parseKickoffTimestamp(m.releaseInfo || cleanKickoff);
+              const isFutureKickoff = kickoffTimestamp !== Number.MAX_SAFE_INTEGER && kickoffTimestamp > Date.now() + 5 * 60 * 1000;
               const isTimeUpcoming = typeof m.releaseInfo === 'string' && (m.releaseInfo.includes('AM') || m.releaseInfo.includes('PM') || m.releaseInfo.includes(':') || cleanTitle.startsWith('⏱️'));
               const matchedEspn = findMatchedEspn(home, away, `${m.id || ''} ${m.poster || ''}`);
               const isEspnLive = Boolean(matchedEspn && matchedEspn.isLive && (matchedEspn.minute > 0 || matchedEspn.score.home > 0 || matchedEspn.score.away > 0 || matchedEspn.playTime === 'HT'));
-              const isTrulyLive = isEspnLive || isReleaseLive || (!isTimeUpcoming && m.releaseInfo === 'LIVE');
+              const isReleaseLive = m.releaseInfo === 'LIVE' || cleanTitle.includes('🔴 LIVE') || Boolean(m.description && m.description.includes('LIVE NOW'));
+              
+              // Strictly never allow a match whose kickoff is in the future to be labeled LIVE
+              const isTrulyLive = !isFutureKickoff && !isTimeUpcoming && (
+                isEspnLive ||
+                (matchedEspn ? matchedEspn.isLive : isReleaseLive)
+              );
 
               // Select authentic unique artwork with multi-sport detection (never generic placeholder)
               const backdrop = resolveSportBackground(
@@ -383,9 +394,12 @@ class StreamingApiService {
               );
 
               if (!isTrulyLive) {
+                // Strictly filter upcoming fixtures to Today and Tomorrow (48-hour window)
+                if (!isWithinTodayOrTomorrow(m.releaseInfo || kickoffTimestamp)) {
+                  return;
+                }
+
                 // Route upcoming fixtures to upcoming collection with clean scheduled kickoff in EAT
-                const cleanKickoff = m.releaseInfo ? m.releaseInfo.replace(/^⏱️\s*/, '') : 'Upcoming';
-                const kickoffTimestamp = parseKickoffTimestamp(m.releaseInfo || cleanKickoff);
                 const scheduleInfo = formatMatchSchedule(m.releaseInfo || cleanKickoff);
                 const eatKickoff = scheduleInfo.fullKickoff !== 'Upcoming' ? scheduleInfo.fullKickoff : (cleanKickoff.includes('EAT') ? cleanKickoff : formatKickoffEAT(cleanKickoff));
 
@@ -547,6 +561,9 @@ class StreamingApiService {
       const seenUpcomingKeys = new Set<string>();
       const uniqueUpcoming: LiveMatch[] = [];
       fetchedUpcoming.forEach(u => {
+        if (!isWithinTodayOrTomorrow(u.kickoffTimestamp || u.rawDate || u.kickoffTime)) {
+          return;
+        }
         const uKey = `${cleanName(u.homeTeam)}-${cleanName(u.awayTeam)}`;
         if (!seenUpcomingKeys.has(uKey) && !seenUpcomingKeys.has(u.id)) {
           seenUpcomingKeys.add(uKey);
@@ -836,10 +853,12 @@ class StreamingApiService {
     const compLower = (live.competition || '').toLowerCase();
 
     // Authoritative Match Status Normalization
+    const rawKickoffRef = live.rawDate || live.kickoffTime || live.time;
     const statusInfo = normalizeMatchStatus({
       rawStatus: live.status,
       minute: live.minute,
       playTime: live.playTime,
+      kickoffDate: typeof rawKickoffRef === 'string' ? rawKickoffRef : undefined,
       completed: live.status === 'FT' || (live as any).state === 'post',
     });
 

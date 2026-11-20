@@ -132,6 +132,16 @@ export const HomeScreen: React.FC = () => {
     });
   }, [navigate, selectedCategoryId]);
 
+  const handleCategorySelect = useCallback(
+    (categoryId: string | null) => {
+      navigate({
+        name: 'AllLiveStreams',
+        params: { initialSport: categoryId || 'all' },
+      });
+    },
+    [navigate]
+  );
+
   const handleFilterPress = useCallback(() => {
     setIsFilterSheetVisible(true);
   }, []);
@@ -188,7 +198,7 @@ export const HomeScreen: React.FC = () => {
         {/* 1. Categories Section (Rectangular Branded Tiles) */}
         <CompetitionCategories
           selectedCategoryId={selectedCategoryId}
-          onSelectCategory={setSelectedCategoryId}
+          onSelectCategory={handleCategorySelect}
         />
 
         {/* 2. Live & Upcoming Streams Section */}

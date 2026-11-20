@@ -572,30 +572,14 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
               {/* Center: Score / Status / VS */}
               <View style={styles.centerCol}>
                 {isLive ? (
-                  <>
-                    <View style={styles.scoreRow}>
-                      <Text style={styles.scoreText}>{homeScore}</Text>
-                      <Text style={styles.scoreColon}>:</Text>
-                      <Text style={styles.scoreText}>{awayScore}</Text>
-                    </View>
-                    <View style={styles.livePill}>
-                      <View style={styles.liveDot} />
-                      <Text style={styles.livePillText}>
-                        {activeMatchup.playTime || (activeMatchup.minute ? `${activeMatchup.minute}' LIVE` : 'LIVE')}
-                      </Text>
-                    </View>
-                  </>
+                  <View style={styles.livePill}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.livePillText}>LIVE</Text>
+                  </View>
                 ) : isFinished ? (
-                  <>
-                    <View style={styles.scoreRow}>
-                      <Text style={styles.scoreText}>{homeScore}</Text>
-                      <Text style={styles.scoreColon}>:</Text>
-                      <Text style={styles.scoreText}>{awayScore}</Text>
-                    </View>
-                    <View style={styles.ftPill}>
-                      <Text style={styles.ftPillText}>FULL TIME</Text>
-                    </View>
-                  </>
+                  <View style={styles.ftPill}>
+                    <Text style={styles.ftPillText}>FULL TIME</Text>
+                  </View>
                 ) : (
                   <>
                     <View style={styles.vsPill}>

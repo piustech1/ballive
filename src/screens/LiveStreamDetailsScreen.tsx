@@ -54,7 +54,7 @@ import { LiveStreamPlayer } from '../components/player/LiveStreamPlayer';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
-import { isMotorsport, isCombatSport } from '../utils/sportClassifier';
+import { isMotorsport, isCombatSport, cleanEventTitle } from '../utils/sportClassifier';
 
 interface LiveStreamDetailsScreenProps {
   match: DiscoverMatchup;
@@ -418,7 +418,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                     <Text style={styles.racingCategoryText}>MOTORSPORT</Text>
                   </View>
                   <Text style={styles.racingEventTitle} numberOfLines={2}>
-                    {activeMatch.competition || activeMatch.homeTeam.name}
+                    {cleanEventTitle(activeMatch.competition || activeMatch.homeTeam.name, 'motorsport')}
                   </Text>
                   <Text style={styles.racingVenueSubtitle} numberOfLines={1}>
                     {activeMatch.homeTeam.name && activeMatch.awayTeam.name && !['tbd', 'tba', 'opponent'].includes(activeMatch.awayTeam.name.toLowerCase())
@@ -498,27 +498,22 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
                 {/* Score / Match State Center */}
                 <View style={styles.matchScoreCenter}>
-                  {isLive || activeMatch.status === 'FT' ? (
-                    <>
-                      <View style={styles.scoreRow}>
-                        <Text style={styles.scoreNumber}>{liveScore.home}</Text>
-                        <Text style={styles.scoreColon}>:</Text>
-                        <Text style={styles.scoreNumber}>{liveScore.away}</Text>
-                      </View>
-                      <View style={[styles.statusBadgePill, isLive ? styles.statusBadgeLive : styles.statusBadgeFT]}>
-                        {isLive && <View style={styles.liveClockDot} />}
-                        <Text style={styles.statusBadgeText}>
-                          {liveScore.statusText || (isLive ? `${liveScore.minute || activeMatch.minute || 45}' LIVE` : 'FULL TIME')}
-                        </Text>
-                      </View>
-                    </>
+                  {isLive ? (
+                    <View style={[styles.statusBadgePill, styles.statusBadgeLive]}>
+                      <View style={styles.liveClockDot} />
+                      <Text style={styles.statusBadgeText}>LIVE</Text>
+                    </View>
+                  ) : activeMatch.status === 'FT' ? (
+                    <View style={[styles.statusBadgePill, styles.statusBadgeFT]}>
+                      <Text style={styles.statusBadgeText}>FULL TIME</Text>
+                    </View>
                   ) : (
                     <>
                       <View style={styles.vsBadge}>
                         <Text style={styles.vsText}>VS</Text>
                       </View>
                       <Text style={styles.matchStatusSub}>
-                        {activeMatch.kickoffTime || '17:30'} • Today
+                        {activeMatch.kickoffTime || 'Today'}
                       </Text>
                     </>
                   )}
@@ -537,45 +532,6 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                   </Text>
                 </View>
               </View>
-            </View>
-          )}
-
-          {/* ── BROADCAST SERVERS SWITCHER ── */}
-          {isLive && activeStreams && activeStreams.length > 1 && (
-            <View style={styles.serverSection}>
-              <View style={styles.serverSectionHeader}>
-                <Radio size={13} color="#7952FC" strokeWidth={2.4} />
-                <Text style={styles.serverSectionTitle}>Broadcast Servers</Text>
-                <Text style={styles.serverSectionHint}>Tap to switch channel feed</Text>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.serverPillList}
-              >
-                {activeStreams.map((s, idx) => {
-                  const isSelected = activeStreamUrl === s.url || (!activeStreamUrl && idx === 0);
-                  return (
-                    <TouchableOpacity
-                      key={s.id || `srv-${idx}`}
-                      activeOpacity={0.8}
-                      style={[styles.serverPill, isSelected && styles.serverPillActive]}
-                      onPress={() => {
-                        setActiveStreamUrl(s.url);
-                      }}
-                    >
-                      {isSelected ? (
-                        <Check size={12} color="#FFFFFF" strokeWidth={2.6} style={{ marginRight: 5 }} />
-                      ) : (
-                        <Tv size={12} color="#A098B5" strokeWidth={2} style={{ marginRight: 5 }} />
-                      )}
-                      <Text style={[styles.serverPillText, isSelected && styles.serverPillTextActive]}>
-                        {s.name}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
             </View>
           )}
 

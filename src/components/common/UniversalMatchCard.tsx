@@ -24,6 +24,7 @@ import { theSportsDbService } from '../../services/theSportsDbService';
 import {
   isCombatSport,
   isMotorsport,
+  cleanEventTitle,
 } from '../../utils/sportClassifier';
 
 export type UniversalMatchItem = LiveMatch | DiscoverMatchup;
@@ -89,7 +90,8 @@ function normalizeMatchItem(item: UniversalMatchItem) {
   const homeScore = isUpcoming ? 0 : (rawHomeScore ?? 0);
   const awayScore = isUpcoming ? 0 : (rawAwayScore ?? 0);
 
-  const competition = item.competition || 'Sports Match';
+  const rawComp = item.competition || 'Sports Match';
+  const competition = cleanEventTitle(rawComp, item.sport);
   const competitionLogo = (item as any).competitionLogo || undefined;
 
   const rawImage =
@@ -217,219 +219,48 @@ const UniversalMatchCardComponent: React.FC<UniversalMatchCardProps> = ({
       : styles.carouselContainer;
 
   const cardInnerContent = (
-    <>
-      {/* ── CARD TOP ROW: Competition Identity & Status Badge ── */}
-      <View style={styles.topRow}>
-        <View style={styles.compBadge}>
-          <CompetitionLogo
-            competitionId={m.competition}
-            uri={m.competitionLogo}
-            size={17}
-            containerStyle={{ marginRight: 5 }}
-          />
-          <Text style={styles.competitionText} numberOfLines={1}>
-            {m.competition}
-          </Text>
-        </View>
-
-        <View style={styles.topRightGroup}>
-          {m.isLive ? (
-            <View style={styles.liveBadge}>
-              <View style={styles.livePulseDot} />
-              <Text style={styles.liveBadgeText}>
-                {m.playTime
-                  ? (m.playTime.toUpperCase().includes('LIVE') ? m.playTime.toUpperCase() : `${m.playTime} LIVE`)
-                  : m.minute > 0
-                  ? `${m.minute}' LIVE`
-                  : 'LIVE'}
-              </Text>
-            </View>
-          ) : m.isFinished ? (
-            <View style={styles.ftBadge}>
-              <Text style={styles.ftBadgeText}>FT</Text>
-            </View>
-          ) : (
-            <View style={styles.upcomingBadge}>
-              <Text style={styles.upcomingBadgeText}>UPCOMING</Text>
-            </View>
-          )}
-
-          {rightAction ? (
-            <View style={{ marginLeft: 6 }}>{rightAction}</View>
-          ) : null}
-        </View>
+    <View style={styles.topRow}>
+      <View style={styles.compBadge}>
+        <CompetitionLogo
+          competitionId={m.competition}
+          uri={m.competitionLogo}
+          size={17}
+          containerStyle={{ marginRight: 5 }}
+        />
+        <Text style={styles.competitionText} numberOfLines={1}>
+          {m.competition}
+        </Text>
       </View>
 
-      {/* ── CARD BOTTOM MATCHUP CONTAINER: Sport-Aware Surface ── */}
-      {m.isMotor ? (
-        /* Motorsport Layout: Grand Prix, Venue, and Session info — NO fake scores */
-        <View style={[styles.matchupSurface, styles.racingSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
-          <View style={styles.racingDetailsCol}>
-            <Text style={styles.racingEventTitle} numberOfLines={1}>
-              {m.homeTeamName || m.competition}
-            </Text>
-            <Text style={styles.racingVenueText} numberOfLines={1}>
-              {!m.isPlaceholderOpponent && m.awayTeamName ? m.awayTeamName : 'Official Grand Prix Session'}
+      <View style={styles.topRightGroup}>
+        {m.isLive ? (
+          <View style={styles.liveBadge}>
+            <View style={styles.livePulseDot} />
+            <Text style={styles.liveBadgeText}>
+              {m.playTime
+                ? (m.playTime.toUpperCase().includes('LIVE') ? m.playTime.toUpperCase() : `${m.playTime} LIVE`)
+                : m.minute > 0
+                ? `${m.minute}' LIVE`
+                : 'LIVE'}
             </Text>
           </View>
-          <View style={styles.racingStatusCol}>
-            {m.isLive ? (
-              <View style={styles.racingLivePill}>
-                <View style={styles.livePulseDot} />
-                <Text style={styles.racingLivePillText}>RACE LIVE</Text>
-              </View>
-            ) : m.isFinished ? (
-              <View style={styles.racingFtPill}>
-                <Text style={styles.racingFtPillText}>COMPLETED</Text>
-              </View>
-            ) : (
-              <View style={styles.racingTimePill}>
-                <Text style={styles.racingTimePillText} numberOfLines={1}>
-                  {m.kickoffTime}
-                </Text>
-              </View>
-            )}
-          </View>
-        </View>
-      ) : m.isCombat ? (
-        /* Combat Sport: Red Corner vs Blue Corner or Event Banner — NO fake 0-0 scores */
-        m.isPlaceholderOpponent ? (
-          <View style={[styles.matchupSurface, styles.combatSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
-            <View style={styles.combatDetailsCol}>
-              <Text style={styles.combatEventTitle} numberOfLines={1}>
-                {m.homeTeamName}
-              </Text>
-              <Text style={styles.combatSubtitle} numberOfLines={1}>
-                {m.competition}
-              </Text>
-            </View>
-            <View style={styles.combatStatusCol}>
-              {m.isLive ? (
-                <View style={styles.racingLivePill}>
-                  <View style={styles.livePulseDot} />
-                  <Text style={styles.racingLivePillText}>BOUT LIVE</Text>
-                </View>
-              ) : (
-                <View style={styles.racingTimePill}>
-                  <Text style={styles.racingTimePillText} numberOfLines={1}>
-                    {m.kickoffTime}
-                  </Text>
-                </View>
-              )}
-            </View>
+        ) : m.isFinished ? (
+          <View style={styles.ftBadge}>
+            <Text style={styles.ftBadgeText}>FT</Text>
           </View>
         ) : (
-          <View style={[styles.matchupSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
-            {/* Fighter 1 (Red Corner) */}
-            <View style={styles.teamCol}>
-              <TeamCrest
-                uri={m.homeCrest}
-                teamName={m.homeTeamName}
-                size={26}
-                containerStyle={styles.crestFlatContainer}
-              />
-              <Text style={styles.teamNameText} numberOfLines={1}>
-                {m.homeTeamName}
-              </Text>
-              <Text style={styles.cornerSubLabelRed}>RED CORNER</Text>
-            </View>
-
-            {/* Center Bout Status (No fake football 0 - 0) */}
-            <View style={styles.centerScoreBox}>
-              {m.isLive ? (
-                <View style={styles.boutBadge}>
-                  <View style={styles.livePulseDot} />
-                  <Text style={styles.boutBadgeText}>LIVE</Text>
-                </View>
-              ) : m.isFinished ? (
-                <View style={styles.ftBadge}>
-                  <Text style={styles.ftBadgeText}>DEC</Text>
-                </View>
-              ) : (
-                <>
-                  <Text style={styles.boutVsText}>VS</Text>
-                  <Text style={styles.kickoffText} numberOfLines={1}>
-                    {m.kickoffTime}
-                  </Text>
-                </>
-              )}
-            </View>
-
-            {/* Fighter 2 (Blue Corner) */}
-            <View style={styles.teamCol}>
-              <TeamCrest
-                uri={m.awayCrest}
-                teamName={m.awayTeamName}
-                size={26}
-                containerStyle={styles.crestFlatContainer}
-              />
-              <Text style={styles.teamNameText} numberOfLines={1}>
-                {m.awayTeamName}
-              </Text>
-              <Text style={styles.cornerSubLabelBlue}>BLUE CORNER</Text>
-            </View>
-          </View>
-        )
-      ) : (
-        /* Team Score Sports (Football, American Football, Basketball, Hockey): Authentic Team-vs-Team with Scores */
-        <View style={[styles.matchupSurface, layout === 'featured' && styles.featuredMatchupSurface]}>
-          {/* Home Team */}
-          <View style={styles.teamCol}>
-            <TeamCrest
-              uri={m.homeCrest}
-              teamName={m.homeTeamName}
-              size={26}
-              containerStyle={styles.crestFlatContainer}
-            />
-            <Text style={styles.teamNameText} numberOfLines={1}>
-              {m.homeTeamName}
+          <View style={styles.upcomingBadge}>
+            <Text style={styles.upcomingBadgeText} numberOfLines={1}>
+              {m.kickoffTime || 'UPCOMING'}
             </Text>
           </View>
+        )}
 
-          {/* Center Score / VS / Status */}
-          <View style={styles.centerScoreBox}>
-            {m.isUpcoming ? (
-              <>
-                <Text style={styles.vsText}>VS</Text>
-                <Text style={styles.kickoffText} numberOfLines={1}>
-                  {m.kickoffTime}
-                </Text>
-              </>
-            ) : (
-              <>
-                <View style={styles.scoreRow}>
-                  <Text style={styles.scoreNumber}>{m.homeScore}</Text>
-                  <Text style={styles.scoreDivider}>-</Text>
-                  <Text style={styles.scoreNumber}>{m.awayScore}</Text>
-                </View>
-                <Text
-                  style={[
-                    styles.statusSubText,
-                    m.isLive ? styles.statusLiveText : styles.statusFtText,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {m.isLive ? (m.playTime || 'LIVE') : 'FINAL'}
-                </Text>
-              </>
-            )}
-          </View>
-
-          {/* Away Team */}
-          <View style={styles.teamCol}>
-            <TeamCrest
-              uri={m.awayCrest}
-              teamName={m.awayTeamName}
-              size={26}
-              containerStyle={styles.crestFlatContainer}
-            />
-            <Text style={styles.teamNameText} numberOfLines={1}>
-              {m.awayTeamName}
-            </Text>
-          </View>
-        </View>
-      )}
-    </>
+        {rightAction ? (
+          <View style={{ marginLeft: 6 }}>{rightAction}</View>
+        ) : null}
+      </View>
+    </View>
   );
 
   return (

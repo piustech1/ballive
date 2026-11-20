@@ -236,3 +236,44 @@ export function isTeamScoreSport(sport?: string | null, competition?: string | n
     canonical === 'hockey'
   );
 }
+
+/**
+ * Shortens and formats long motorsport / event titles by removing sponsor boilerplate
+ * and excessive qualifying clauses while keeping the primary series and session clear.
+ */
+export function cleanEventTitle(title: string, sport?: string): string {
+  if (!title) return '';
+  let cleaned = title.trim();
+
+  // If motorsport or long title:
+  if (sport === 'motorsport' || isMotorsport(sport, title)) {
+    // Specific popular series simplifications
+    if (/ferrari\s+challenge/i.test(cleaned)) {
+      if (/europe/i.test(cleaned)) return 'Ferrari Challenge: Europe';
+      if (/north\s+america/i.test(cleaned)) return 'Ferrari Challenge: NA';
+      if (/uk/i.test(cleaned)) return 'Ferrari Challenge: UK';
+      return 'Ferrari Challenge';
+    }
+    if (/formula\s*1|f1\b/i.test(cleaned)) {
+      const gpMatch = cleaned.match(/(?:formula\s*1\s+)?([a-zA-Z\s]+(?:\s+grand\s+prix|\s+gp))/i);
+      if (gpMatch && gpMatch[1]) {
+        return gpMatch[1].trim();
+      }
+    }
+    if (/motogp/i.test(cleaned)) {
+      const motoMatch = cleaned.match(/(?:motogp\s+)?([a-zA-Z\s]+(?:\s+grand\s+prix|\s+gp))/i);
+      if (motoMatch && motoMatch[1]) {
+        return `MotoGP: ${motoMatch[1].trim()}`;
+      }
+    }
+    // Remove commercial sponsors and verbose suffixes like "Pirelli Trophy at the World Finals"
+    cleaned = cleaned
+      .replace(/\s+(pirelli\s+trophy|coppa\s+shell|world\s+finals|trofeo\s+pirelli)\b.*/gi, '')
+      .replace(/\s+at\s+the\s+.*$/gi, '')
+      .replace(/\s+presented\s+by\s+.*$/gi, '')
+      .replace(/\s+sponsored\s+by\s+.*$/gi, '')
+      .trim();
+  }
+
+  return cleaned || title;
+}

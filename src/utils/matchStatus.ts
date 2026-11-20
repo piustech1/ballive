@@ -160,6 +160,58 @@ export function formatMatchSchedule(dateInput?: string | number | Date | null): 
 }
 
 /**
+ * Evaluates whether a match's scheduled kickoff date falls within Today or Tomorrow
+ * strictly in Africa/Nairobi time (East Africa Time, EAT).
+ * Discards any fixture scheduled 2 or more days in advance to keep the app ultra-lightweight.
+ */
+export function isWithinTodayOrTomorrow(dateInput?: string | number | Date | null): boolean {
+  if (!dateInput && dateInput !== 0) return true;
+  try {
+    const d = new Date(typeof dateInput === 'number' && dateInput < 1e11 ? dateInput * 1000 : dateInput);
+    if (isNaN(d.getTime())) {
+      if (typeof dateInput === 'string') {
+        const lower = dateInput.toLowerCase();
+        if (lower.includes('today') || lower.includes('tomorrow') || lower.includes('live')) {
+          return true;
+        }
+      }
+      return true;
+    }
+
+    const now = new Date();
+    const dateFormatter = new Intl.DateTimeFormat('en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone: 'Africa/Nairobi',
+    });
+
+    const matchParts = dateFormatter.formatToParts(d);
+    const nowParts = dateFormatter.formatToParts(now);
+
+    const getPart = (parts: Intl.DateTimeFormatPart[], type: string) =>
+      parseInt(parts.find(p => p.type === type)?.value || '0', 10);
+
+    const matchY = getPart(matchParts, 'year');
+    const matchM = getPart(matchParts, 'month');
+    const matchD = getPart(matchParts, 'day');
+
+    const nowY = getPart(nowParts, 'year');
+    const nowM = getPart(nowParts, 'month');
+    const nowD = getPart(nowParts, 'day');
+
+    const matchMidnight = Date.UTC(matchY, matchM - 1, matchD);
+    const nowMidnight = Date.UTC(nowY, nowM - 1, nowD);
+    const dayDiff = Math.round((matchMidnight - nowMidnight) / (24 * 60 * 60 * 1000));
+
+    // Day diff <= 1: Today (0) or Tomorrow (1). Also include matches from earlier today (-1/0)
+    return dayDiff <= 1;
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Formats any UTC/ISO date string or timestamp into East Africa Time (EAT, UTC+3).
  * Example: '2026-11-13T16:00:00Z' -> '19:00 EAT' or 'Fri 13 Nov, 19:00 EAT'.
  */
@@ -198,11 +250,29 @@ export function normalizeMatchStatus(options: {
     completed,
     minute: rawMinute,
     playTime: rawPlayTime,
+    kickoffDate,
     sport,
   } = options;
 
   const rawUpper = (rawStatus || '').toUpperCase().trim();
   const detailCombined = `${detail || ''} ${shortDetail || ''} ${rawPlayTime || ''}`.toUpperCase().trim();
+
+  // Guard against matches scheduled strictly in the future
+  // If scheduled kickoff is in the future by > 5 minutes, it CANNOT be actively in-play
+  if (kickoffDate) {
+    const kickoffTs = parseKickoffTimestamp(kickoffDate);
+    if (kickoffTs !== Number.MAX_SAFE_INTEGER && kickoffTs > Date.now() + 5 * 60 * 1000 && state !== 'in') {
+      return {
+        status: 'UPCOMING',
+        isLive: false,
+        isUpcoming: true,
+        isFinished: false,
+        minute: 0,
+        playTime: undefined,
+        displayStatus: 'UPCOMING',
+      };
+    }
+  }
 
   // 1. Authoritative Finished / Full Time State
   // Strictly requires authoritative server post-state or explicit completed indicators.
@@ -570,4 +640,5 @@ export default {
   getCanonicalEventId,
   isSameFixture,
   deduplicateMatchups,
+  isWithinTodayOrTomorrow,
 };

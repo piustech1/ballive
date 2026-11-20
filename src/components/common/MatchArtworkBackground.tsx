@@ -159,10 +159,8 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
             StyleSheet.absoluteFillObject,
             styles.originalImage,
             imageStyle,
-            { opacity: imageLoaded ? 1 : 0 },
           ]}
           resizeMode="cover"
-          onLoad={() => setImageLoaded(true)}
           onError={() => setImageLoadFailed(true)}
         />
       ) : null}
