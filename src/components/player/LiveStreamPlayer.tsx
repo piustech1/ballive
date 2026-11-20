@@ -244,11 +244,25 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
                   const first = (data.streams || [])[0];
                   if (first && (first.url || first.externalUrl)) {
                     streamSource = first.url || first.externalUrl;
+                  } else {
+                    sendMessage('error', { message: 'Broadcast is currently off-air or not started' });
+                    return;
                   }
+                } else {
+                  sendMessage('error', { message: 'Feed offline or satellite signal weak' });
+                  return;
                 }
               } catch (e) {
                 console.log('Stream resolution failed, falling back:', e);
+                sendMessage('error', { message: 'Failed to connect to stream server' });
+                return;
               }
+            }
+
+            // Safety guarantee: Never iframe a JSON or API endpoint
+            if (streamSource.endsWith('.json') || streamSource.includes('/stream/tv/')) {
+              sendMessage('error', { message: 'Broadcast is currently off-air' });
+              return;
             }
 
             // If the stream source is an embed or web player (e.g. damitv / watch?url=...)
@@ -256,7 +270,32 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
             if (isWebEmbed) {
               const container = document.getElementById('videoContainer');
               if (container) {
-                container.innerHTML = '<iframe src="' + streamSource + '" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen style="width:100%;height:100%;border:none;background:#000;"></iframe>';
+                container.innerHTML = '<iframe id=\"embedFrame\" src=\"' + streamSource + '\" allow=\"autoplay; fullscreen; picture-in-picture; encrypted-media\" allowfullscreen style=\"width:100%;height:100%;border:none;background:#000;\"></iframe>';
+                const frame = document.getElementById('embedFrame');
+                let frameChecked = false;
+                function checkIframe() {
+                  if (frameChecked) return;
+                  try {
+                    const doc = frame.contentDocument || frame.contentWindow.document;
+                    if (doc) {
+                      const text = doc.body ? (doc.body.innerText || '') : '';
+                      if (text.includes('Pretty-print') || (text.startsWith('{') && text.includes('streams'))) {
+                        frameChecked = true;
+                        sendMessage('error', { message: 'Broadcast is currently off-air' });
+                        return;
+                      }
+                    }
+                  } catch (err) {
+                    // Cross-origin embed is normal for third-party players
+                  }
+                }
+                if (frame) {
+                  frame.addEventListener('load', () => {
+                    checkIframe();
+                    setTimeout(checkIframe, 600);
+                    setTimeout(checkIframe, 1500);
+                  });
+                }
                 sendMessage('playing');
                 return;
               }
@@ -330,8 +369,13 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
         setIsBuffering(true);
       } else if (data.type === 'error') {
         setIsBuffering(false);
-        setHasError(true);
-        setErrorMessage(data.payload?.message || 'Broadcast stream is offline');
+        if (selectedServerIndex < availableServers.length - 1) {
+          setSelectedServerIndex(prev => prev + 1);
+          setIsBuffering(true);
+        } else {
+          setHasError(true);
+          setErrorMessage(data.payload?.message || 'Broadcast stream is offline');
+        }
       }
     } catch {
       // ignore

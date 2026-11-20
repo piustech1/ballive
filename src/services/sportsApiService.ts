@@ -498,6 +498,13 @@ class SportsApiService {
       { url: `${API_CONFIG.ESPN_BASE}/soccer/uefa.champions/scoreboard`, sport: 'soccer', league: 'uefa.champions' },
       { url: `${API_CONFIG.ESPN_BASE}/soccer/uefa.europa/scoreboard`, sport: 'soccer', league: 'uefa.europa' },
       { url: `${API_CONFIG.ESPN_BASE}/soccer/fifa.friendly/scoreboard`, sport: 'soccer', league: 'fifa.friendly' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/fifa.world.u17/scoreboard`, sport: 'soccer', league: 'fifa.world.u17' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/uefa.europa.conf/scoreboard`, sport: 'soccer', league: 'uefa.europa.conf' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/conmebol.libertadores/scoreboard`, sport: 'soccer', league: 'conmebol.libertadores' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/usa.1/scoreboard`, sport: 'soccer', league: 'usa.1' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/mex.1/scoreboard`, sport: 'soccer', league: 'mex.1' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/ned.1/scoreboard`, sport: 'soccer', league: 'ned.1' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/por.1/scoreboard`, sport: 'soccer', league: 'por.1' },
       { url: `${API_CONFIG.ESPN_BASE}/basketball/nba/scoreboard`, sport: 'basketball', league: 'nba' },
       { url: `${API_CONFIG.ESPN_BASE}/basketball/nbl/scoreboard`, sport: 'basketball', league: 'nbl' },
       { url: `${API_CONFIG.ESPN_BASE}/basketball/mens-college-basketball/scoreboard`, sport: 'basketball', league: 'ncaa-m' },
@@ -539,13 +546,26 @@ class SportsApiService {
    */
   async findEspnEvent(homeName: string, awayName: string, preferredSport = 'soccer'): Promise<EspnEventMatch | null> {
     const events = await this.getGlobalLiveEvents();
+    const GENERIC_TOKENS = new Set([
+      'u15', 'u16', 'u17', 'u18', 'u19', 'u20', 'u21', 'u23',
+      'youth', 'women', 'ladies', 'men', 'team', 'club', 'fc', 'cf', 'sc', 'afc', 'ac', 'cd', 'ud',
+      'city', 'united', 'town', 'athletic', 'real', 'sporting', 'reserves', 'amateur'
+    ]);
+
     const clean = (s: string) =>
       s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\b(fc|cf|sc|afc|club|united|city|women|ladies|men)\b/g, '').trim();
 
     const homeClean = clean(homeName);
     const awayClean = clean(awayName);
-    const homeTokens = homeClean.split(/\s+/).filter(w => w.length >= 3);
-    const awayTokens = awayClean.split(/\s+/).filter(w => w.length >= 3);
+
+    const getDistinctTokens = (name: string, fallbackClean: string) => {
+      const c = clean(name);
+      const filtered = c.split(/\s+/).filter(w => w.length >= 3 && !GENERIC_TOKENS.has(w));
+      return filtered.length > 0 ? filtered : fallbackClean.split(/\s+/).filter(w => w.length >= 3);
+    };
+
+    const homeTokens = getDistinctTokens(homeName, homeClean);
+    const awayTokens = getDistinctTokens(awayName, awayClean);
 
     const normPref = (preferredSport || '').toLowerCase() === 'football' ? 'soccer' : (preferredSport || '').toLowerCase();
 

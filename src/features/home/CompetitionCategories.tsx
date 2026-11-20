@@ -91,9 +91,9 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
   onSelectCategory,
 }) => {
   const { width: windowWidth } = useWindowDimensions();
-  // Reference spec: ~56% of screen width, ~2.4:1 aspect ratio (width / height)
-  const cardWidth = Math.round(windowWidth * 0.56);
-  const cardHeight = Math.round(cardWidth / 2.4);
+  // Reference spec: ~42% of screen width (~160dp on 380dp screen), ~2.1:1 aspect ratio matching green outline
+  const cardWidth = Math.round(windowWidth * 0.42);
+  const cardHeight = Math.round(cardWidth / 2.1);
 
   const handleCategoryPress = (categoryId: string) => {
     if (!onSelectCategory) return;

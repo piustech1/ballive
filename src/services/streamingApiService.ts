@@ -83,7 +83,7 @@ class StreamingApiService {
   private cachedUpcomingMatches: LiveMatch[] = [];
   private cachedDagMetas: any[] = [];
   private lastFetchTime = 0;
-  private readonly CACHE_TTL = 30000; // 30 seconds
+  private readonly CACHE_TTL = 60000; // 60 seconds
   private inFlightLivePromise: Promise<LiveMatch[]> | null = null;
   private inFlightUpcomingPromise: Promise<LiveMatch[]> | null = null;
 
@@ -180,8 +180,19 @@ class StreamingApiService {
         ? espnMatchesRes.value
         : [];
 
+      const GENERIC_TOKENS = new Set([
+        'u15', 'u16', 'u17', 'u18', 'u19', 'u20', 'u21', 'u23',
+        'youth', 'women', 'ladies', 'men', 'team', 'club', 'fc', 'cf', 'sc', 'afc', 'ac', 'cd', 'ud',
+        'city', 'united', 'town', 'athletic', 'real', 'sporting', 'reserves', 'amateur'
+      ]);
+
       const cleanName = (s: string) =>
         s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\b(fc|cf|sc|afc|club|united|city|women|ladies|men)\b/g, '').trim();
+
+      const getDistinctTokens = (s: string) => {
+        const toks = s.split(/\s+/).filter(w => w.length >= 3 && !GENERIC_TOKENS.has(w));
+        return toks.length > 0 ? toks : s.split(/\s+/).filter(w => w.length >= 3);
+      };
 
       const findMatchedEspn = (homeStr: string, awayStr: string, eventIdOrPoster?: string): LiveMatch | undefined => {
         if (eventIdOrPoster) {
@@ -191,8 +202,8 @@ class StreamingApiService {
 
         const hClean = cleanName(homeStr);
         const aClean = cleanName(awayStr);
-        const hToks = hClean.split(/\s+/).filter(w => w.length >= 3);
-        const aToks = aClean.split(/\s+/).filter(w => w.length >= 3);
+        const hToks = getDistinctTokens(hClean);
+        const aToks = getDistinctTokens(aClean);
 
         return espnLiveList.find(em => {
           const emH = cleanName(em.homeTeam);
@@ -200,11 +211,6 @@ class StreamingApiService {
           const hHit = hToks.some(t => emH.includes(t) || emA.includes(t));
           const aHit = aToks.some(t => emH.includes(t) || emA.includes(t));
           return hHit && aHit;
-        }) || espnLiveList.find(em => {
-          const emH = cleanName(em.homeTeam);
-          const emA = cleanName(em.awayTeam);
-          return hToks.some(t => t.length >= 4 && (emH.includes(t) || emA.includes(t))) ||
-                 aToks.some(t => t.length >= 4 && (emH.includes(t) || emA.includes(t)));
         });
       };
 
@@ -223,6 +229,16 @@ class StreamingApiService {
               // Strictly exclude 24/7 standalone TV channels without fixture
               if (genre === 'NETWORKS' || genre.includes('CHANNEL')) return;
               const cleanTitle = cleanMatchName(m.name || '');
+
+              // Strictly exclude 'OTHER' category and non-sports / game show feeds
+              if (
+                genre === 'OTHER' ||
+                m.genres?.includes('OTHER') ||
+                m.category === 'OTHER' ||
+                /kaun banega|game show|reality|lottery|bingo/i.test(cleanTitle)
+              ) {
+                return;
+              }
 
               // Strictly exclude competitions without confirmed streaming presence on DAG
               if (isUnsupportedStreamingCompetition(m.genres?.[0] || genre, cleanTitle)) return;
@@ -285,8 +301,8 @@ class StreamingApiService {
               // Deduplicate against existing authentic matches (e.g. ESPN scoreboards)
               const cleanHome = cleanName(home);
               const cleanAway = cleanName(away);
-              const hToks = cleanHome.split(/\s+/).filter(w => w.length >= 3);
-              const aToks = cleanAway.split(/\s+/).filter(w => w.length >= 3);
+              const hToks = getDistinctTokens(cleanHome);
+              const aToks = getDistinctTokens(cleanAway);
 
               const existingMatch = [...fetchedMatches, ...fetchedUpcoming].find(em => {
                 if (em.id && m.id && (m.id.includes(em.id) || em.id.includes(m.id))) return true;

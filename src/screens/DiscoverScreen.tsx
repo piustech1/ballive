@@ -37,8 +37,22 @@ export const DiscoverScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
   const { toggleMatchReminder } = useProfile();
   const [searchQuery, setSearchQuery] = useState('');
-  const [liveHighlights, setLiveHighlights] = useState<DiscoverMatchup[]>([]);
-  const [upcomingScheduleMatches, setUpcomingScheduleMatches] = useState<DiscoverMatchup[]>([]);
+  const [liveHighlights, setLiveHighlights] = useState<DiscoverMatchup[]>(() => {
+    const cached = streamingApiService.getCachedLiveMatches();
+    return cached && cached.length > 0
+      ? sortMatchesWithLiveFirst(cached.map(m => streamingApiService.convertLiveMatchToMatchup(m)))
+      : [];
+  });
+  const [upcomingScheduleMatches, setUpcomingScheduleMatches] = useState<DiscoverMatchup[]>(() => {
+    const cached = streamingApiService.getCachedUpcomingMatches();
+    return cached && cached.length > 0
+      ? sortUpcomingChronologically(
+          cached
+            .filter(m => m.status === 'UPCOMING')
+            .map(m => streamingApiService.convertLiveMatchToMatchup(m))
+        )
+      : [];
+  });
   const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult[]>([]);
 
   React.useEffect(() => {

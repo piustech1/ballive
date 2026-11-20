@@ -24,9 +24,15 @@ export type CanonicalSport =
 /**
  * Normalizes any sport string or competition name into a canonical sport identifier.
  */
-export function getCanonicalSport(sport?: string | null, competition?: string | null): CanonicalSport {
+export function getCanonicalSport(
+  sport?: string | null,
+  competition?: string | null,
+  eventName?: string | null
+): CanonicalSport {
   const s = (sport || '').toLowerCase().trim();
   const c = (competition || '').toLowerCase().trim();
+  const e = (eventName || '').toLowerCase().trim();
+  const combined = `${s} ${c} ${e}`;
 
   // 1. Explicit check for American Football (NFL, NCAAF, Super Bowl)
   if (
@@ -37,12 +43,13 @@ export function getCanonicalSport(sport?: string | null, competition?: string | 
     c.includes('american football') ||
     c.includes('super bowl') ||
     c.includes('ncaa football') ||
-    c.includes('cfl')
+    c.includes('cfl') ||
+    combined.includes('nfl')
   ) {
     return 'american_football';
   }
 
-  // 2. Combat Sports (UFC, MMA, Boxing, WWE)
+  // 2. Combat Sports (UFC, MMA, Boxing, WWE, Muay Thai, Bare Knuckle)
   if (
     s === 'mma' ||
     s === 'ufc' ||
@@ -54,14 +61,23 @@ export function getCanonicalSport(sport?: string | null, competition?: string | 
     c.includes('bellator') ||
     c.includes('pfl') ||
     c.includes('wwe') ||
-    c.includes('one championship')
+    c.includes('one championship') ||
+    c.includes('bare knuckle') ||
+    c.includes('bkfc') ||
+    c.includes('muay thai') ||
+    c.includes('kickboxing') ||
+    combined.includes('ufc') ||
+    combined.includes('bellator') ||
+    combined.includes('pfl') ||
+    combined.includes('bkfc')
   ) {
     return 'mma';
   }
 
-  // 3. Motorsports & Racing (F1, MotoGP, NASCAR, IndyCar)
+  // 3. Motorsports & Racing (F1, MotoGP, NASCAR, IndyCar, Ferrari Challenge, Supercars, WEC)
   if (
     s === 'motorsport' ||
+    s === 'motorsports' ||
     s === 'racing' ||
     s === 'formula1' ||
     s === 'f1' ||
@@ -70,8 +86,26 @@ export function getCanonicalSport(sport?: string | null, competition?: string | 
     c.includes('f1') ||
     c.includes('grand prix') ||
     c.includes('motogp') ||
+    c.includes('moto2') ||
+    c.includes('moto3') ||
     c.includes('nascar') ||
-    c.includes('indycar')
+    c.includes('indycar') ||
+    c.includes('ferrari challenge') ||
+    c.includes('supercars') ||
+    c.includes('le mans') ||
+    c.includes('wec') ||
+    c.includes('dtm') ||
+    c.includes('porsche cup') ||
+    c.includes('rally') ||
+    c.includes('wrc') ||
+    combined.includes('formula 1') ||
+    combined.includes('motogp') ||
+    combined.includes('grand prix') ||
+    combined.includes('ferrari challenge') ||
+    combined.includes('indycar') ||
+    combined.includes('nascar') ||
+    combined.includes('supercars') ||
+    combined.includes('wec')
   ) {
     return 'motorsport';
   }
@@ -169,23 +203,23 @@ export function getSportDisplayName(sport?: string | null, competition?: string 
  * Returns true if the event is a combat sport (UFC, MMA, Boxing, WWE).
  * These sports do NOT use football-style team score layouts.
  */
-export function isCombatSport(sport?: string | null, competition?: string | null): boolean {
-  return getCanonicalSport(sport, competition) === 'mma';
+export function isCombatSport(sport?: string | null, competition?: string | null, eventName?: string | null): boolean {
+  return getCanonicalSport(sport, competition, eventName) === 'mma';
 }
 
 /**
  * Returns true if the event is a motorsport / racing event (Formula 1, MotoGP, NASCAR).
  * These sports do NOT use football-style team score or "VS" layouts.
  */
-export function isMotorsport(sport?: string | null, competition?: string | null): boolean {
-  return getCanonicalSport(sport, competition) === 'motorsport';
+export function isMotorsport(sport?: string | null, competition?: string | null, eventName?: string | null): boolean {
+  return getCanonicalSport(sport, competition, eventName) === 'motorsport';
 }
 
 /**
  * Returns true if the event is a non-score event (Combat, Motorsports).
  */
-export function isNonScoreSport(sport?: string | null, competition?: string | null): boolean {
-  const canonical = getCanonicalSport(sport, competition);
+export function isNonScoreSport(sport?: string | null, competition?: string | null, eventName?: string | null): boolean {
+  const canonical = getCanonicalSport(sport, competition, eventName);
   return canonical === 'mma' || canonical === 'motorsport';
 }
 
@@ -193,8 +227,8 @@ export function isNonScoreSport(sport?: string | null, competition?: string | nu
  * Returns true if the event is a standard team-versus-team sport with numeric scores.
  * (Football, American Football, Basketball, Hockey).
  */
-export function isTeamScoreSport(sport?: string | null, competition?: string | null): boolean {
-  const canonical = getCanonicalSport(sport, competition);
+export function isTeamScoreSport(sport?: string | null, competition?: string | null, eventName?: string | null): boolean {
+  const canonical = getCanonicalSport(sport, competition, eventName);
   return (
     canonical === 'soccer' ||
     canonical === 'american_football' ||

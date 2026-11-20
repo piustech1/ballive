@@ -54,6 +54,7 @@ import { LiveStreamPlayer } from '../components/player/LiveStreamPlayer';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
+import { isMotorsport, isCombatSport } from '../utils/sportClassifier';
 
 interface LiveStreamDetailsScreenProps {
   match: DiscoverMatchup;
@@ -76,6 +77,26 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
   const [activeStreamUrl, setActiveStreamUrl] = useState<string | undefined>(activeMatch.streamUrl);
   const [activeStreams, setActiveStreams] = useState<any[] | undefined>(activeMatch.streams);
+
+  const isRacing = useMemo(
+    () =>
+      isMotorsport(
+        activeMatch.sport,
+        activeMatch.competition,
+        `${activeMatch.homeTeam?.name || ''} ${activeMatch.awayTeam?.name || ''}`
+      ),
+    [activeMatch.sport, activeMatch.competition, activeMatch.homeTeam?.name, activeMatch.awayTeam?.name]
+  );
+
+  const isCombat = useMemo(
+    () =>
+      isCombatSport(
+        activeMatch.sport,
+        activeMatch.competition,
+        `${activeMatch.homeTeam?.name || ''} ${activeMatch.awayTeam?.name || ''}`
+      ),
+    [activeMatch.sport, activeMatch.competition, activeMatch.homeTeam?.name, activeMatch.awayTeam?.name]
+  );
 
   const normalizedStatus = useMemo(
     () =>
@@ -116,9 +137,27 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
       : undefined,
   });
 
-  // Dynamic real other live matches and upcoming fixtures from catalog
-  const [liveRelatedStreams, setLiveRelatedStreams] = useState<DiscoverMatchup[]>([]);
-  const [upcomingRelatedMatches, setUpcomingRelatedMatches] = useState<DiscoverMatchup[]>([]);
+  // Dynamic real other live matches and upcoming fixtures from catalog (synchronously pre-filled from cache)
+  const [liveRelatedStreams, setLiveRelatedStreams] = useState<DiscoverMatchup[]>(() => {
+    const cached = streamingApiService.getCachedLiveMatches();
+    if (cached && cached.length > 0) {
+      return cached
+        .filter(m => m.id !== match.id && (m.status === 'LIVE' || m.minute > 0))
+        .map(resolveLiveMatchToMatchup)
+        .slice(0, 4);
+    }
+    return [];
+  });
+  const [upcomingRelatedMatches, setUpcomingRelatedMatches] = useState<DiscoverMatchup[]>(() => {
+    const cached = streamingApiService.getCachedUpcomingMatches();
+    if (cached && cached.length > 0) {
+      return cached
+        .filter(m => m.id !== match.id)
+        .map(resolveLiveMatchToMatchup)
+        .slice(0, 4);
+    }
+    return [];
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -172,7 +211,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             .filter(m => m.id !== activeMatch.id && (m.status === 'LIVE' || m.minute > 0))
             .map(resolveLiveMatchToMatchup);
           if (others.length > 0) {
-            setLiveRelatedStreams(others.slice(0, 10));
+            setLiveRelatedStreams(others.slice(0, 4));
           }
         }
       })
@@ -187,7 +226,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             .filter(m => m.id !== activeMatch.id)
             .map(resolveLiveMatchToMatchup);
           if (others.length > 0) {
-            setUpcomingRelatedMatches(others.slice(0, 10));
+            setUpcomingRelatedMatches(others.slice(0, 4));
           }
         }
       })
@@ -279,7 +318,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     // Deduplicate fixtures by canonical event identity
     const deduplicated = deduplicateMatchups(filtered);
 
-    return sortMatchesWithLiveFirst(deduplicated);
+    return sortMatchesWithLiveFirst(deduplicated).slice(0, 4);
   }, [liveRelatedStreams, upcomingRelatedMatches, activeMatch]);
 
   const handleShare = async () => {
@@ -370,64 +409,136 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* ── 2. MATCH SCORE CENTRE (MODERN & ACCURATE) ── */}
-          <View style={styles.matchIdentityCard}>
-            <View style={styles.teamsRow}>
-              {/* Home Team */}
-              <View style={styles.matchTeamSide}>
-                <TeamCrest
-                  uri={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)}
-                  teamName={activeMatch.homeTeam.name}
-                  size={48}
-                  containerStyle={styles.crestFlatContainer}
-                />
-                <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
-                  {activeMatch.homeTeam.name}
-                </Text>
-              </View>
-
-              {/* Score / Match State Center */}
-              <View style={styles.matchScoreCenter}>
-                {isLive || activeMatch.status === 'FT' ? (
-                  <>
-                    <View style={styles.scoreRow}>
-                      <Text style={styles.scoreNumber}>{liveScore.home}</Text>
-                      <Text style={styles.scoreColon}>:</Text>
-                      <Text style={styles.scoreNumber}>{liveScore.away}</Text>
+          {/* ── 2. MATCH SCORE CENTRE / EVENT IDENTITY BANNER ── */}
+          {isRacing ? (
+            <View style={styles.racingIdentityCard}>
+              <View style={styles.racingIdentityRow}>
+                <View style={styles.racingIdentityCol}>
+                  <View style={styles.racingCategoryPill}>
+                    <Text style={styles.racingCategoryText}>MOTORSPORT</Text>
+                  </View>
+                  <Text style={styles.racingEventTitle} numberOfLines={2}>
+                    {activeMatch.competition || activeMatch.homeTeam.name}
+                  </Text>
+                  <Text style={styles.racingVenueSubtitle} numberOfLines={1}>
+                    {activeMatch.homeTeam.name && activeMatch.awayTeam.name && !['tbd', 'tba', 'opponent'].includes(activeMatch.awayTeam.name.toLowerCase())
+                      ? `${activeMatch.homeTeam.name} • ${activeMatch.awayTeam.name}`
+                      : (activeMatch.homeTeam.name || 'Official Session')}
+                  </Text>
+                </View>
+                <View style={styles.racingStatusCol}>
+                  {isLive ? (
+                    <View style={styles.racingLiveBadge}>
+                      <View style={styles.liveClockDot} />
+                      <Text style={styles.racingLiveBadgeText}>RACE LIVE</Text>
                     </View>
-                    <View style={[styles.statusBadgePill, isLive ? styles.statusBadgeLive : styles.statusBadgeFT]}>
-                      {isLive && <View style={styles.liveClockDot} />}
-                      <Text style={styles.statusBadgeText}>
-                        {liveScore.statusText || (isLive ? `${liveScore.minute || activeMatch.minute || 45}' LIVE` : 'FULL TIME')}
+                  ) : (
+                    <View style={styles.racingUpcomingBadge}>
+                      <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
+                      <Text style={styles.racingUpcomingBadgeText}>
+                        {activeMatch.kickoffTime || 'Today'}
                       </Text>
                     </View>
-                  </>
-                ) : (
-                  <>
+                  )}
+                </View>
+              </View>
+            </View>
+          ) : isCombat ? (
+            <View style={styles.combatIdentityCard}>
+              <View style={styles.combatTopRow}>
+                <View style={styles.racingCategoryPill}>
+                  <Text style={styles.racingCategoryText}>UFC & COMBAT</Text>
+                </View>
+                <Text style={styles.combatCompTitle} numberOfLines={1}>
+                  {activeMatch.competition}
+                </Text>
+              </View>
+              <View style={styles.combatFightersRow}>
+                <View style={styles.combatFighterSide}>
+                  <Text style={styles.combatFighterName} numberOfLines={1}>
+                    {activeMatch.homeTeam.name}
+                  </Text>
+                  <Text style={styles.cornerSubLabelRed}>RED CORNER</Text>
+                </View>
+                <View style={styles.combatCenterBadge}>
+                  {isLive ? (
+                    <View style={styles.racingLiveBadge}>
+                      <View style={styles.liveClockDot} />
+                      <Text style={styles.racingLiveBadgeText}>BOUT LIVE</Text>
+                    </View>
+                  ) : (
                     <View style={styles.vsBadge}>
                       <Text style={styles.vsText}>VS</Text>
                     </View>
-                    <Text style={styles.matchStatusSub}>
-                      {activeMatch.kickoffTime || '17:30'} • Today
-                    </Text>
-                  </>
-                )}
-              </View>
-
-              {/* Away Team */}
-              <View style={styles.matchTeamSide}>
-                <TeamCrest
-                  uri={activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)}
-                  teamName={activeMatch.awayTeam.name}
-                  size={48}
-                  containerStyle={styles.crestFlatContainer}
-                />
-                <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
-                  {activeMatch.awayTeam.name}
-                </Text>
+                  )}
+                </View>
+                <View style={styles.combatFighterSide}>
+                  <Text style={styles.combatFighterName} numberOfLines={1}>
+                    {activeMatch.awayTeam.name}
+                  </Text>
+                  <Text style={styles.cornerSubLabelBlue}>BLUE CORNER</Text>
+                </View>
               </View>
             </View>
-          </View>
+          ) : (
+            <View style={styles.matchIdentityCard}>
+              <View style={styles.teamsRow}>
+                {/* Home Team */}
+                <View style={styles.matchTeamSide}>
+                  <TeamCrest
+                    uri={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)}
+                    teamName={activeMatch.homeTeam.name}
+                    size={48}
+                    containerStyle={styles.crestFlatContainer}
+                  />
+                  <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
+                    {activeMatch.homeTeam.name}
+                  </Text>
+                </View>
+
+                {/* Score / Match State Center */}
+                <View style={styles.matchScoreCenter}>
+                  {isLive || activeMatch.status === 'FT' ? (
+                    <>
+                      <View style={styles.scoreRow}>
+                        <Text style={styles.scoreNumber}>{liveScore.home}</Text>
+                        <Text style={styles.scoreColon}>:</Text>
+                        <Text style={styles.scoreNumber}>{liveScore.away}</Text>
+                      </View>
+                      <View style={[styles.statusBadgePill, isLive ? styles.statusBadgeLive : styles.statusBadgeFT]}>
+                        {isLive && <View style={styles.liveClockDot} />}
+                        <Text style={styles.statusBadgeText}>
+                          {liveScore.statusText || (isLive ? `${liveScore.minute || activeMatch.minute || 45}' LIVE` : 'FULL TIME')}
+                        </Text>
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <View style={styles.vsBadge}>
+                        <Text style={styles.vsText}>VS</Text>
+                      </View>
+                      <Text style={styles.matchStatusSub}>
+                        {activeMatch.kickoffTime || '17:30'} • Today
+                      </Text>
+                    </>
+                  )}
+                </View>
+
+                {/* Away Team */}
+                <View style={styles.matchTeamSide}>
+                  <TeamCrest
+                    uri={activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)}
+                    teamName={activeMatch.awayTeam.name}
+                    size={48}
+                    containerStyle={styles.crestFlatContainer}
+                  />
+                  <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
+                    {activeMatch.awayTeam.name}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
 
           {/* ── BROADCAST SERVERS SWITCHER ── */}
           {isLive && activeStreams && activeStreams.length > 1 && (
@@ -748,6 +859,134 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  racingIdentityCard: {
+    margin: 16,
+    marginBottom: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: '#1E1730',
+  },
+  racingIdentityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  racingIdentityCol: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  racingCategoryPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(121, 82, 252, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(121, 82, 252, 0.4)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  racingCategoryText: {
+    color: '#A58BFC',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  racingEventTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+    marginBottom: 4,
+  },
+  racingVenueSubtitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9E94B8',
+  },
+  racingStatusCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  racingLiveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FF2E56',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  racingLiveBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  racingUpcomingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2A2045',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  racingUpcomingBadgeText: {
+    color: '#ECE9FA',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  combatIdentityCard: {
+    margin: 16,
+    marginBottom: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: '#1E1730',
+  },
+  combatTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  combatCompTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#9E94B8',
+    flex: 1,
+  },
+  combatFightersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  combatFighterSide: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  combatFighterName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  cornerSubLabelRed: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#FF4D6D',
+    letterSpacing: 0.8,
+  },
+  cornerSubLabelBlue: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#38BDF8',
+    letterSpacing: 0.8,
+  },
+  combatCenterBadge: {
+    width: 80,
+    alignItems: 'center',
   },
   matchIdentityCard: {
     margin: 16,

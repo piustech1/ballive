@@ -125,7 +125,15 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   const { navigate } = useAppNavigation();
   const { profile, toggleMatchReminder, toggleSaveMatch } = useProfile();
   const [activeMatchup, setActiveMatchup] = useState<DiscoverMatchup>(matchup);
-  const [moreMatches, setMoreMatches] = useState<DiscoverMatchup[]>([]);
+  const [moreMatches, setMoreMatches] = useState<DiscoverMatchup[]>(() => {
+    const cachedLive = streamingApiService.getCachedLiveMatches();
+    if (cachedLive && cachedLive.length > 0) {
+      const converted = cachedLive.map(m => streamingApiService.convertLiveMatchToMatchup(m));
+      const filtered = converted.filter(m => !isSameFixture(m, matchup));
+      return deduplicateMatchups(sortMatchesWithLiveFirst(filtered)).slice(0, 4);
+    }
+    return [];
+  });
 
   useEffect(() => {
     setActiveMatchup(matchup);
@@ -290,8 +298,16 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   const homeScore = activeMatchup.homeTeam.score ?? 0;
   const awayScore = activeMatchup.awayTeam.score ?? 0;
 
-  const isCombat = isCombatSport(activeMatchup.sport, activeMatchup.competition);
-  const isMotor = isMotorsport(activeMatchup.sport, activeMatchup.competition);
+  const isCombat = isCombatSport(
+    activeMatchup.sport,
+    activeMatchup.competition,
+    `${activeMatchup.homeTeam.name} ${activeMatchup.awayTeam.name}`
+  );
+  const isMotor = isMotorsport(
+    activeMatchup.sport,
+    activeMatchup.competition,
+    `${activeMatchup.homeTeam.name} ${activeMatchup.awayTeam.name}`
+  );
   const cleanAway = activeMatchup.awayTeam.name.trim().toLowerCase();
   const isPlaceholderAway =
     !cleanAway ||
@@ -335,12 +351,12 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
           ...sortMatchesWithLiveFirst(others),
         ];
 
-        setMoreMatches(deduplicateMatchups(sorted).slice(0, 6));
+        setMoreMatches(deduplicateMatchups(sorted).slice(0, 4));
       })
       .catch(() => {
         if (isMounted) {
           const fallbackFiltered = UPCOMING_HIGHLIGHTS.filter(m => !isSameFixture(m, activeMatchup));
-          setMoreMatches(deduplicateMatchups(sortMatchesWithLiveFirst(fallbackFiltered)).slice(0, 6));
+          setMoreMatches(deduplicateMatchups(sortMatchesWithLiveFirst(fallbackFiltered)).slice(0, 4));
         }
       });
 
