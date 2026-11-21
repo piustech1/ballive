@@ -172,7 +172,12 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     // 2. Resolve stream mirrors
     if (activeMatchup.id) {
       streamingApiService
-        .resolveStreamMirrors(activeMatchup.id, activeMatchup.competition)
+        .resolveStreamMirrors(
+          activeMatchup.id,
+          activeMatchup.competition,
+          activeMatchup.homeTeam.name,
+          activeMatchup.awayTeam.name
+        )
         .then(mirrors => {
           if (isMounted && mirrors.length > 0) {
             setActiveMatchup(prev => ({

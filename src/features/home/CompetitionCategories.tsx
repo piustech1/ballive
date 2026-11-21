@@ -73,12 +73,6 @@ const CATEGORY_TILES: CategoryTile[] = [
     name: 'Formula 1 & Motorsport',
     image: require('../../../assets/categories/f1.png'),
   },
-  {
-    id: 'tennis',
-    label: 'Tennis',
-    name: 'Tennis',
-    image: require('../../../assets/categories/tennis.png'),
-  },
 ];
 
 interface CompetitionCategoriesProps {

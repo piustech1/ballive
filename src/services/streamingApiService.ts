@@ -36,6 +36,35 @@ function cleanMatchName(name: string): string {
 }
 
 /**
+ * Strictly identifies unwanted sports categories (Cricket, Tennis, College Football, College Sports)
+ * so they are completely eliminated from data ingestion and UI display.
+ */
+export function isBannedSport(sport?: string, competition?: string, title?: string, genre?: string): boolean {
+  const combined = `${sport || ''} ${competition || ''} ${title || ''} ${genre || ''}`.toLowerCase();
+  return (
+    combined.includes('cricket') ||
+    combined.includes('ipl') ||
+    combined.includes('t20') ||
+    combined.includes('icc') ||
+    combined.includes('bbl') ||
+    combined.includes('tennis') ||
+    combined.includes('wta') ||
+    combined.includes('atp') ||
+    combined.includes('itf') ||
+    combined.includes('davis cup') ||
+    combined.includes('billie jean') ||
+    combined.includes('college football') ||
+    combined.includes('ncaaf') ||
+    combined.includes('ncaa football') ||
+    combined.includes('college basketball') ||
+    combined.includes('ncaa basketball') ||
+    combined.includes('ncaa-m') ||
+    combined.includes('ncaab') ||
+    combined.includes('college')
+  );
+}
+
+/**
  * Attempts to parse Home and Away team names from a fixture title.
  * Strictly respects 'Team A at Team B' and 'Team A @ Team B' conventions (B is HOME, A is AWAY),
  * as well as traditional 'Team A vs Team B' (A is HOME, B is AWAY).
@@ -120,7 +149,7 @@ class StreamingApiService {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), API_CONFIG.REQUEST_TIMEOUT_MS);
 
-    // Multi-sport catalogs from DAG Upstream
+    // Multi-sport catalogs from DAG Upstream (Tennis completely eliminated)
     const dagCatalogs = [
       { file: 'moviebay_sports_live.json', defaultSport: 'soccer' as const, isLiveSource: true },
       { file: 'moviebay_sports_football.json', defaultSport: 'soccer' as const, isLiveSource: false },
@@ -129,7 +158,6 @@ class StreamingApiService {
       { file: 'moviebay_sports_american_football.json', defaultSport: 'american_football' as const, isLiveSource: false },
       { file: 'moviebay_sports_mma.json', defaultSport: 'mma' as const, isLiveSource: false },
       { file: 'moviebay_sports_motorsport.json', defaultSport: 'motorsport' as const, isLiveSource: false },
-      { file: 'moviebay_sports_tennis.json', defaultSport: 'tennis' as const, isLiveSource: false },
       { file: 'moviebay_sports_upcoming.json', defaultSport: 'soccer' as const, isLiveSource: false },
     ];
 
@@ -158,6 +186,10 @@ class StreamingApiService {
       // ── Process Source 1: ESPN Multi-Sport Scoreboard (Live & Upcoming Events) ──
       if (espnMatchesRes.status === 'fulfilled' && Array.isArray(espnMatchesRes.value)) {
         espnMatchesRes.value.forEach(m => {
+          // Strictly drop banned sports (Cricket, Tennis, College Sports)
+          if (isBannedSport(m.sport, m.competition, m.title)) return;
+          // Strictly drop finished matches (user requested ended matches must be cleared completely)
+          if (m.status === 'FT' || (m as any).state === 'post') return;
           if (isUnsupportedStreamingCompetition(m.competition, m.title)) return;
           if (!seenMatchIds.has(m.id)) {
             seenMatchIds.add(m.id);
@@ -232,6 +264,12 @@ class StreamingApiService {
               // Strictly exclude 24/7 standalone TV channels without fixture
               if (genre === 'NETWORKS' || genre.includes('CHANNEL')) return;
               const cleanTitle = cleanMatchName(m.name || '');
+
+              // Strictly drop unwanted banned sports (Cricket, Tennis, College Sports)
+              if (isBannedSport(catConfig.defaultSport, m.genres?.[0] || genre, cleanTitle, m.category)) return;
+
+              // Strictly drop ended/finished matches
+              if (m.releaseInfo === 'FT' || m.status === 'FT' || /ended|finished|final/i.test(m.description || '')) return;
 
               // Strictly exclude 'OTHER' category and non-sports / game show feeds
               if (
@@ -340,7 +378,15 @@ class StreamingApiService {
                   }
                 }
 
-                // 2. If existing match still has generic "Global Football", upgrade to specific DAG genre if available
+                // 2. High-resolution crest update if existing match lacks them
+                if (b1 && (!existingMatch.homeBadge || existingMatch.homeBadge.includes('default-team-logo'))) {
+                  existingMatch.homeBadge = b1;
+                }
+                if (b2 && (!existingMatch.awayBadge || existingMatch.awayBadge.includes('default-team-logo'))) {
+                  existingMatch.awayBadge = b2;
+                }
+
+                // 3. If existing match still has generic "Global Football", upgrade to specific DAG genre if available
                 if (
                   existingMatch.competition === 'Global Football' &&
                   m.genres?.[0] &&
@@ -351,7 +397,7 @@ class StreamingApiService {
                   existingMatch.competitionLogo = resolveCompetitionLogo(m.genres[0]);
                 }
 
-                // 3. Merge direct stream URL into the existing authentic match and discard duplicate generic card
+                // 4. Merge direct stream URL into the existing authentic match and discard duplicate generic card
                 const directUrl = `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`;
                 if (!existingMatch.streams) {
                   existingMatch.streams = [];
@@ -638,10 +684,17 @@ class StreamingApiService {
     awayTeam?: string
   ): Promise<RawStreamSource[]> {
     const mirrors: RawStreamSource[] = [];
-    const cleanId = itemId.replace(/\.json$/, '');
+    let cleanId = itemId.replace(/\.json$/, '');
+    if (cleanId.startsWith('srv-direct-')) {
+      cleanId = cleanId.replace('srv-direct-', '');
+    }
+    if (cleanId.includes('/stream/tv/')) {
+      const match = cleanId.match(/\/stream\/tv\/([^/]+?)(?:\.json)?$/);
+      if (match) cleanId = match[1];
+    }
 
-    // 1. Direct DAG fixture ID lookup
-    if (itemId.startsWith('moviebay_')) {
+    // 1. Direct DAG fixture ID lookup (handles nuvio_, moviebay_, or any sport fixture ID)
+    if (cleanId.startsWith('nuvio_') || cleanId.startsWith('moviebay_') || cleanId.includes('_sport_')) {
       try {
         const res = await fetch(`${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${cleanId}.json`, {
           headers: API_CONFIG.DAG_HEADERS,

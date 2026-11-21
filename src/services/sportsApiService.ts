@@ -507,7 +507,6 @@ class SportsApiService {
       { url: `${API_CONFIG.ESPN_BASE}/soccer/por.1/scoreboard`, sport: 'soccer', league: 'por.1' },
       { url: `${API_CONFIG.ESPN_BASE}/basketball/nba/scoreboard`, sport: 'basketball', league: 'nba' },
       { url: `${API_CONFIG.ESPN_BASE}/basketball/nbl/scoreboard`, sport: 'basketball', league: 'nbl' },
-      { url: `${API_CONFIG.ESPN_BASE}/basketball/mens-college-basketball/scoreboard`, sport: 'basketball', league: 'ncaa-m' },
       { url: `${API_CONFIG.ESPN_BASE}/hockey/nhl/scoreboard`, sport: 'hockey', league: 'nhl' },
       { url: `${API_CONFIG.ESPN_BASE}/football/nfl/scoreboard`, sport: 'football', league: 'nfl' },
     ];
@@ -716,7 +715,6 @@ class SportsApiService {
           SUPPORTED_LEAGUES['fifa_friendly'],
           SUPPORTED_LEAGUES['nba'],
           SUPPORTED_LEAGUES['nbl'],
-          SUPPORTED_LEAGUES['ncaa-m'],
           SUPPORTED_LEAGUES['nhl'],
           SUPPORTED_LEAGUES['nfl'],
         ].filter(Boolean);

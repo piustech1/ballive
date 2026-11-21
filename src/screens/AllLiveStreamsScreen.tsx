@@ -33,7 +33,7 @@ import { sortMatchesWithLiveFirst } from '../utils/matchStatus';
 import { getCanonicalSport } from '../utils/sportClassifier';
 
 type StreamFilter = 'all' | 'live' | 'upcoming' | 'available';
-type SportFilter = 'all' | 'football' | 'american_football' | 'basketball' | 'hockey' | 'mma' | 'motorsport' | 'tennis';
+type SportFilter = 'all' | 'football' | 'american_football' | 'basketball' | 'hockey' | 'mma' | 'motorsport';
 
 interface FilterOption {
   id: StreamFilter;
@@ -68,7 +68,6 @@ const SPORT_TABS: SportTab[] = [
   { id: 'hockey', label: 'Hockey', icon: Shield },
   { id: 'mma', label: 'MMA / UFC', icon: Shield },
   { id: 'motorsport', label: 'Motorsport', icon: Activity },
-  { id: 'tennis', label: 'Tennis', icon: Trophy },
 ];
 
 function parseInitialSport(raw?: string): SportFilter {
@@ -80,7 +79,6 @@ function parseInitialSport(raw?: string): SportFilter {
   if (s === 'nhl' || s === 'hockey') return 'hockey';
   if (s === 'mma' || s === 'ufc' || s === 'combat') return 'mma';
   if (s === 'motorsport' || s === 'f1') return 'motorsport';
-  if (s === 'tennis') return 'tennis';
   return 'all';
 }
 
@@ -98,7 +96,7 @@ export const AllLiveStreamsScreen: React.FC = () => {
   });
   const [isLoading, setIsLoading] = useState(() => allStreamMatches.length === 0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<StreamFilter>('all');
+  const [selectedFilter, setSelectedFilter] = useState<StreamFilter>('live');
   const [selectedSport, setSelectedSport] = useState<SportFilter>(initialSport);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -151,8 +149,6 @@ export const AllLiveStreamsScreen: React.FC = () => {
           if (canonical !== 'mma') return false;
         } else if (selectedSport === 'motorsport') {
           if (canonical !== 'motorsport') return false;
-        } else if (selectedSport === 'tennis') {
-          if (canonical !== 'tennis') return false;
         }
       }
 
@@ -186,7 +182,15 @@ export const AllLiveStreamsScreen: React.FC = () => {
       {/* ── TOP APP BAR (CURVED SECONDARY HEADER WITH MATCH COUNT & FILTER DROPDOWN) ── */}
       <SecondaryScreenHeader
         title="LIVE STREAMS"
-        subtitle={liveCount > 0 ? `${liveCount} Live Matches` : 'Live & Upcoming Feeds'}
+        subtitle={
+          selectedFilter === 'live'
+            ? liveCount > 0
+              ? `${liveCount} Live Matches`
+              : 'No Live Matches Right Now'
+            : selectedFilter === 'upcoming'
+            ? `${filteredMatches.length} Upcoming Matches`
+            : `${filteredMatches.length} Matches`
+        }
         rightCustomComponent={
           <TouchableOpacity
             activeOpacity={0.8}

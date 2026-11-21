@@ -233,40 +233,19 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
           async function startStream() {
             let streamSource = initialSource;
 
-            // If the stream source is a JSON metadata endpoint, resolve the manifest or external URL first
+            // Direct JSON metadata endpoints must never be iframed or fetched with forbidden browser headers
             if (streamSource.includes('/stream/tv/') || streamSource.endsWith('.json')) {
-              try {
-                const res = await fetch(streamSource, {
-                  headers: { 'Referer': 'https://s-u.in/', 'Origin': 'https://s-u.in' }
-                });
-                if (res.ok) {
-                  const data = await res.json();
-                  const first = (data.streams || [])[0];
-                  if (first && (first.url || first.externalUrl)) {
-                    streamSource = first.url || first.externalUrl;
-                  } else {
-                    sendMessage('error', { message: 'Broadcast is currently off-air or not started' });
-                    return;
-                  }
-                } else {
-                  sendMessage('error', { message: 'Feed offline or satellite signal weak' });
-                  return;
-                }
-              } catch (e) {
-                console.log('Stream resolution failed, falling back:', e);
-                sendMessage('error', { message: 'Failed to connect to stream server' });
-                return;
-              }
-            }
-
-            // Safety guarantee: Never iframe a JSON or API endpoint
-            if (streamSource.endsWith('.json') || streamSource.includes('/stream/tv/')) {
-              sendMessage('error', { message: 'Broadcast is currently off-air' });
+              sendMessage('error', { message: 'Connecting to direct broadcast feed...' });
               return;
             }
 
             // If the stream source is an embed or web player (e.g. damitv / watch?url=...)
-            const isWebEmbed = streamSource.includes('/watch?') || streamSource.includes('/embed/') || (!streamSource.includes('.m3u8') && !streamSource.includes('/manifest') && !streamSource.includes('/api/manifest') && !streamSource.includes('.ts'));
+            const isWebEmbed = !streamSource.endsWith('.json') && !streamSource.includes('/stream/tv/') && (
+              streamSource.includes('/watch?') ||
+              streamSource.includes('/embed/') ||
+              (!streamSource.includes('.m3u8') && !streamSource.includes('/manifest') && !streamSource.includes('/api/manifest') && !streamSource.includes('.ts'))
+            );
+
             if (isWebEmbed) {
               const container = document.getElementById('videoContainer');
               if (container) {
@@ -301,7 +280,12 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
               }
             }
 
-            if (Hls.isSupported()) {
+            if (video.canPlayType('application/vnd.apple.mpegurl')) {
+              video.src = streamSource;
+              video.play().catch(function(e) {
+                console.log('Native HLS autoplay deferred:', e);
+              });
+            } else if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
                 lowLatencyMode: true,

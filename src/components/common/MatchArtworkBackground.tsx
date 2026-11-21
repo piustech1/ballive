@@ -35,6 +35,7 @@ import { isGenuineEventArtwork } from '../../utils/sportBackgroundResolver';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import { getMatchupColors } from '../../utils/teamColorResolver';
 import { CompetitionLogo, resolveCompetitionLogo } from './CompetitionLogo';
+import { TeamCrest } from './TeamCrest';
 
 export interface MatchArtworkBackgroundProps {
   matchId?: string;
@@ -122,10 +123,10 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
         {/* Left Half: Home Team Primary Solid Brand Color */}
         <View style={[styles.halfSection, { backgroundColor: homeColor }]}>
           <View style={styles.crestWrapper}>
-            <Image
-              source={{ uri: resolvedHomeCrest }}
-              style={styles.crestImage}
-              resizeMode="contain"
+            <TeamCrest
+              uri={resolvedHomeCrest}
+              teamName={homeTeamName}
+              size={48}
             />
           </View>
         </View>
@@ -133,10 +134,10 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
         {/* Right Half: Away Team Primary Solid Brand Color */}
         <View style={[styles.halfSection, { backgroundColor: awayColor }]}>
           <View style={styles.crestWrapper}>
-            <Image
-              source={{ uri: resolvedAwayCrest }}
-              style={styles.crestImage}
-              resizeMode="contain"
+            <TeamCrest
+              uri={resolvedAwayCrest}
+              teamName={awayTeamName}
+              size={48}
             />
           </View>
         </View>
@@ -216,16 +217,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
-  },
-  crestImage: {
-    width: '58%',
-    height: '58%',
-    maxWidth: 68,
-    maxHeight: 68,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35,
-    shadowRadius: 5,
   },
   centerBadgeContainer: {
     position: 'absolute',

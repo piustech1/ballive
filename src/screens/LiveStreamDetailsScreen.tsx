@@ -161,13 +161,16 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
   useEffect(() => {
     let isMounted = true;
-    const fallbackStream = isLive
+    const rawFallback = isLive
       ? activeMatch.streamUrl || streamingApiService.getDefaultStreamUrl(activeMatch.competition, activeMatch.sport)
       : activeMatch.streamUrl;
 
+    const isDirectMediaUrl = rawFallback && !rawFallback.endsWith('.json') && !rawFallback.includes('/stream/tv/');
+    const fallbackStream = isDirectMediaUrl ? rawFallback : undefined;
+
     setActiveStreamUrl(fallbackStream);
     setActiveStreams(
-      activeMatch.streams && activeMatch.streams.length > 0
+      activeMatch.streams && activeMatch.streams.length > 0 && !activeMatch.streams[0].url.endsWith('.json')
         ? activeMatch.streams
         : fallbackStream
         ? [{ id: 'srv-primary', name: 'Server 1 (Live HD Broadcast)', url: fallbackStream }]
