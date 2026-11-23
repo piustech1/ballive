@@ -16,6 +16,7 @@ import {
 } from '../utils/matchStatus';
 import { theSportsDbService } from './theSportsDbService';
 import { matchArtworkEnricher } from './matchArtworkEnricher';
+import { savedMatchesService } from './savedMatchesService';
 
 export interface RawStreamSource {
   id: string;
@@ -269,7 +270,7 @@ class StreamingApiService {
               if (isBannedSport(catConfig.defaultSport, m.genres?.[0] || genre, cleanTitle, m.category)) return;
 
               // Strictly drop ended/finished matches
-              if (m.releaseInfo === 'FT' || m.status === 'FT' || /ended|finished|final/i.test(m.description || '')) return;
+              if (m.releaseInfo === 'FT' || m.status === 'FT' || /ended|finished|final|postponed|cancelled/i.test(m.description || '')) return;
 
               // Strictly exclude 'OTHER' category and non-sports / game show feeds
               if (
@@ -290,6 +291,11 @@ class StreamingApiService {
                 const parsed = parseTeams(cleanTitle);
                 home = home || parsed.home;
                 away = away || parsed.away;
+              }
+
+              // Drop immediately if authoritative ESPN scoreboards confirm this fixture is finished
+              if (sportsApiService.isFixtureFinished(home, away, m.id)) {
+                return;
               }
 
               // Support combat sports (UFC, WWE, TNA, MMA) where event title is headline
@@ -419,14 +425,32 @@ class StreamingApiService {
               const kickoffTimestamp = parseKickoffTimestamp(m.releaseInfo || cleanKickoff);
               const isFutureKickoff = kickoffTimestamp !== Number.MAX_SAFE_INTEGER && kickoffTimestamp > Date.now() + 5 * 60 * 1000;
               const isTimeUpcoming = typeof m.releaseInfo === 'string' && (m.releaseInfo.includes('AM') || m.releaseInfo.includes('PM') || m.releaseInfo.includes(':') || cleanTitle.startsWith('⏱️'));
+
+              // Enforce duration cutoff for past kickoffs: if past maximum play time and not confirmed live by ESPN, drop it
+              const elapsedMs = kickoffTimestamp !== Number.MAX_SAFE_INTEGER ? Date.now() - kickoffTimestamp : 0;
+              const maxDurationMs =
+                sport === 'basketball' || sport === 'hockey'
+                  ? 180 * 60 * 1000
+                  : sport === 'mma' || sport === 'american_football'
+                  ? 240 * 60 * 1000
+                  : 140 * 60 * 1000; // soccer default
+
+              const isPastMaxDuration = kickoffTimestamp !== Number.MAX_SAFE_INTEGER && elapsedMs > maxDurationMs;
+
               const matchedEspn = findMatchedEspn(home, away, `${m.id || ''} ${m.poster || ''}`);
               const isEspnLive = Boolean(matchedEspn && matchedEspn.isLive && (matchedEspn.minute > 0 || matchedEspn.score.home > 0 || matchedEspn.score.away > 0 || matchedEspn.playTime === 'HT'));
+              
+              // If match exceeded standard match duration and ESPN does not confirm it is live, drop it completely
+              if (isPastMaxDuration && !isEspnLive) {
+                return;
+              }
+
               const isReleaseLive = m.releaseInfo === 'LIVE' || cleanTitle.includes('🔴 LIVE') || Boolean(m.description && m.description.includes('LIVE NOW'));
               
-              // Strictly never allow a match whose kickoff is in the future to be labeled LIVE
-              const isTrulyLive = !isFutureKickoff && !isTimeUpcoming && (
-                isEspnLive ||
-                (matchedEspn ? matchedEspn.isLive : isReleaseLive)
+              // Strictly never allow a future or concluded match to be labeled LIVE.
+              // If matchedEspn exists, its authoritative status governs.
+              const isTrulyLive = !isFutureKickoff && !isTimeUpcoming && !isPastMaxDuration && (
+                matchedEspn ? matchedEspn.isLive : isReleaseLive
               );
 
               // Select authentic unique artwork with multi-sport detection (never generic placeholder)
@@ -629,6 +653,8 @@ class StreamingApiService {
         matchArtworkEnricher.enrichMatches(combined);
         this.cachedLiveMatches = combined;
         this.lastFetchTime = now;
+        // Automatically sync and purge finished matches from Saved list
+        savedMatchesService.purgeFinishedMatches(combined).catch(() => {});
       }
       if (sortedUpcoming.length > 0) {
         matchArtworkEnricher.enrichMatches(sortedUpcoming);

@@ -257,20 +257,42 @@ export function normalizeMatchStatus(options: {
   const rawUpper = (rawStatus || '').toUpperCase().trim();
   const detailCombined = `${detail || ''} ${shortDetail || ''} ${rawPlayTime || ''}`.toUpperCase().trim();
 
-  // Guard against matches scheduled strictly in the future
-  // If scheduled kickoff is in the future by > 5 minutes, it CANNOT be actively in-play
+  // Guard against matches scheduled strictly in the future or matches well past maximum match duration
   if (kickoffDate) {
     const kickoffTs = parseKickoffTimestamp(kickoffDate);
-    if (kickoffTs !== Number.MAX_SAFE_INTEGER && kickoffTs > Date.now() + 5 * 60 * 1000 && state !== 'in') {
-      return {
-        status: 'UPCOMING',
-        isLive: false,
-        isUpcoming: true,
-        isFinished: false,
-        minute: 0,
-        playTime: undefined,
-        displayStatus: 'UPCOMING',
-      };
+    if (kickoffTs !== Number.MAX_SAFE_INTEGER && state !== 'in') {
+      if (kickoffTs > Date.now() + 5 * 60 * 1000) {
+        return {
+          status: 'UPCOMING',
+          isLive: false,
+          isUpcoming: true,
+          isFinished: false,
+          minute: 0,
+          playTime: undefined,
+          displayStatus: 'UPCOMING',
+        };
+      }
+
+      // Elapsed time check: if scheduled kickoff was long ago and server state is not actively 'in', it is finished!
+      const elapsed = Date.now() - kickoffTs;
+      const s = (sport || '').toLowerCase();
+      const maxDuration = s.includes('basket') || s.includes('hockey')
+        ? 180 * 60 * 1000
+        : s.includes('combat') || s.includes('mma') || s.includes('nfl') || s.includes('american')
+        ? 240 * 60 * 1000
+        : 140 * 60 * 1000; // soccer default
+
+      if (elapsed > maxDuration) {
+        return {
+          status: 'FT',
+          isLive: false,
+          isUpcoming: false,
+          isFinished: true,
+          minute: 90,
+          playTime: 'FT',
+          displayStatus: 'FULL TIME',
+        };
+      }
     }
   }
 
@@ -284,18 +306,24 @@ export function normalizeMatchStatus(options: {
     rawUpper === 'FINAL' ||
     rawUpper === 'STATUS_FULL_TIME' ||
     rawUpper === 'AET' ||
+    rawUpper === 'SUSPENDED' ||
+    rawUpper === 'ABANDONED' ||
     (rawUpper === 'PEN' && detailCombined.includes('FINAL')) ||
     (detailCombined.includes('FINAL') && !detailCombined.includes('QUARTER') && !detailCombined.includes('Q')) ||
     detailCombined === 'FT' ||
     detailCombined.includes('FULL TIME') ||
     detailCombined.includes('POSTPONED') ||
     detailCombined.includes('CANCELED') ||
-    detailCombined.includes('CANCELLED');
+    detailCombined.includes('CANCELLED') ||
+    detailCombined.includes('SUSPENDED') ||
+    detailCombined.includes('ABANDONED');
 
   if (isPost) {
     let displayStatus = 'FULL TIME';
     if (detailCombined.includes('POSTPONED')) displayStatus = 'POSTPONED';
     else if (detailCombined.includes('CANCELED') || detailCombined.includes('CANCELLED')) displayStatus = 'CANCELLED';
+    else if (detailCombined.includes('SUSPENDED') || rawUpper === 'SUSPENDED') displayStatus = 'SUSPENDED';
+    else if (detailCombined.includes('ABANDONED') || rawUpper === 'ABANDONED') displayStatus = 'ABANDONED';
     else if (detailCombined.includes('FINAL/OT') || detailCombined.includes('FINAL/2OT')) displayStatus = shortDetail || 'FINAL/OT';
 
     return {

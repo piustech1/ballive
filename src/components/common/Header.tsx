@@ -16,6 +16,7 @@ import {
   X,
 } from 'lucide-react-native';
 import Colors from '../../theme/colors';
+import { CurvedHeaderPlayerBackground } from './CurvedHeaderPlayerBackground';
 
 interface HeaderProps {
   searchQuery: string;
@@ -36,6 +37,9 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
+      {/* ── ATMOSPHERIC SPORTS PLAYER BACKGROUND ARTWORK ── */}
+      <CurvedHeaderPlayerBackground sport="soccer" />
+
       {/* ── TOP UTILITY ROW (Screenshot Blueprint: 4-dot Grid + Bell) ── */}
       <View style={styles.utilityRow}>
         <TouchableOpacity
@@ -111,6 +115,7 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
+    overflow: 'hidden',
   },
   utilityRow: {
     flexDirection: 'row',

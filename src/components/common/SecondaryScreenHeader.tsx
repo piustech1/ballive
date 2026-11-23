@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, LucideIcon } from 'lucide-react-native';
 import Colors from '../../theme/colors';
 import { useAppNavigation } from '../../navigation/NavigationContext';
+import { CurvedHeaderPlayerBackground } from './CurvedHeaderPlayerBackground';
 
 export interface HeaderAction {
   icon: LucideIcon;
@@ -49,6 +50,9 @@ export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 10) + 4 }]}>
+      {/* ── ATMOSPHERIC SPORTS PLAYER BACKGROUND ARTWORK ── */}
+      <CurvedHeaderPlayerBackground />
+
       <View style={styles.contentRow}>
         {/* Left Native Back Action */}
         <TouchableOpacity
@@ -150,6 +154,7 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
+    overflow: 'hidden',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,

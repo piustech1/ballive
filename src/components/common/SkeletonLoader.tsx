@@ -133,6 +133,57 @@ export const MatchDetailsSkeleton: React.FC = () => {
   );
 };
 
+export const DiscoverSkeleton: React.FC = () => {
+  return (
+    <View style={styles.discoverSkeletonContainer}>
+      {/* 1. Explore Competitions Row */}
+      <View style={styles.sectionHeaderSkeleton}>
+        <SkeletonBox width={150} height={18} borderRadius={4} />
+        <SkeletonBox width={50} height={14} borderRadius={4} />
+      </View>
+      <View style={styles.horizontalRowSkeleton}>
+        <SkeletonBox width={115} height={42} borderRadius={21} style={{ marginRight: 10 }} />
+        <SkeletonBox width={105} height={42} borderRadius={21} style={{ marginRight: 10 }} />
+        <SkeletonBox width={120} height={42} borderRadius={21} style={{ marginRight: 10 }} />
+        <SkeletonBox width={100} height={42} borderRadius={21} />
+      </View>
+
+      {/* 2. Schedule Timeline Section */}
+      <View style={[styles.sectionHeaderSkeleton, { marginTop: 26 }]}>
+        <SkeletonBox width={180} height={18} borderRadius={4} />
+        <SkeletonBox width={60} height={14} borderRadius={4} />
+      </View>
+      <View style={styles.horizontalRowSkeleton}>
+        <SkeletonBox width={210} height={125} borderRadius={18} style={{ marginRight: 12 }} />
+        <SkeletonBox width={140} height={125} borderRadius={18} style={{ marginRight: 12 }} />
+        <SkeletonBox width={140} height={125} borderRadius={18} />
+      </View>
+
+      {/* 3. Popular Teams Row */}
+      <View style={[styles.sectionHeaderSkeleton, { marginTop: 26 }]}>
+        <SkeletonBox width={130} height={18} borderRadius={4} />
+        <SkeletonBox width={50} height={14} borderRadius={4} />
+      </View>
+      <View style={styles.horizontalRowSkeleton}>
+        {[1, 2, 3, 4, 5].map(i => (
+          <View key={i} style={styles.teamCircleCol}>
+            <SkeletonCircle size={52} />
+            <SkeletonBox width={50} height={10} borderRadius={3} style={{ marginTop: 8 }} />
+          </View>
+        ))}
+      </View>
+
+      {/* 4. Upcoming Highlights Match Cards */}
+      <View style={[styles.sectionHeaderSkeleton, { marginTop: 26, marginBottom: 12 }]}>
+        <SkeletonBox width={160} height={18} borderRadius={4} />
+        <SkeletonBox width={50} height={14} borderRadius={4} />
+      </View>
+      <MatchCardSkeleton />
+      <MatchCardSkeleton />
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   skeletonBase: {
     backgroundColor: 'rgba(255, 255, 255, 0.12)',
@@ -191,5 +242,25 @@ const styles = StyleSheet.create({
   },
   pitchSkeleton: {
     marginTop: 8,
+  },
+  discoverSkeletonContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  sectionHeaderSkeleton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  horizontalRowSkeleton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  teamCircleCol: {
+    alignItems: 'center',
+    marginRight: 16,
   },
 });

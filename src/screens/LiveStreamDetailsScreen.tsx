@@ -34,6 +34,7 @@ import {
   ShieldAlert,
   ArrowLeft,
   Check,
+  CheckCircle,
 } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
@@ -42,6 +43,7 @@ import { TeamCrest } from '../components/common/TeamCrest';
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
+import { useSavedMatches } from '../hooks/useSavedMatches';
 import { getAllLiveStreamMatches, resolveLiveMatchToMatchup, determineMatchRoute } from '../navigation/navHelpers';
 import { useAppNavigation } from '../navigation/NavigationContext';
 import {
@@ -67,7 +69,8 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
   match,
 }) => {
   const { navigate, isFullscreen, setIsFullscreen } = useAppNavigation();
-  const { profile, toggleMatchReminder, toggleSaveMatch } = useProfile();
+  const { profile, toggleMatchReminder } = useProfile();
+  const { isSaved: checkIsSaved, toggleSave } = useSavedMatches();
 
   const [activeMatch, setActiveMatch] = useState<DiscoverMatchup>(match);
 
@@ -109,16 +112,17 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     [activeMatch.status, activeMatch.playTime, activeMatch.minute, activeMatch.sport]
   );
   const hasPlayableStream = Boolean(activeStreamUrl || (activeStreams && activeStreams.length > 0));
-  const isLive =
+  const isFinished = normalizedStatus.isFinished || activeMatch.status === 'FT';
+  const isLive = !isFinished && (
     normalizedStatus.isLive ||
     activeMatch.status === 'LIVE' ||
     Boolean((activeMatch as any).isLive) ||
-    (activeMatch.minute !== undefined && activeMatch.minute > 0) ||
-    Boolean(activeMatch.playTime && activeMatch.playTime.toUpperCase().includes('LIVE')) ||
-    hasPlayableStream;
-  const isFinished = (normalizedStatus.isFinished || activeMatch.status === 'FT') && !hasPlayableStream;
+    (activeMatch.minute !== undefined && activeMatch.minute > 0 && activeMatch.minute <= 130) ||
+    Boolean(activeMatch.playTime && activeMatch.playTime.toUpperCase().includes('LIVE'))
+  );
+  const isUpcoming = !isLive && !isFinished;
   const isReminderSet = profile.matchReminderIds.includes(activeMatch.id);
-  const isSaved = profile.savedMatchIds.includes(activeMatch.id);
+  const isSaved = checkIsSaved(activeMatch.id);
 
   // Live real-time scores and clock
   const [liveScore, setLiveScore] = useState<{
@@ -378,6 +382,17 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
               Establishing live satellite stream for {activeMatch.competition}. Please wait a moment...
             </Text>
           </View>
+        ) : isFinished ? (
+          /* Completed / Concluded Match Experience */
+          <View style={styles.upcomingPlayerSurface}>
+            <View style={[styles.upcomingCountdownIcon, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+              <CheckCircle size={32} color="#10B981" strokeWidth={2.2} />
+            </View>
+            <Text style={styles.upcomingPlayerTitle}>Match Concluded</Text>
+            <Text style={styles.upcomingPlayerSubtitle}>
+              This fixture has finished. The live satellite broadcast is now offline.
+            </Text>
+          </View>
         ) : (
           /* Upcoming Scheduled Kickoff Experience */
           <View style={styles.upcomingPlayerSurface}>
@@ -576,7 +591,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             <TouchableOpacity
               activeOpacity={0.8}
               style={[styles.iconActionBtn, isSaved && styles.iconActionBtnActive]}
-              onPress={() => toggleSaveMatch(activeMatch.id)}
+              onPress={() => toggleSave(activeMatch)}
               accessibilityLabel="Bookmark match"
             >
               {isSaved ? (

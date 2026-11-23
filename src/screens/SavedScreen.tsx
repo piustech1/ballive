@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -8,13 +8,13 @@ import {
 } from 'react-native';
 import Colors from '../theme/colors';
 import { useProfile } from '../hooks/useProfile';
+import { useSavedMatches } from '../hooks/useSavedMatches';
 import { SavedHeader, SavedTab } from '../features/saved/SavedHeader';
-import { SavedMatchCard } from '../features/saved/SavedMatchCard';
+import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
 import { SavedTeamRow } from '../features/saved/SavedTeamRow';
 import { SavedCompetitionRow } from '../features/saved/SavedCompetitionRow';
 import { SavedEmptyState } from '../features/saved/SavedEmptyState';
 import {
-  UPCOMING_HIGHLIGHTS,
   POPULAR_TEAMS,
   POPULAR_LEAGUES,
   DiscoverMatchup,
@@ -33,18 +33,17 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({ onNavigateToDiscover }
   const { navigate, switchTab } = useAppNavigation();
   const {
     profile,
-    toggleSaveMatch,
     toggleFollowTeam,
     toggleFollowLeague,
   } = useProfile();
+  const { savedMatches, removeSave, refreshSaved } = useSavedMatches();
 
   const [activeTab, setActiveTab] = useState<SavedTab>('matches');
 
-  // ── FILTER SAVED DATA ACCORDING TO USER STATE ──
-  const savedMatches = useMemo(() => {
-    const ids = profile.savedMatchIds || [];
-    return UPCOMING_HIGHLIGHTS.filter(m => ids.includes(m.id));
-  }, [profile.savedMatchIds]);
+  // Purge finished matches on mount/display
+  useEffect(() => {
+    refreshSaved().catch(() => {});
+  }, [refreshSaved]);
 
   const followedTeams = useMemo(() => {
     const ids = profile.followedTeamIds || [];
@@ -58,10 +57,6 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({ onNavigateToDiscover }
 
   // ── INTERACTION HANDLERS ──
   const handleMatchDetails = (matchup: DiscoverMatchup) => {
-    navigateToMatch(navigate, matchup);
-  };
-
-  const handleWatchPress = (matchup: DiscoverMatchup) => {
     navigateToMatch(navigate, matchup);
   };
 
@@ -111,13 +106,15 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({ onNavigateToDiscover }
           <>
             {savedMatches.length > 0 ? (
               savedMatches.map(matchup => (
-                <SavedMatchCard
-                  key={matchup.id}
-                  matchup={matchup}
-                  onMatchDetailsPress={handleMatchDetails}
-                  onWatchPress={handleWatchPress}
-                  onRemovePress={toggleSaveMatch}
-                />
+                <View key={matchup.id} style={{ marginBottom: 12 }}>
+                  <UniversalMatchCard
+                    match={matchup}
+                    layout="full"
+                    isSaved={true}
+                    onToggleSave={() => removeSave(matchup.id)}
+                    onPress={() => handleMatchDetails(matchup)}
+                  />
+                </View>
               ))
             ) : (
               <SavedEmptyState

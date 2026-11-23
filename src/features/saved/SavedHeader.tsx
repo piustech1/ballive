@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '../../theme/colors';
+import { CurvedHeaderPlayerBackground } from '../../components/common/CurvedHeaderPlayerBackground';
 
 export type SavedTab = 'matches' | 'teams' | 'competitions';
 
@@ -36,6 +37,9 @@ export const SavedHeader: React.FC<SavedHeaderProps> = ({
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
+      {/* ── ATMOSPHERIC SPORTS PLAYER BACKGROUND ARTWORK ── */}
+      <CurvedHeaderPlayerBackground sport="soccer" />
+
       {/* ── SCREEN TITLE & SUBTITLE ── */}
       <View style={styles.titleContainer}>
         <Text style={styles.title}>Saved</Text>
@@ -80,6 +84,7 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
+    overflow: 'hidden',
   },
   titleContainer: {
     marginBottom: 18,

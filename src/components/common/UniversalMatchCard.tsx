@@ -8,6 +8,7 @@ import {
   StyleProp,
   ViewStyle,
 } from 'react-native';
+import { Bookmark } from 'lucide-react-native';
 import Colors from '../../theme/colors';
 import { LiveMatch } from '../../constants/mockData';
 import { DiscoverMatchup } from '../../constants/discoverData';
@@ -21,6 +22,7 @@ import {
 } from '../../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../../utils/matchStatus';
 import { theSportsDbService } from '../../services/theSportsDbService';
+import { savedMatchesService } from '../../services/savedMatchesService';
 import {
   isCombatSport,
   isMotorsport,
@@ -35,6 +37,9 @@ export interface UniversalMatchCardProps {
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
   rightAction?: React.ReactNode;
+  showBookmark?: boolean;
+  isSaved?: boolean;
+  onToggleSave?: () => void;
 }
 
 /**
@@ -173,8 +178,26 @@ const UniversalMatchCardComponent: React.FC<UniversalMatchCardProps> = ({
   onPress,
   style,
   rightAction,
+  showBookmark = true,
+  isSaved: isSavedProp,
+  onToggleSave,
 }) => {
   const m = normalizeMatchItem(match);
+
+  const [localIsSaved, setLocalIsSaved] = useState(() =>
+    isSavedProp !== undefined ? isSavedProp : savedMatchesService.isMatchSaved(m.id)
+  );
+
+  useEffect(() => {
+    if (isSavedProp !== undefined) {
+      setLocalIsSaved(isSavedProp);
+      return;
+    }
+    const unsubscribe = savedMatchesService.subscribe(() => {
+      setLocalIsSaved(savedMatchesService.isMatchSaved(m.id));
+    });
+    return unsubscribe;
+  }, [isSavedProp, m.id]);
 
   const [resolvedArtwork, setResolvedArtwork] = useState<string | null>(() => {
     const cached = theSportsDbService.getCachedArtwork(m.homeTeamName, m.awayTeamName, m.sport, m.competition, m.id);
@@ -254,6 +277,31 @@ const UniversalMatchCardComponent: React.FC<UniversalMatchCardProps> = ({
               {m.kickoffTime || 'UPCOMING'}
             </Text>
           </View>
+        )}
+
+        {showBookmark && (
+          <TouchableOpacity
+            style={[styles.bookmarkBtn, localIsSaved && styles.bookmarkBtnActive]}
+            activeOpacity={0.7}
+            onPress={(e) => {
+              (e as any)?.stopPropagation?.();
+              if (onToggleSave) {
+                onToggleSave();
+              } else {
+                savedMatchesService.toggleSaveMatch(match);
+              }
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={localIsSaved ? 'Remove from saved' : 'Save match'}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Bookmark
+              size={13}
+              color={localIsSaved ? '#7952FC' : '#A098B5'}
+              fill={localIsSaved ? '#7952FC' : 'transparent'}
+              strokeWidth={2.2}
+            />
+          </TouchableOpacity>
         )}
 
         {rightAction ? (
@@ -615,6 +663,21 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#EF4444',
     letterSpacing: 0.5,
+  },
+  bookmarkBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(25, 20, 38, 0.75)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 6,
+  },
+  bookmarkBtnActive: {
+    backgroundColor: 'rgba(121, 82, 252, 0.22)',
+    borderColor: '#7952FC',
   },
 });
 

@@ -36,6 +36,7 @@ import {
 } from '../utils/sportBackgroundResolver';
 import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
 import { useProfile } from '../hooks/useProfile';
+import { useSavedMatches } from '../hooks/useSavedMatches';
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { navigateToMatch } from '../navigation/navHelpers';
 import { streamingApiService } from '../services/streamingApiService';
@@ -123,7 +124,8 @@ interface MatchDetailsScreenProps {
 
 export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup }) => {
   const { navigate } = useAppNavigation();
-  const { profile, toggleMatchReminder, toggleSaveMatch } = useProfile();
+  const { profile, toggleMatchReminder } = useProfile();
+  const { isSaved: checkIsSaved, toggleSave } = useSavedMatches();
   const [activeMatchup, setActiveMatchup] = useState<DiscoverMatchup>(matchup);
   const [moreMatches, setMoreMatches] = useState<DiscoverMatchup[]>(() => {
     const cachedLive = streamingApiService.getCachedLiveMatches();
@@ -278,7 +280,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   ]);
 
   const isReminderSet = profile.matchReminderIds.includes(activeMatchup.id);
-  const isSaved = profile.savedMatchIds.includes(activeMatchup.id);
+  const isSaved = checkIsSaved(activeMatchup.id);
 
   // Authoritative match status resolution
   const normalizedStatus = normalizeMatchStatus({
@@ -288,15 +290,15 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     sport: activeMatchup.sport,
   });
 
-  const isLive =
+  const isFinished = normalizedStatus.isFinished || activeMatchup.status === 'FT';
+  const isLive = !isFinished && (
     normalizedStatus.isLive ||
     activeMatchup.status === 'LIVE' ||
     Boolean(activeMatchup.isLive) ||
-    (activeMatchup.minute !== undefined && activeMatchup.minute > 0) ||
+    (activeMatchup.minute !== undefined && activeMatchup.minute > 0 && activeMatchup.minute <= 130) ||
     activeMatchup.playTime === 'HT' ||
-    Boolean(activeMatchup.playTime && activeMatchup.playTime.includes('LIVE'));
-
-  const isFinished = normalizedStatus.isFinished || activeMatchup.status === 'FT';
+    Boolean(activeMatchup.playTime && activeMatchup.playTime.includes('LIVE'))
+  );
   const isUpcoming = !isLive && !isFinished;
   const hasLiveStream = isLive && Boolean(activeMatchup.streamUrl || activeMatchup.hasLiveBroadcast || (activeMatchup.streams && activeMatchup.streams.length > 0));
 
@@ -705,7 +707,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
             <TouchableOpacity
               style={[styles.iconButton, isSaved && styles.iconButtonActive]}
               activeOpacity={0.8}
-              onPress={() => toggleSaveMatch(activeMatchup.id)}
+              onPress={() => toggleSave(activeMatchup)}
               accessibilityRole="button"
               accessibilityLabel={isSaved ? 'Remove from saved' : 'Save match'}
             >

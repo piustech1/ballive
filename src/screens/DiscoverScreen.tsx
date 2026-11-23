@@ -32,6 +32,7 @@ import { useProfile } from '../hooks/useProfile';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService, GlobalSearchResult } from '../services/sportsApiService';
 import { sortMatchesWithLiveFirst, sortUpcomingChronologically } from '../utils/matchStatus';
+import { DiscoverSkeleton } from '../components/common/SkeletonLoader';
 
 export const DiscoverScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
@@ -53,27 +54,31 @@ export const DiscoverScreen: React.FC = () => {
         )
       : [];
   });
+  const [isLoading, setIsLoading] = useState(() => liveHighlights.length === 0 && upcomingScheduleMatches.length === 0);
   const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult[]>([]);
 
   React.useEffect(() => {
     let isMounted = true;
-    streamingApiService.getLiveMatches().then(matches => {
-      if (isMounted && matches && matches.length > 0) {
-        const converted = matches.map(m => streamingApiService.convertLiveMatchToMatchup(m));
-        setLiveHighlights(sortMatchesWithLiveFirst(converted));
-      }
-    }).catch(() => {});
+    streamingApiService
+      .getLiveMatches()
+      .then(matches => {
+        if (!isMounted) return;
+        if (matches && matches.length > 0) {
+          const converted = matches.map(m => streamingApiService.convertLiveMatchToMatchup(m));
+          setLiveHighlights(sortMatchesWithLiveFirst(converted));
 
-    streamingApiService.getUpcomingMatches().then(upcoming => {
-      if (isMounted && upcoming && upcoming.length > 0) {
-        const converted = upcoming
-          .filter(m => m.status === 'UPCOMING')
-          .map(m => streamingApiService.convertLiveMatchToMatchup(m));
-        if (converted.length > 0) {
-          setUpcomingScheduleMatches(sortUpcomingChronologically(converted));
+          const upcomingOnly = matches
+            .filter(m => m.status === 'UPCOMING')
+            .map(m => streamingApiService.convertLiveMatchToMatchup(m));
+          if (upcomingOnly.length > 0) {
+            setUpcomingScheduleMatches(sortUpcomingChronologically(upcomingOnly));
+          }
         }
-      }
-    }).catch(() => {});
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
 
     return () => { isMounted = false; };
   }, []);
@@ -298,6 +303,8 @@ export const DiscoverScreen: React.FC = () => {
               <Text style={styles.clearSearchButtonText}>Clear search</Text>
             </TouchableOpacity>
           </View>
+        ) : isLoading && !isSearchActive && liveHighlights.length === 0 ? (
+          <DiscoverSkeleton />
         ) : (
           <>
             {/* ── B. EXPLORE COMPETITIONS (Horizontally Scrollable) ── */}

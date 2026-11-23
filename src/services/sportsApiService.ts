@@ -257,6 +257,33 @@ export interface EspnEventMatch {
   statusText: string;
 }
 
+export interface FinishedEventRecord {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  sport: string;
+  scoreHome: number;
+  scoreAway: number;
+  completedAt: number;
+  date?: string;
+  detail?: string;
+}
+
+const COMMON_GENERIC_TOKENS = new Set([
+  'u15', 'u16', 'u17', 'u18', 'u19', 'u20', 'u21', 'u23',
+  'youth', 'women', 'ladies', 'men', 'team', 'club', 'fc', 'cf', 'sc', 'afc', 'ac', 'cd', 'ud',
+  'city', 'united', 'town', 'athletic', 'real', 'sporting', 'reserves', 'amateur'
+]);
+
+export const cleanTeamNameForMatch = (s: string): string =>
+  s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\b(fc|cf|sc|afc|club|united|city|women|ladies|men)\b/g, '').trim();
+
+export const getDistinctTeamTokens = (name: string): string[] => {
+  const c = cleanTeamNameForMatch(name);
+  const filtered = c.split(/\s+/).filter(w => w.length >= 3 && !COMMON_GENERIC_TOKENS.has(w));
+  return filtered.length > 0 ? filtered : c.split(/\s+/).filter(w => w.length >= 3);
+};
+
 export function parseClockAndStatus(ev: any, sport: string): { minute: number; playTime: string; isLive: boolean; status: 'LIVE' | 'FT' | 'UPCOMING' } {
   const state = ev.status?.type?.state; // 'in' | 'pre' | 'post'
   const isLive = state === 'in';
@@ -286,13 +313,29 @@ export function parseClockAndStatus(ev: any, sport: string): { minute: number; p
     }
   } else if (state === 'post' || ev.status?.type?.completed) {
     const isBasketball = sport === 'basketball';
+    let ftText = isBasketball ? 'Final' : 'FT';
+    if (/aet|extra/i.test(shortDetail) || /aet|extra/i.test(detail)) {
+      ftText = 'AET';
+    } else if (/pen|pk/i.test(shortDetail) || /pen|pk/i.test(detail)) {
+      ftText = 'PEN';
+    }
     return {
       minute: isBasketball ? 48 : 90,
-      playTime: isBasketball ? 'Final' : 'FT',
+      playTime: ftText,
       isLive: false,
       status: 'FT',
     };
   } else {
+    // Check if postponed, cancelled, or suspended
+    if (/postponed|postp/i.test(detail) || /postponed|postp/i.test(shortDetail)) {
+      return { minute: 0, playTime: 'Postponed', isLive: false, status: 'FT' };
+    }
+    if (/cancel/i.test(detail) || /cancel/i.test(shortDetail)) {
+      return { minute: 0, playTime: 'Cancelled', isLive: false, status: 'FT' };
+    }
+    if (/suspend|abandon/i.test(detail) || /suspend|abandon/i.test(shortDetail)) {
+      return { minute: 0, playTime: 'Suspended', isLive: false, status: 'FT' };
+    }
     return { minute: 0, playTime: shortDetail || detail || 'Upcoming', isLive: false, status: 'UPCOMING' };
   }
 }
@@ -425,8 +468,96 @@ class SportsApiService {
   private globalEventsCache: { events: any[]; timestamp: number } | null = null;
   private scoreboardCache = new Map<string, { data: LiveMatch[]; timestamp: number }>();
   private inFlightScoreboardPromises = new Map<string, Promise<LiveMatch[]>>();
+  private finishedEventsMap = new Map<string, FinishedEventRecord>();
   private readonly SCOREBOARD_CACHE_TTL = 30000; // 30 seconds
   private readonly CACHE_TTL = 60000; // 60 seconds
+
+  /**
+   * Authoritative repository of finished / full-time matches discovered across ESPN scoreboards.
+   */
+  public getFinishedEventsMap(): Map<string, FinishedEventRecord> {
+    return this.finishedEventsMap;
+  }
+
+  /**
+   * Ingests and indexes finished events from scoreboard responses.
+   */
+  public recordFinishedEvents(events: any[], defaultSport?: string): void {
+    if (!Array.isArray(events)) return;
+    events.forEach(ev => {
+      const state = ev.status?.type?.state;
+      const completed = Boolean(ev.status?.type?.completed);
+      const detail = ev.status?.type?.detail || '';
+      const shortDetail = ev.status?.type?.shortDetail || '';
+      const isPost =
+        state === 'post' ||
+        completed ||
+        /final|ft|ended|completed|postponed|cancel|suspend|abandon/i.test(detail) ||
+        /final|ft|ended|completed|postponed|cancel|suspend|abandon/i.test(shortDetail);
+
+      if (!isPost) return;
+
+      const comp = ev.competitions?.[0];
+      const home = comp?.competitors?.find((c: any) => c.homeAway === 'home') || comp?.competitors?.[0];
+      const away = comp?.competitors?.find((c: any) => c.homeAway === 'away') || comp?.competitors?.[1];
+      const homeName = home?.team?.displayName;
+      const awayName = away?.team?.displayName;
+      if (!homeName || !awayName) return;
+
+      const scoreHome = parseInt(home?.score || '0', 10) || 0;
+      const scoreAway = parseInt(away?.score || '0', 10) || 0;
+      const sport = ev._sport || defaultSport || 'soccer';
+
+      const record: FinishedEventRecord = {
+        id: ev.id ? String(ev.id) : `${cleanTeamNameForMatch(homeName)}_${cleanTeamNameForMatch(awayName)}`,
+        homeTeam: homeName,
+        awayTeam: awayName,
+        sport,
+        scoreHome,
+        scoreAway,
+        completedAt: Date.now(),
+        date: ev.date,
+        detail: shortDetail || detail || 'FT',
+      };
+
+      const hClean = cleanTeamNameForMatch(homeName);
+      const aClean = cleanTeamNameForMatch(awayName);
+      this.finishedEventsMap.set(`${hClean}_${aClean}`, record);
+      this.finishedEventsMap.set(`${aClean}_${hClean}`, record);
+      if (ev.id) {
+        this.finishedEventsMap.set(String(ev.id), record);
+      }
+    });
+  }
+
+  /**
+   * Deterministically verifies if a fixture has completed according to authoritative scoreboards.
+   */
+  public isFixtureFinished(homeName: string, awayName: string, eventId?: string): boolean {
+    if (eventId && this.finishedEventsMap.has(String(eventId))) {
+      return true;
+    }
+    if (!homeName || !awayName) return false;
+
+    const hClean = cleanTeamNameForMatch(homeName);
+    const aClean = cleanTeamNameForMatch(awayName);
+
+    if (this.finishedEventsMap.has(`${hClean}_${aClean}`) || this.finishedEventsMap.has(`${aClean}_${hClean}`)) {
+      return true;
+    }
+
+    const hToks = getDistinctTeamTokens(hClean);
+    const aToks = getDistinctTeamTokens(aClean);
+
+    for (const record of this.finishedEventsMap.values()) {
+      const rH = cleanTeamNameForMatch(record.homeTeam);
+      const rA = cleanTeamNameForMatch(record.awayTeam);
+      const hHit = hToks.some(t => rH.includes(t) || rA.includes(t));
+      const aHit = aToks.some(t => rH.includes(t) || rA.includes(t));
+      if (hHit && aHit) return true;
+    }
+    return false;
+  }
 
   /**
    * Global search for teams and leagues/competitions using ESPN Search API v2.
@@ -535,6 +666,7 @@ class SportsApiService {
     });
 
     if (allEvents.length > 0) {
+      this.recordFinishedEvents(allEvents);
       this.globalEventsCache = { events: allEvents, timestamp: Date.now() };
     }
     return allEvents;
@@ -730,6 +862,7 @@ class SportsApiService {
         if (!res.ok) return [];
         const data = await res.json();
         const events = data.events || [];
+        this.recordFinishedEvents(events, cfg.sport);
 
         return events
           .map((ev: any): LiveMatch | null => {

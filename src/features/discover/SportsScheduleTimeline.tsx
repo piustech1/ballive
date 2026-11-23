@@ -316,6 +316,17 @@ export const SportsScheduleTimeline: React.FC<SportsScheduleTimelineProps> = ({
       return;
     }
 
+    const cachedUpcoming = streamingApiService.getCachedUpcomingMatches();
+    if (cachedUpcoming && cachedUpcoming.length > 0) {
+      const converted = cachedUpcoming
+        .filter(m => m.status === 'UPCOMING')
+        .map(m => streamingApiService.convertLiveMatchToMatchup(m));
+      if (converted.length > 0) {
+        setInternalMatches(sortUpcomingChronologically(converted));
+        return;
+      }
+    }
+
     streamingApiService
       .getUpcomingMatches()
       .then(upcoming => {

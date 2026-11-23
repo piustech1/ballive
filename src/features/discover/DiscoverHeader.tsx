@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, Search, X } from 'lucide-react-native';
 import Colors from '../../theme/colors';
+import { CurvedHeaderPlayerBackground } from '../../components/common/CurvedHeaderPlayerBackground';
 
 interface DiscoverHeaderProps {
   searchQuery: string;
@@ -26,6 +27,9 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
 
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
+      {/* ── ATMOSPHERIC SPORTS PLAYER BACKGROUND ARTWORK ── */}
+      <CurvedHeaderPlayerBackground sport="soccer" />
+
       {/* ── TOP UTILITY & TITLE ROW ── */}
       <View style={styles.topRow}>
         <View style={styles.titleContainer}>
@@ -79,6 +83,7 @@ const styles = StyleSheet.create({
     paddingBottom: 22,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
+    overflow: 'hidden',
   },
   topRow: {
     flexDirection: 'row',
