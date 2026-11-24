@@ -122,6 +122,39 @@ export function resolveCompetitionLogo(competitionIdOrName?: string): string {
   if (clean.includes('ligue') || clean.includes('ligue-1')) {
     return LEAGUE_EMBLEMS['ligue-1'];
   }
+  // J1 League
+  if (clean.includes('j1') || clean.includes('j-league') || clean.includes('meiji-yasuda')) {
+    return LEAGUE_EMBLEMS['j1-league'];
+  }
+  // Saudi First Division (strictly checked before generic saudi)
+  if (clean.includes('yelo') || clean.includes('first-division') || clean.includes('saudi-first') || clean.includes('division-1') || clean.includes('ksa-2')) {
+    return LEAGUE_EMBLEMS['saudi-first-division'];
+  }
+  // Saudi Pro League
+  if (clean.includes('saudi') || clean.includes('roshn') || clean.includes('spl') || clean.includes('ksa-1')) {
+    return LEAGUE_EMBLEMS['saudi-pro-league'];
+  }
+  // FIFA U-17 World Cup (strictly checked before senior world cup)
+  if (clean.includes('u-17') || clean.includes('u17') || clean.includes('under-17')) {
+    return LEAGUE_EMBLEMS['fifa-u-17'];
+  }
+  // Chinese Super League
+  if (clean.includes('csl') || clean.includes('chinese-super') || clean.includes('china-super')) {
+    return LEAGUE_EMBLEMS['csl'];
+  }
+  // Egyptian Premier League
+  if (clean.includes('egyptian') || clean.includes('egypt-premier')) {
+    return LEAGUE_EMBLEMS['egyptian-premier'];
+  }
+  // Indian Super League
+  if (clean.includes('isl') || clean.includes('indian-super') || clean.includes('india-super')) {
+    return LEAGUE_EMBLEMS['isl'];
+  }
+  // Kenyan Premier League
+  if (clean.includes('kenyan') || clean.includes('fkf') || clean.includes('kenya-premier')) {
+    return LEAGUE_EMBLEMS['kenyan-premier-league'];
+  }
+
   if (clean.includes('world-cup') || clean === 'wc' || clean.includes('fifa')) {
     return LEAGUE_EMBLEMS['world-cup'];
   }

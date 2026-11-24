@@ -627,6 +627,8 @@ export function getTeamColorDefinition(teamNameOrId?: string): TeamColorDefiniti
   return { primary, secondary, tertiary };
 }
 
+export const getTeamColor = getTeamColorDefinition;
+
 /**
  * Resolves authentic colors for a matchup with scientific collision avoidance.
  * 

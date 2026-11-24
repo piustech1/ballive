@@ -17,6 +17,7 @@ import {
 import { theSportsDbService } from './theSportsDbService';
 import { matchArtworkEnricher } from './matchArtworkEnricher';
 import { savedMatchesService } from './savedMatchesService';
+import { competitionResolverService } from './competitionResolverService';
 
 export interface RawStreamSource {
   id: string;
@@ -346,6 +347,17 @@ class StreamingApiService {
               const b1 = rawLogo1 || posterLogo1 || getTeamCrest(home);
               const b2 = rawLogo2 || posterLogo2 || getTeamCrest(away);
 
+              const resolvedComp = competitionResolverService.resolveCompetition({
+                rawId: m.id,
+                rawName: cleanTitle,
+                posterUrl: m.poster || m.background,
+                description: m.description,
+                genres: m.genres,
+                homeTeam: home,
+                awayTeam: away,
+                sport,
+              });
+
               // Deduplicate against existing authentic matches (e.g. ESPN scoreboards)
               const cleanHome = cleanName(home);
               const cleanAway = cleanName(away);
@@ -393,8 +405,16 @@ class StreamingApiService {
                   existingMatch.awayBadge = b2;
                 }
 
-                // 3. If existing match still has generic "Global Football", upgrade to specific DAG genre if available
+                // 3. If existing match still has generic "Global Football", upgrade to authentic resolved competition
                 if (
+                  (existingMatch.competition === 'Global Football' ||
+                   existingMatch.competition === 'Football' ||
+                   existingMatch.competition === 'SOCCER') &&
+                  resolvedComp.isIdentified
+                ) {
+                  existingMatch.competition = resolvedComp.name;
+                  existingMatch.competitionLogo = resolvedComp.logoUrl;
+                } else if (
                   existingMatch.competition === 'Global Football' &&
                   m.genres?.[0] &&
                   m.genres[0] !== 'FOOTBALL' &&
@@ -479,7 +499,8 @@ class StreamingApiService {
                   title: cleanTitle.replace(/^⏱️\s*/, ''),
                   homeTeam: home,
                   awayTeam: away,
-                  competition: m.genres?.[0] || genre,
+                  competition: resolvedComp.name,
+                  competitionLogo: resolvedComp.logoUrl,
                   score: { home: 0, away: 0 },
                   minute: 0,
                   playTime: undefined,
@@ -537,9 +558,10 @@ class StreamingApiService {
                 title: cleanTitle.replace(/^🔴\s*LIVE:\s*/i, ''),
                 homeTeam: home,
                 awayTeam: away,
-                competition: (matchedEspn?.competition && matchedEspn.competition !== 'Global Football'
+                competition: (matchedEspn?.competition && matchedEspn.competition !== 'Global Football' && matchedEspn.competition !== 'Football'
                   ? matchedEspn.competition
-                  : (m.genres?.[0] || genre)),
+                  : resolvedComp.name),
+                competitionLogo: (matchedEspn?.competitionLogo || resolvedComp.logoUrl),
                 score: { home: scoreHome, away: scoreAway },
                 minute,
                 playTime,
@@ -947,8 +969,32 @@ class StreamingApiService {
     const homeCrest = validHomeBadge || getTeamCrest(live.homeTeam);
     const awayCrest = validAwayBadge || getTeamCrest(live.awayTeam);
 
-    const compLogo = live.competitionLogo || resolveCompetitionLogo(live.competition);
-    const compLower = (live.competition || '').toLowerCase();
+    let effectiveCompetition = live.competition;
+    let compLogo = live.competitionLogo;
+
+    if (
+      !effectiveCompetition ||
+      effectiveCompetition === 'Global Football' ||
+      effectiveCompetition === 'Football' ||
+      effectiveCompetition === 'SOCCER'
+    ) {
+      const resolved = competitionResolverService.resolveCompetition({
+        rawId: live.id,
+        rawName: live.title,
+        homeTeam: live.homeTeam,
+        awayTeam: live.awayTeam,
+        sport: live.sport,
+      });
+      if (resolved.isIdentified) {
+        effectiveCompetition = resolved.name;
+        compLogo = resolved.logoUrl;
+      }
+    }
+
+    if (!compLogo) {
+      compLogo = resolveCompetitionLogo(effectiveCompetition);
+    }
+    const compLower = (effectiveCompetition || '').toLowerCase();
 
     // Authoritative Match Status Normalization
     const rawKickoffRef = live.rawDate || live.kickoffTime || live.time;
@@ -1003,7 +1049,7 @@ class StreamingApiService {
 
     return {
       id: live.id,
-      competition: live.competition,
+      competition: effectiveCompetition,
       competitionLogo: compLogo,
       status,
       isLive,

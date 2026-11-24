@@ -33,7 +33,7 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ onSettingsPress })
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Colors.headerPurple,
+    backgroundColor: 'transparent',
     paddingHorizontal: 20,
     paddingBottom: 4,
   },

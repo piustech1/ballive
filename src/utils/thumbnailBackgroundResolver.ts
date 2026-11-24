@@ -126,11 +126,10 @@ export function getLeagueThumbnailKey(
     return 'ligue1';
   }
 
-  // 10. Saudi Pro League
+  // 10. Saudi Pro League (strictly separate from Saudi First Division)
   if (
-    comp.includes('saudi') ||
-    comp.includes('ksa.1') ||
-    comp.includes('roshn')
+    (comp.includes('saudi pro') || comp.includes('ksa.1') || comp.includes('roshn') || comp.includes('spl') ||
+     (comp.includes('saudi') && !comp.includes('first') && !comp.includes('yelo') && !comp.includes('division') && !comp.includes('1st')))
   ) {
     return 'saudi_pro';
   }

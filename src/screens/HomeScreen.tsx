@@ -101,6 +101,24 @@ export const HomeScreen: React.FC = () => {
           matchesCategory = match.competition.toLowerCase().includes('serie a');
         } else if (cat === 'bundesliga') {
           matchesCategory = match.competition.toLowerCase().includes('bundesliga');
+        } else if (cat === 'j1' || cat === 'j1_league') {
+          matchesCategory = match.competition.toLowerCase().includes('j1') || match.competition.toLowerCase().includes('j.league');
+        } else if (cat === 'saudi_pro') {
+          const compLower = match.competition.toLowerCase();
+          matchesCategory = compLower.includes('saudi pro') || compLower.includes('roshn') || (compLower.includes('saudi') && !compLower.includes('first') && !compLower.includes('yelo'));
+        } else if (cat === 'saudi_first' || cat === 'saudi_first_division') {
+          const compLower = match.competition.toLowerCase();
+          matchesCategory = compLower.includes('first division') || compLower.includes('yelo') || compLower.includes('saudi 1st');
+        } else if (cat === 'fifa_u17') {
+          matchesCategory = match.competition.toLowerCase().includes('u-17') || match.competition.toLowerCase().includes('u17') || match.competition.toLowerCase().includes('under-17');
+        } else if (cat === 'csl') {
+          matchesCategory = match.competition.toLowerCase().includes('chinese super') || match.competition.toLowerCase().includes('csl');
+        } else if (cat === 'egyptian_premier') {
+          matchesCategory = match.competition.toLowerCase().includes('egyptian') || match.competition.toLowerCase().includes('egypt premier');
+        } else if (cat === 'isl') {
+          matchesCategory = match.competition.toLowerCase().includes('indian super') || match.competition.toLowerCase().includes('isl');
+        } else if (cat === 'kenyan_premier') {
+          matchesCategory = match.competition.toLowerCase().includes('kenyan premier') || match.competition.toLowerCase().includes('fkf') || match.competition.toLowerCase().includes('kenya premier');
         }
       }
 

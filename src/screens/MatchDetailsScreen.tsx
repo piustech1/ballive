@@ -29,6 +29,8 @@ import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeade
 import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import { MatchArtworkBackground } from '../components/common/MatchArtworkBackground';
 import { TeamCrest } from '../components/common/TeamCrest';
+import { WinProbabilityBar } from '../components/match/WinProbabilityBar';
+import { winProbabilityService, WinProbabilityResult } from '../services/winProbabilityService';
 import { getTeamCrest, DEFAULT_CREST } from '../utils/teamCrestResolver';
 import {
   resolveSportBackground,
@@ -313,6 +315,43 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     !cleanAway ||
     ['opponent', 'tbd', 'tba', 'unknown', 'none', 'f1', 'formula 1', 'grand prix', 'red corner', 'blue corner'].includes(cleanAway);
 
+  // Load genuine win probability for upcoming matches
+  const [winProb, setWinProb] = useState<WinProbabilityResult | null>(null);
+  const [isLoadingProb, setIsLoadingProb] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (isUpcoming) {
+      setIsLoadingProb(true);
+      winProbabilityService
+        .getWinProbability({
+          matchId: activeMatchup.id,
+          sport: activeMatchup.sport,
+          competition: activeMatchup.competition,
+          homeTeam: activeMatchup.homeTeam.name,
+          awayTeam: activeMatchup.awayTeam.name,
+        })
+        .then(result => {
+          if (isMounted) {
+            setWinProb(result);
+            setIsLoadingProb(false);
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setWinProb({ isAvailable: false });
+            setIsLoadingProb(false);
+          }
+        });
+    } else {
+      setWinProb(null);
+      setIsLoadingProb(false);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [activeMatchup.id, activeMatchup.homeTeam.name, activeMatchup.awayTeam.name, isUpcoming]);
+
   // Load real related live & upcoming matches for discovery navigation
   useEffect(() => {
     let isMounted = true;
@@ -432,367 +471,406 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
           />
         </View>
 
-        {/* ── 3. REFINED MATCHUP CARD WITH INTEGRATED METADATA STRIP ── */}
-        <View style={styles.matchupCard}>
-          {isMotor ? (
-            /* Motorsport Event Card: Grand Prix, Venue, and Session info — NO fake scores */
-            <View style={styles.racingDetailsRow}>
-              <View style={styles.racingDetailsCol}>
-                <Text style={styles.racingEventTitle} numberOfLines={2}>
-                  {activeMatchup.homeTeam.name || activeMatchup.competition}
-                </Text>
-                <Text style={styles.racingVenueSubtitle} numberOfLines={1}>
-                  {!isPlaceholderAway && activeMatchup.awayTeam.name
-                    ? activeMatchup.awayTeam.name
-                    : (activeMatchup.venue || 'Official Session')}
-                </Text>
-              </View>
-              <View style={styles.racingStatusCol}>
-                {isLive ? (
-                  <View style={styles.livePill}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.livePillText}>RACE LIVE</Text>
-                  </View>
-                ) : isFinished ? (
-                  <View style={styles.ftPill}>
-                    <Text style={styles.ftPillText}>COMPLETED</Text>
-                  </View>
-                ) : (
-                  <View style={styles.timePill}>
-                    <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
-                    <Text style={styles.kickoffTimeText} numberOfLines={1}>
-                      {formattedKickoff}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          ) : isCombat && isPlaceholderAway ? (
-            /* Combat Single Event Banner */
-            <View style={styles.racingDetailsRow}>
-              <View style={styles.racingDetailsCol}>
-                <Text style={styles.racingEventTitle} numberOfLines={2}>
-                  {activeMatchup.homeTeam.name}
-                </Text>
-                <Text style={styles.racingVenueSubtitle} numberOfLines={1}>
-                  {activeMatchup.competition}
-                </Text>
-              </View>
-              <View style={styles.racingStatusCol}>
-                {isLive ? (
-                  <View style={styles.livePill}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.livePillText}>BOUT LIVE</Text>
-                  </View>
-                ) : (
-                  <View style={styles.timePill}>
-                    <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
-                    <Text style={styles.kickoffTimeText} numberOfLines={1}>
-                      {formattedKickoff}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          ) : isCombat ? (
-            /* Combat Sport: Red Corner vs Blue Corner */
-            <View style={styles.matchupRow}>
-              {/* Red Corner Fighter */}
-              <View style={styles.teamCol}>
-                <TeamCrest
-                  uri={homeCrest}
-                  teamName={activeMatchup.homeTeam.name}
-                  size={48}
-                  containerStyle={styles.crestFlatContainer}
-                />
-                <Text style={styles.teamName} numberOfLines={2}>
-                  {activeMatchup.homeTeam.name}
-                </Text>
-                <Text style={styles.cornerSubLabelRed}>RED CORNER</Text>
-              </View>
+        {isUpcoming ? (
+          <>
+            {/* ── 3. UPCOMING: WIN PROBABILITY EXPLAINER (Directly beneath match hero banner) ── */}
+            <WinProbabilityBar
+              homeTeamName={activeMatchup.homeTeam.name}
+              awayTeamName={activeMatchup.awayTeam.name}
+              homeCrest={homeCrest}
+              awayCrest={awayCrest}
+              sport={activeMatchup.sport}
+              probabilityData={winProb}
+              isLoading={isLoadingProb}
+            />
 
-              {/* Center Bout Status (No fake football 0 - 0) */}
-              <View style={styles.centerCol}>
-                {isLive ? (
-                  <View style={styles.livePill}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.livePillText}>
-                      {activeMatchup.playTime || 'BOUT LIVE'}
-                    </Text>
-                  </View>
-                ) : isFinished ? (
-                  <View style={styles.ftPill}>
-                    <Text style={styles.ftPillText}>FINAL</Text>
-                  </View>
-                ) : (
-                  <>
-                    <View style={styles.vsPill}>
-                      <Text style={styles.vsText}>VS</Text>
-                    </View>
-                    <View style={styles.timePill}>
-                      <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
-                      <Text style={styles.kickoffTimeText} numberOfLines={1}>
-                        {formattedKickoff}
+            {/* ── 4. UPCOMING: STREAMLINED ACTION ROW (Notify Kickoff + Save Match Bookmark) ── */}
+            <View style={styles.actionsContainer}>
+              <View style={styles.actionsRow}>
+                {/* Primary Action Button: Notify Kickoff */}
+                <TouchableOpacity
+                  style={[
+                    styles.primaryActionButton,
+                    isReminderSet && styles.primaryActionActive,
+                  ]}
+                  activeOpacity={0.85}
+                  onPress={() => toggleMatchReminder(activeMatchup.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={isReminderSet ? 'Kickoff reminder set' : 'Notify at kickoff'}
+                >
+                  {isReminderSet ? (
+                    <>
+                      <BellRing size={16} color="#7952FC" strokeWidth={2.4} />
+                      <Text style={[styles.primaryActionText, { color: '#A58BFC' }]}>
+                        Kickoff Alert Active
                       </Text>
-                    </View>
-                  </>
-                )}
-              </View>
+                    </>
+                  ) : (
+                    <>
+                      <Bell size={16} color="#FFFFFF" strokeWidth={2.2} />
+                      <Text style={styles.primaryActionText}>Notify Kickoff</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
 
-              {/* Blue Corner Fighter */}
-              <View style={styles.teamCol}>
-                <TeamCrest
-                  uri={awayCrest}
-                  teamName={activeMatchup.awayTeam.name}
-                  size={48}
-                  containerStyle={styles.crestFlatContainer}
-                />
-                <Text style={styles.teamName} numberOfLines={2}>
-                  {activeMatchup.awayTeam.name}
-                </Text>
-                <Text style={styles.cornerSubLabelBlue}>BLUE CORNER</Text>
-              </View>
-            </View>
-          ) : (
-            /* Standard Team Score Matchup (Football, American Football, Basketball, Hockey) */
-            <View style={styles.matchupRow}>
-              {/* Home Team */}
-              <View style={styles.teamCol}>
-                <TeamCrest
-                  uri={homeCrest}
-                  teamName={activeMatchup.homeTeam.name}
-                  size={48}
-                  containerStyle={styles.crestFlatContainer}
-                />
-                <Text style={styles.teamName} numberOfLines={2}>
-                  {activeMatchup.homeTeam.name}
-                </Text>
-              </View>
-
-              {/* Center: Score / Status / VS */}
-              <View style={styles.centerCol}>
-                {isLive ? (
-                  <View style={styles.livePill}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.livePillText}>LIVE</Text>
-                  </View>
-                ) : isFinished ? (
-                  <View style={styles.ftPill}>
-                    <Text style={styles.ftPillText}>FULL TIME</Text>
-                  </View>
-                ) : (
-                  <>
-                    <View style={styles.vsPill}>
-                      <Text style={styles.vsText}>VS</Text>
-                    </View>
-                    <View style={styles.timePill}>
-                      <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
-                      <Text style={styles.kickoffTimeText} numberOfLines={1}>
-                        {formattedKickoff}
-                      </Text>
-                    </View>
-                  </>
-                )}
-              </View>
-
-              {/* Away Team */}
-              <View style={styles.teamCol}>
-                <TeamCrest
-                  uri={awayCrest}
-                  teamName={activeMatchup.awayTeam.name}
-                  size={48}
-                  containerStyle={styles.crestFlatContainer}
-                />
-                <Text style={styles.teamName} numberOfLines={2}>
-                  {activeMatchup.awayTeam.name}
-                </Text>
+                {/* Bookmark Action */}
+                <TouchableOpacity
+                  style={[styles.iconButton, isSaved && styles.iconButtonActive]}
+                  activeOpacity={0.8}
+                  onPress={() => toggleSave(activeMatchup)}
+                  accessibilityRole="button"
+                  accessibilityLabel={isSaved ? 'Remove from saved' : 'Save match'}
+                >
+                  <Bookmark
+                    size={18}
+                    color={isSaved ? '#7952FC' : '#A098B5'}
+                    fill={isSaved ? '#7952FC' : 'transparent'}
+                    strokeWidth={2}
+                  />
+                </TouchableOpacity>
               </View>
             </View>
-          )}
-
-          {/* Integrated Metadata Strip */}
-          <View style={styles.cardMetaStrip}>
-            {activeMatchup.venue ? (
-              <View style={styles.metaItem}>
-                <MapPin size={11} color="#A58BFC" style={{ marginRight: 4 }} />
-                <Text style={styles.metaText} numberOfLines={1}>
-                  {activeMatchup.venue}
-                </Text>
-              </View>
-            ) : null}
-
-            {activeMatchup.venue && <Text style={styles.metaDivider}>•</Text>}
-
-            <View style={styles.metaItem}>
-              <Calendar size={11} color="#A58BFC" style={{ marginRight: 4 }} />
-              <Text style={styles.metaText} numberOfLines={1}>
-                {activeMatchup.kickoffDate || 'Today'}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ── 4. BALANCED ACTION ROW (COMPACT, HIGH-IMPACT, ZERO WASTED SPACE) ── */}
-        <View style={styles.actionsContainer}>
-          <View style={styles.actionsRow}>
-            {/* Primary Action Button */}
-            {isLive ? (
-              <TouchableOpacity
-                style={styles.primaryActionButton}
-                activeOpacity={0.85}
-                onPress={handleWatchLive}
-                accessibilityRole="button"
-                accessibilityLabel="Watch Live Stream"
-              >
-                <Tv size={16} color="#FFFFFF" strokeWidth={2.4} />
-                <Text style={styles.primaryActionText}>Watch Live Stream</Text>
-              </TouchableOpacity>
-            ) : isFinished ? (
-              <View style={[styles.primaryActionButton, styles.completedActionButton]}>
-                <CheckCircle size={16} color="#10B981" strokeWidth={2.2} />
-                <Text style={[styles.primaryActionText, { color: '#E2E8F0' }]}>Match Concluded (FT)</Text>
-              </View>
-            ) : (
-              <TouchableOpacity
-                style={[
-                  styles.primaryActionButton,
-                  isReminderSet && styles.primaryActionActive,
-                ]}
-                activeOpacity={0.85}
-                onPress={() => toggleMatchReminder(activeMatchup.id)}
-                accessibilityRole="button"
-                accessibilityLabel={isReminderSet ? 'Kickoff reminder set' : 'Notify at kickoff'}
-              >
-                {isReminderSet ? (
-                  <>
-                    <BellRing size={16} color="#7952FC" strokeWidth={2.4} />
-                    <Text style={[styles.primaryActionText, { color: '#A58BFC' }]}>
-                      Kickoff Alert Active
+          </>
+        ) : (
+          <>
+            {/* ── 3. REFINED MATCHUP CARD WITH INTEGRATED METADATA STRIP ── */}
+            <View style={styles.matchupCard}>
+              {isMotor ? (
+                /* Motorsport Event Card: Grand Prix, Venue, and Session info — NO fake scores */
+                <View style={styles.racingDetailsRow}>
+                  <View style={styles.racingDetailsCol}>
+                    <Text style={styles.racingEventTitle} numberOfLines={2}>
+                      {activeMatchup.homeTeam.name || activeMatchup.competition}
                     </Text>
-                  </>
-                ) : (
-                  <>
-                    <Bell size={16} color="#FFFFFF" strokeWidth={2.2} />
-                    <Text style={styles.primaryActionText}>Notify Kickoff</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            )}
-
-            {/* If match is live, allow setting reminder / alert via icon button */}
-            {isLive && (
-              <TouchableOpacity
-                style={[styles.iconButton, isReminderSet && styles.iconButtonActive]}
-                activeOpacity={0.8}
-                onPress={() => toggleMatchReminder(activeMatchup.id)}
-                accessibilityRole="button"
-                accessibilityLabel="Toggle reminder"
-              >
-                {isReminderSet ? (
-                  <BellRing size={18} color="#7952FC" strokeWidth={2.4} />
-                ) : (
-                  <Bell size={18} color="#A098B5" strokeWidth={2} />
-                )}
-              </TouchableOpacity>
-            )}
-
-            {/* Bookmark Action */}
-            <TouchableOpacity
-              style={[styles.iconButton, isSaved && styles.iconButtonActive]}
-              activeOpacity={0.8}
-              onPress={() => toggleSave(activeMatchup)}
-              accessibilityRole="button"
-              accessibilityLabel={isSaved ? 'Remove from saved' : 'Save match'}
-            >
-              <Bookmark
-                size={18}
-                color={isSaved ? '#7952FC' : '#A098B5'}
-                fill={isSaved ? '#7952FC' : 'transparent'}
-                strokeWidth={2}
-              />
-            </TouchableOpacity>
-
-            {/* Share Action */}
-            <TouchableOpacity
-              style={styles.iconButton}
-              activeOpacity={0.8}
-              onPress={handleShare}
-              accessibilityRole="button"
-              accessibilityLabel="Share match"
-            >
-              <Share2 size={18} color="#A098B5" strokeWidth={2} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* ── 5. MATCH INFORMATION PANEL (BALANCED TWO-COLUMN ARRANGEMENT) ── */}
-        <View style={styles.overviewCard}>
-          <View style={styles.overviewGrid}>
-            {/* Left Column: Venue & Competition */}
-            <View style={styles.overviewCol}>
-              {/* Item 1: Venue */}
-              <View style={styles.overviewItem}>
-                <View style={styles.overviewIconCircle}>
-                  <MapPin size={13} color="#A58BFC" strokeWidth={2.2} />
+                    <Text style={styles.racingVenueSubtitle} numberOfLines={1}>
+                      {!isPlaceholderAway && activeMatchup.awayTeam.name
+                        ? activeMatchup.awayTeam.name
+                        : (activeMatchup.venue || 'Official Session')}
+                    </Text>
+                  </View>
+                  <View style={styles.racingStatusCol}>
+                    {isLive ? (
+                      <View style={styles.livePill}>
+                        <View style={styles.liveDot} />
+                        <Text style={styles.livePillText}>RACE LIVE</Text>
+                      </View>
+                    ) : isFinished ? (
+                      <View style={styles.ftPill}>
+                        <Text style={styles.ftPillText}>COMPLETED</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.timePill}>
+                        <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
+                        <Text style={styles.kickoffTimeText} numberOfLines={1}>
+                          {formattedKickoff}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
-                <View style={styles.overviewTextCol}>
-                  <Text style={styles.overviewLabel}>VENUE</Text>
-                  <Text style={styles.overviewValue} numberOfLines={1}>
-                    {activeMatchup.venue || 'Stadium'}
-                  </Text>
+              ) : isCombat && isPlaceholderAway ? (
+                /* Combat Single Event Banner */
+                <View style={styles.racingDetailsRow}>
+                  <View style={styles.racingDetailsCol}>
+                    <Text style={styles.racingEventTitle} numberOfLines={2}>
+                      {activeMatchup.homeTeam.name}
+                    </Text>
+                    <Text style={styles.racingVenueSubtitle} numberOfLines={1}>
+                      {activeMatchup.competition}
+                    </Text>
+                  </View>
+                  <View style={styles.racingStatusCol}>
+                    {isLive ? (
+                      <View style={styles.livePill}>
+                        <View style={styles.liveDot} />
+                        <Text style={styles.livePillText}>BOUT LIVE</Text>
+                      </View>
+                    ) : (
+                      <View style={styles.timePill}>
+                        <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
+                        <Text style={styles.kickoffTimeText} numberOfLines={1}>
+                          {formattedKickoff}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
-              </View>
+              ) : isCombat ? (
+                /* Combat Sport: Red Corner vs Blue Corner */
+                <View style={styles.matchupRow}>
+                  {/* Red Corner Fighter */}
+                  <View style={styles.teamCol}>
+                    <TeamCrest
+                      uri={homeCrest}
+                      teamName={activeMatchup.homeTeam.name}
+                      size={48}
+                      containerStyle={styles.crestFlatContainer}
+                    />
+                    <Text style={styles.teamName} numberOfLines={2}>
+                      {activeMatchup.homeTeam.name}
+                    </Text>
+                    <Text style={styles.cornerSubLabelRed}>RED CORNER</Text>
+                  </View>
 
-              {/* Item 2: Competition */}
-              <View style={styles.overviewItem}>
-                <View style={styles.overviewIconCircle}>
-                  <Trophy size={13} color="#A58BFC" strokeWidth={2.2} />
+                  {/* Center Bout Status (No fake football 0 - 0) */}
+                  <View style={styles.centerCol}>
+                    {isLive ? (
+                      <View style={styles.livePill}>
+                        <View style={styles.liveDot} />
+                        <Text style={styles.livePillText}>
+                          {activeMatchup.playTime || 'BOUT LIVE'}
+                        </Text>
+                      </View>
+                    ) : isFinished ? (
+                      <View style={styles.ftPill}>
+                        <Text style={styles.ftPillText}>FINAL</Text>
+                      </View>
+                    ) : (
+                      <>
+                        <View style={styles.vsPill}>
+                          <Text style={styles.vsText}>VS</Text>
+                        </View>
+                        <View style={styles.timePill}>
+                          <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
+                          <Text style={styles.kickoffTimeText} numberOfLines={1}>
+                            {formattedKickoff}
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                  </View>
+
+                  {/* Blue Corner Fighter */}
+                  <View style={styles.teamCol}>
+                    <TeamCrest
+                      uri={awayCrest}
+                      teamName={activeMatchup.awayTeam.name}
+                      size={48}
+                      containerStyle={styles.crestFlatContainer}
+                    />
+                    <Text style={styles.teamName} numberOfLines={2}>
+                      {activeMatchup.awayTeam.name}
+                    </Text>
+                    <Text style={styles.cornerSubLabelBlue}>BLUE CORNER</Text>
+                  </View>
                 </View>
-                <View style={styles.overviewTextCol}>
-                  <Text style={styles.overviewLabel}>COMPETITION</Text>
-                  <Text style={styles.overviewValue} numberOfLines={1}>
-                    {activeMatchup.competition}
+              ) : (
+                /* Standard Team Score Matchup (Football, American Football, Basketball, Hockey) */
+                <View style={styles.matchupRow}>
+                  {/* Home Team */}
+                  <View style={styles.teamCol}>
+                    <TeamCrest
+                      uri={homeCrest}
+                      teamName={activeMatchup.homeTeam.name}
+                      size={48}
+                      containerStyle={styles.crestFlatContainer}
+                    />
+                    <Text style={styles.teamName} numberOfLines={2}>
+                      {activeMatchup.homeTeam.name}
+                    </Text>
+                  </View>
+
+                  {/* Center: Score / Status / VS */}
+                  <View style={styles.centerCol}>
+                    {isLive ? (
+                      <View style={styles.livePill}>
+                        <View style={styles.liveDot} />
+                        <Text style={styles.livePillText}>LIVE</Text>
+                      </View>
+                    ) : isFinished ? (
+                      <View style={styles.ftPill}>
+                        <Text style={styles.ftPillText}>FULL TIME</Text>
+                      </View>
+                    ) : (
+                      <>
+                        <View style={styles.vsPill}>
+                          <Text style={styles.vsText}>VS</Text>
+                        </View>
+                        <View style={styles.timePill}>
+                          <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
+                          <Text style={styles.kickoffTimeText} numberOfLines={1}>
+                            {formattedKickoff}
+                          </Text>
+                        </View>
+                      </>
+                    )}
+                  </View>
+
+                  {/* Away Team */}
+                  <View style={styles.teamCol}>
+                    <TeamCrest
+                      uri={awayCrest}
+                      teamName={activeMatchup.awayTeam.name}
+                      size={48}
+                      containerStyle={styles.crestFlatContainer}
+                    />
+                    <Text style={styles.teamName} numberOfLines={2}>
+                      {activeMatchup.awayTeam.name}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Integrated Metadata Strip */}
+              <View style={styles.cardMetaStrip}>
+                {activeMatchup.venue ? (
+                  <View style={styles.metaItem}>
+                    <MapPin size={11} color="#A58BFC" style={{ marginRight: 4 }} />
+                    <Text style={styles.metaText} numberOfLines={1}>
+                      {activeMatchup.venue}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {activeMatchup.venue && <Text style={styles.metaDivider}>•</Text>}
+
+                <View style={styles.metaItem}>
+                  <Calendar size={11} color="#A58BFC" style={{ marginRight: 4 }} />
+                  <Text style={styles.metaText} numberOfLines={1}>
+                    {activeMatchup.kickoffDate || 'Today'}
                   </Text>
                 </View>
               </View>
             </View>
 
-            {/* Right Column: Kickoff & Broadcast */}
-            <View style={styles.overviewCol}>
-              {/* Item 3: Kickoff */}
-              <View style={styles.overviewItem}>
-                <View style={styles.overviewIconCircle}>
-                  <Clock size={13} color="#A58BFC" strokeWidth={2.2} />
-                </View>
-                <View style={styles.overviewTextCol}>
-                  <Text style={styles.overviewLabel}>KICKOFF</Text>
-                  <Text style={styles.overviewValue} numberOfLines={1}>
-                    {formattedKickoff}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Item 4: Coverage / Broadcast */}
-              <View style={styles.overviewItem}>
-                <View style={styles.overviewIconCircle}>
-                  <Tv size={13} color="#A58BFC" strokeWidth={2.2} />
-                </View>
-                <View style={styles.overviewTextCol}>
-                  <Text style={styles.overviewLabel}>BROADCAST</Text>
-                  <Text
-                    style={[
-                      styles.overviewValue,
-                      hasLiveStream && { color: '#EF4444' },
-                    ]}
-                    numberOfLines={1}
+            {/* ── 4. BALANCED ACTION ROW (COMPACT, HIGH-IMPACT, ZERO WASTED SPACE) ── */}
+            <View style={styles.actionsContainer}>
+              <View style={styles.actionsRow}>
+                {/* Primary Action Button */}
+                {isLive ? (
+                  <TouchableOpacity
+                    style={styles.primaryActionButton}
+                    activeOpacity={0.85}
+                    onPress={handleWatchLive}
+                    accessibilityRole="button"
+                    accessibilityLabel="Watch Live Stream"
                   >
-                    {hasLiveStream ? 'BALLIVE Live Broadcast' : 'BALLIVE Coverage'}
-                  </Text>
+                    <Tv size={16} color="#FFFFFF" strokeWidth={2.4} />
+                    <Text style={styles.primaryActionText}>Watch Live Stream</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={[styles.primaryActionButton, styles.completedActionButton]}>
+                    <CheckCircle size={16} color="#10B981" strokeWidth={2.2} />
+                    <Text style={[styles.primaryActionText, { color: '#E2E8F0' }]}>Match Concluded (FT)</Text>
+                  </View>
+                )}
+
+                {/* If match is live, allow setting reminder / alert via icon button */}
+                {isLive && (
+                  <TouchableOpacity
+                    style={[styles.iconButton, isReminderSet && styles.iconButtonActive]}
+                    activeOpacity={0.8}
+                    onPress={() => toggleMatchReminder(activeMatchup.id)}
+                    accessibilityRole="button"
+                    accessibilityLabel="Toggle reminder"
+                  >
+                    {isReminderSet ? (
+                      <BellRing size={18} color="#7952FC" strokeWidth={2.4} />
+                    ) : (
+                      <Bell size={18} color="#A098B5" strokeWidth={2} />
+                    )}
+                  </TouchableOpacity>
+                )}
+
+                {/* Bookmark Action */}
+                <TouchableOpacity
+                  style={[styles.iconButton, isSaved && styles.iconButtonActive]}
+                  activeOpacity={0.8}
+                  onPress={() => toggleSave(activeMatchup)}
+                  accessibilityRole="button"
+                  accessibilityLabel={isSaved ? 'Remove from saved' : 'Save match'}
+                >
+                  <Bookmark
+                    size={18}
+                    color={isSaved ? '#7952FC' : '#A098B5'}
+                    fill={isSaved ? '#7952FC' : 'transparent'}
+                    strokeWidth={2}
+                  />
+                </TouchableOpacity>
+
+                {/* Share Action */}
+                <TouchableOpacity
+                  style={styles.iconButton}
+                  activeOpacity={0.8}
+                  onPress={handleShare}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share match"
+                >
+                  <Share2 size={18} color="#A098B5" strokeWidth={2} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* ── 5. MATCH INFORMATION PANEL (BALANCED TWO-COLUMN ARRANGEMENT) ── */}
+            <View style={styles.overviewCard}>
+              <View style={styles.overviewGrid}>
+                {/* Left Column: Venue & Competition */}
+                <View style={styles.overviewCol}>
+                  {/* Item 1: Venue */}
+                  <View style={styles.overviewItem}>
+                    <View style={styles.overviewIconCircle}>
+                      <MapPin size={13} color="#A58BFC" strokeWidth={2.2} />
+                    </View>
+                    <View style={styles.overviewTextCol}>
+                      <Text style={styles.overviewLabel}>VENUE</Text>
+                      <Text style={styles.overviewValue} numberOfLines={1}>
+                        {activeMatchup.venue || 'Stadium'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Item 2: Competition */}
+                  <View style={styles.overviewItem}>
+                    <View style={styles.overviewIconCircle}>
+                      <Trophy size={13} color="#A58BFC" strokeWidth={2.2} />
+                    </View>
+                    <View style={styles.overviewTextCol}>
+                      <Text style={styles.overviewLabel}>COMPETITION</Text>
+                      <Text style={styles.overviewValue} numberOfLines={1}>
+                        {activeMatchup.competition}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Right Column: Kickoff & Broadcast */}
+                <View style={styles.overviewCol}>
+                  {/* Item 3: Kickoff */}
+                  <View style={styles.overviewItem}>
+                    <View style={styles.overviewIconCircle}>
+                      <Clock size={13} color="#A58BFC" strokeWidth={2.2} />
+                    </View>
+                    <View style={styles.overviewTextCol}>
+                      <Text style={styles.overviewLabel}>KICKOFF</Text>
+                      <Text style={styles.overviewValue} numberOfLines={1}>
+                        {formattedKickoff}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Item 4: Coverage / Broadcast */}
+                  <View style={styles.overviewItem}>
+                    <View style={styles.overviewIconCircle}>
+                      <Tv size={13} color="#A58BFC" strokeWidth={2.2} />
+                    </View>
+                    <View style={styles.overviewTextCol}>
+                      <Text style={styles.overviewLabel}>BROADCAST</Text>
+                      <Text
+                        style={[
+                          styles.overviewValue,
+                          hasLiveStream && { color: '#EF4444' },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {hasLiveStream ? 'BALLIVE Live Broadcast' : 'BALLIVE Coverage'}
+                      </Text>
+                    </View>
+                  </View>
                 </View>
               </View>
             </View>
-          </View>
-        </View>
+          </>
+        )}
 
         {/* ── 6. MORE LIVE & UPCOMING FIXTURES (REAL RELATED MATCHES) ── */}
         {moreMatches.length > 0 && (

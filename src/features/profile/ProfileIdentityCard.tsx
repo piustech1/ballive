@@ -58,12 +58,10 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.headerPurple,
+    backgroundColor: 'transparent',
     paddingHorizontal: 20,
     paddingTop: 4,
     paddingBottom: 16,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
   },
   avatarCircle: {
     width: 56,

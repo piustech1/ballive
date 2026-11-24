@@ -29,6 +29,7 @@ import Colors from '../theme/colors';
 import { useProfile } from '../hooks/useProfile';
 import { ProfileHeader } from '../features/profile/ProfileHeader';
 import { ProfileIdentityCard } from '../features/profile/ProfileIdentityCard';
+import { CurvedHeaderPlayerBackground } from '../components/common/CurvedHeaderPlayerBackground';
 import { ProfileSectionRow } from '../features/profile/ProfileSectionRow';
 import { EditProfileModal } from '../features/profile/modals/EditProfileModal';
 import { FollowedTeamsModal } from '../features/profile/modals/FollowedTeamsModal';
@@ -61,16 +62,17 @@ export const ProfileScreen: React.FC = () => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.headerPurple} translucent={false} />
 
-      {/* ── 1. HEADER ── */}
-      <ProfileHeader onSettingsPress={() => setSettingsModalVisible(true)} />
-
-      {/* ── 2. IDENTITY AREA (Compact, Left-Aligned) ── */}
-      <ProfileIdentityCard
-        displayName={profile.displayName}
-        membership={profile.membership}
-        avatarBg={profile.avatarBg}
-        onEditPress={() => setEditModalVisible(true)}
-      />
+      {/* ── TOP CURVED APP BAR CAVITY WITH ROTATING ATHLETE BACKGROUND ── */}
+      <View style={styles.headerCavity}>
+        <CurvedHeaderPlayerBackground sport="soccer" screen="profile" />
+        <ProfileHeader onSettingsPress={() => setSettingsModalVisible(true)} />
+        <ProfileIdentityCard
+          displayName={profile.displayName}
+          membership={profile.membership}
+          avatarBg={profile.avatarBg}
+          onEditPress={() => setEditModalVisible(true)}
+        />
+      </View>
 
       {/* ── MAIN SCROLLABLE SECTIONS ── */}
       <ScrollView
@@ -335,5 +337,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#ECE9FA',
+  },
+  headerCavity: {
+    backgroundColor: Colors.headerPurple,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    overflow: 'hidden',
   },
 });

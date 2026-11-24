@@ -20,6 +20,7 @@ import {
 } from './footballApiService';
 import { theSportsDbService } from './theSportsDbService';
 import { matchArtworkEnricher } from './matchArtworkEnricher';
+import { competitionResolverService } from './competitionResolverService';
 import { LiveMatch } from '../constants/mockData';
 import { DiscoverMatchup } from '../constants/discoverData';
 
@@ -77,6 +78,14 @@ export function resolveLeagueKey(rawKey?: string | null): string {
   if (clean === 'serie-a') return 'seriea';
   if (clean === 'ligue-1') return 'ligue1';
   if (clean === 'fifa-friendly' || clean === 'friendly' || clean === 'friendlies') return 'fifa_friendly';
+  if (clean === 'j1' || clean === 'j1-league' || clean === 'j-league' || clean === 'meiji-yasuda-j1-league') return 'j1';
+  if (clean === 'saudi-first' || clean === 'saudi-first-division' || clean === 'yelo-league' || clean === 'yelo') return 'saudi_first';
+  if (clean === 'fifa-u17' || clean === 'fifa-u-17' || clean === 'u17') return 'fifa_u17';
+  if (clean === 'csl' || clean === 'chinese-super-league') return 'csl';
+  if (clean === 'egyptian-premier' || clean === 'egyptian-premier-league') return 'egyptian_premier';
+  if (clean === 'saudi-pro' || clean === 'saudi-pro-league' || clean === 'spl' || clean === 'roshn') return 'saudi_pro';
+  if (clean === 'isl' || clean === 'indian-super-league') return 'isl';
+  if (clean === 'kenyan-premier' || clean === 'kenyan-premier-league' || clean === 'fkf' || clean === 'fkf-premier-league') return 'kenyan_premier';
   return clean;
 }
 
@@ -136,6 +145,70 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     shortName: 'Ligue 1',
     logo: LEAGUE_EMBLEMS['ligue-1'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
+  'j1': {
+    sport: 'soccer',
+    league: 'jpn.1',
+    name: 'Meiji Yasuda J1 League',
+    shortName: 'J1 League',
+    logo: 'https://media.api-sports.io/football/leagues/98.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
+  'saudi_first': {
+    sport: 'soccer',
+    league: 'ksa.2',
+    name: 'Saudi First Division League',
+    shortName: 'Saudi 1st Div',
+    logo: 'https://media.api-sports.io/football/leagues/308.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.BEIN,
+  },
+  'fifa_u17': {
+    sport: 'soccer',
+    league: 'fifa.world.u17',
+    name: 'FIFA U-17 World Cup',
+    shortName: 'FIFA U-17',
+    logo: 'https://media.api-sports.io/football/leagues/17.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
+  'csl': {
+    sport: 'soccer',
+    league: 'chn.1',
+    name: 'Chinese Super League',
+    shortName: 'CSL',
+    logo: 'https://media.api-sports.io/football/leagues/169.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
+  'egyptian_premier': {
+    sport: 'soccer',
+    league: 'egy.1',
+    name: 'Egyptian Premier League',
+    shortName: 'Egyptian Premier',
+    logo: 'https://media.api-sports.io/football/leagues/233.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.BEIN,
+  },
+  'saudi_pro': {
+    sport: 'soccer',
+    league: 'ksa.1',
+    name: 'Saudi Pro League',
+    shortName: 'Saudi Pro League',
+    logo: 'https://media.api-sports.io/football/leagues/307.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.BEIN,
+  },
+  'isl': {
+    sport: 'soccer',
+    league: 'ind.1',
+    name: 'Indian Super League',
+    shortName: 'ISL',
+    logo: 'https://media.api-sports.io/football/leagues/323.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
+  'kenyan_premier': {
+    sport: 'soccer',
+    league: 'ken.1',
+    name: 'Kenyan Premier League',
+    shortName: 'FKF Premier League',
+    logo: 'https://media.api-sports.io/football/leagues/279.png',
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.SUPERSPORT,
   },
   'fifa_friendly': {
     sport: 'soccer',

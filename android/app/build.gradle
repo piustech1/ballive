@@ -91,8 +91,8 @@ android {
         applicationId 'com.piustech.ballive'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 56
-        versionName "2.8.1"
+        versionCode 57
+        versionName "2.8.2"
     }
     signingConfigs {
         debug {

@@ -119,7 +119,7 @@ const MOTORSPORT_KEYS: AthleteKey[] = [
 ];
 
 export interface PlayerSelectionContext {
-  screen?: 'home' | 'discover' | 'saved' | 'details';
+  screen?: 'home' | 'discover' | 'saved' | 'profile' | 'details';
   sport?: string;
   competition?: string;
   teamName?: string;
@@ -130,6 +130,44 @@ export interface PlayerSelectionContext {
 }
 
 export class PlayerAssetService {
+  /**
+   * Returns an ordered athlete pool suitable for rotating crossfade on a screen.
+   */
+  public getAthletePool(context: PlayerSelectionContext = {}): AthleteInfo[] {
+    if (context.athleteKey && LOCAL_ATHLETE_ASSETS[context.athleteKey]) {
+      return [LOCAL_ATHLETE_ASSETS[context.athleteKey]];
+    }
+
+    const sportLower = (context.sport || '').toLowerCase();
+    const isMotorsport =
+      sportLower.includes('motor') ||
+      sportLower.includes('f1') ||
+      sportLower.includes('formula') ||
+      sportLower.includes('racing');
+
+    if (isMotorsport) {
+      return MOTORSPORT_KEYS.map(k => LOCAL_ATHLETE_ASSETS[k]);
+    }
+
+    // Team context prioritized match
+    const primary = this.selectAthlete(context);
+
+    let baseKeys: AthleteKey[] = [];
+    if (context.screen === 'discover') {
+      baseKeys = ['nico_paz', 'michael_olise', 'leon_goretzka', 'raphinha', 'erling_haaland'];
+    } else if (context.screen === 'saved') {
+      baseKeys = ['cristiano_ronaldo', 'mohamed_salah', 'erling_haaland', 'raphinha'];
+    } else if (context.screen === 'profile') {
+      baseKeys = ['cristiano_ronaldo', 'raphinha', 'erling_haaland', 'mohamed_salah', 'michael_olise'];
+    } else {
+      baseKeys = FOOTBALL_KEYS;
+    }
+
+    // Ensure primary athlete is first in rotation without duplication
+    const poolKeys = [primary.key, ...baseKeys.filter(k => k !== primary.key)];
+    return poolKeys.map(k => LOCAL_ATHLETE_ASSETS[k]);
+  }
+
   /**
    * Resolves the most appropriate athlete based on verified context,
    * avoiding accidental misidentification while ensuring variety across screens.
@@ -193,6 +231,12 @@ export class PlayerAssetService {
     if (context.screen === 'saved') {
       const savedPool: AthleteKey[] = ['cristiano_ronaldo', 'mohamed_salah', 'erling_haaland'];
       const key = savedPool[(dayOfMonth + offset) % savedPool.length];
+      return LOCAL_ATHLETE_ASSETS[key];
+    }
+
+    if (context.screen === 'profile') {
+      const profilePool: AthleteKey[] = ['cristiano_ronaldo', 'raphinha', 'erling_haaland'];
+      const key = profilePool[(dayOfMonth + offset) % profilePool.length];
       return LOCAL_ATHLETE_ASSETS[key];
     }
 
