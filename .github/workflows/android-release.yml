@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag name (e.g. v2.7.5)'
+        description: 'Release tag name (e.g. v2.8.1)'
         required: false
-        default: 'v2.7.5'
+        default: 'v2.8.1'
   release:
     types: [published]
 
@@ -78,31 +78,23 @@ jobs:
       - name: 🚀 Publish BALLIVE.apk to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release_tag != '' && github.event.inputs.release_tag || 'v2.7.5') }}
-          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.7.5' }} — Critical UI Responsiveness, Instant Navigation & FlatList Virtualization"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release_tag != '' && github.event.inputs.release_tag || 'v2.8.1') }}
+          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.8.1' }} — League Thumbnails, Player Assets, Emblem Caching & Boxing Removal"
           body: |
-            ## 🚀 BALLIVE v2.7.5 — Critical UI Responsiveness, Instant Navigation & FlatList Virtualization
+            ## 🚀 BALLIVE v2.8.1 — League Thumbnails, Player Assets, Emblem Caching & Boxing Removal
 
-            Major responsiveness and freeze-elimination release resolving UI thread locks and navigation delays:
-            - ⚡ **Instant Carousel Responsiveness on Home Page**:
-              - Capped the horizontal Live & Upcoming streams carousel to the top 12 featured matches (`matches.slice(0, 12)`).
-              - Eliminated the 200+ unvirtualized card flood that previously paralyzed the JavaScript thread on Home screen.
-              - "View all" button and bottom tab switching now respond instantly (< 16ms / 60 FPS) without freezing.
-            - 🏎️ **FlatList Virtualization in All Live Streams**:
-              - Tuned `AllLiveStreamsScreen` with strict virtualization: `initialNumToRender={6}`, `maxToRenderPerBatch={6}`, `windowSize={5}`, and native Android clipped subview removal.
-              - Memoized `renderItem` and `keyExtractor` to prevent unnecessary component churn.
-              - Pre-populated screen state synchronously from memory cache on mount for zero-delay screen rendering.
-            - 🛡️ **UniversalMatchCard React.memo & Listener Optimization**:
-              - Wrapped `UniversalMatchCard` in `React.memo` to eliminate redundant renders across card lists.
-              - Prevented unneeded event listener subscriptions for fixtures that already have verified artwork.
-            - 🛑 **Halted Background Network Queuing Floods**:
-              - Removed runaway 60-second periodic background enrichment interval from `matchArtworkEnricher.ts`.
-              - Capped resolution queues to at most 6–10 matches to prevent saturating device network and JS thread bandwidth.
-            - 📱 **Lazy Tab Mounting with In-Memory Retention**:
-              - Bottom tabs (`Discover`, `Saved`, `Profile`) now mount lazily on first visit, drastically reducing app startup strain while retaining 0ms instantaneous switching once visited.
+            Major feature and reliability release:
+            - 🎨 **Dedicated League Fallback Thumbnail System**:
+              - Authentic background artwork for Premier League, LaLiga, Bundesliga, UCL, UEL, Conference League, General Football, and additional leagues.
+              - Cards without broadcast artwork render league backgrounds with flat, transparent team emblems (no white discs or "VS" labels).
+            - 🛡️ **Two-Tier Team Emblem Caching**:
+              - In-memory cache + persistent filesystem disk storage with in-flight request deduplication and neutral shield placeholder.
+            - 👤 **Recognizable Athlete Graphics**:
+              - Increased header athlete opacity to 0.72 with right-anchor positioning and context-aware selection.
+            - 🚫 **Complete Combat Boxing & UFC Elimination**:
+              - Fully purged combat sports across categories, live streams, navigation, and API gateways.
             - 🔍 **Build & Static Analysis Verification**:
               - `tsc --noEmit` passed with 0 errors.
-              - `npx expo export --no-bytecode` bundled all assets cleanly for Android and iOS.
 
             ### 📱 Download & Install
             1. Download `BALLIVE.apk` below directly to your Android device.
@@ -111,8 +103,8 @@ jobs:
             ### 🔍 Build Information
             - **Application Name**: BALLIVE
             - **Application ID**: `com.piustech.ballive`
-            - **Version**: 2.7.5
-            - **Version Code**: 50
+            - **Version**: 2.8.1
+            - **Version Code**: 56
             - **Target Android Version**: Android 14 (API 34)
             - **Compile SDK**: Android 15 (API 35)
             - **Architecture**: Universal (arm64-v8a, armeabi-v7a, x86, x86_64)

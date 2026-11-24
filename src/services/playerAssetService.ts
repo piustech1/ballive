@@ -35,7 +35,7 @@ export const LOCAL_ATHLETE_ASSETS: Record<AthleteKey, AthleteInfo> = {
     sport: 'football',
     teams: ['liverpool', 'egypt'],
     competitions: ['premier league', 'epl', 'eng.1', 'champions league', 'ucl'],
-    source: require('../../../assets/images/players/football/mohamed_salah.jpg'),
+    source: require('../../assets/images/players/football/mohamed_salah.jpg'),
   },
   erling_haaland: {
     key: 'erling_haaland',
@@ -43,7 +43,7 @@ export const LOCAL_ATHLETE_ASSETS: Record<AthleteKey, AthleteInfo> = {
     sport: 'football',
     teams: ['manchester city', 'man city', 'norway'],
     competitions: ['premier league', 'epl', 'eng.1', 'champions league', 'ucl'],
-    source: require('../../../assets/images/players/football/erling_haaland.jpg'),
+    source: require('../../assets/images/players/football/erling_haaland.jpg'),
   },
   raphinha: {
     key: 'raphinha',
@@ -51,7 +51,7 @@ export const LOCAL_ATHLETE_ASSETS: Record<AthleteKey, AthleteInfo> = {
     sport: 'football',
     teams: ['barcelona', 'fc barcelona', 'brazil'],
     competitions: ['la liga', 'laliga', 'esp.1', 'champions league', 'ucl'],
-    source: require('../../../assets/images/players/football/raphinha.jpg'),
+    source: require('../../assets/images/players/football/raphinha.jpg'),
   },
   michael_olise: {
     key: 'michael_olise',
@@ -59,7 +59,7 @@ export const LOCAL_ATHLETE_ASSETS: Record<AthleteKey, AthleteInfo> = {
     sport: 'football',
     teams: ['bayern', 'bayern munich', 'france'],
     competitions: ['bundesliga', 'ger.1', 'champions league', 'ucl'],
-    source: require('../../../assets/images/players/football/michael_olise.jpg'),
+    source: require('../../assets/images/players/football/michael_olise.jpg'),
   },
   leon_goretzka: {
     key: 'leon_goretzka',
@@ -67,7 +67,7 @@ export const LOCAL_ATHLETE_ASSETS: Record<AthleteKey, AthleteInfo> = {
     sport: 'football',
     teams: ['bayern', 'bayern munich', 'germany'],
     competitions: ['bundesliga', 'ger.1', 'champions league', 'ucl'],
-    source: require('../../../assets/images/players/football/leon_goretzka.jpg'),
+    source: require('../../assets/images/players/football/leon_goretzka.jpg'),
   },
   nico_paz: {
     key: 'nico_paz',
@@ -75,7 +75,7 @@ export const LOCAL_ATHLETE_ASSETS: Record<AthleteKey, AthleteInfo> = {
     sport: 'football',
     teams: ['como', 'argentina', 'real madrid'],
     competitions: ['serie a', 'ita.1'],
-    source: require('../../../assets/images/players/football/nico_paz.jpg'),
+    source: require('../../assets/images/players/football/nico_paz.jpg'),
   },
   cristiano_ronaldo: {
     key: 'cristiano_ronaldo',
@@ -83,7 +83,7 @@ export const LOCAL_ATHLETE_ASSETS: Record<AthleteKey, AthleteInfo> = {
     sport: 'football',
     teams: ['al nassr', 'al-nassr', 'portugal'],
     competitions: ['saudi pro', 'ksa.1'],
-    source: require('../../../assets/images/players/football/cristiano_ronaldo.jpg'),
+    source: require('../../assets/images/players/football/cristiano_ronaldo.jpg'),
   },
   max_verstappen: {
     key: 'max_verstappen',
@@ -91,7 +91,7 @@ export const LOCAL_ATHLETE_ASSETS: Record<AthleteKey, AthleteInfo> = {
     sport: 'motorsport',
     teams: ['red bull', 'red bull racing'],
     competitions: ['formula 1', 'f1', 'grand prix'],
-    source: require('../../../assets/images/players/motorsport/max_verstappen.jpg'),
+    source: require('../../assets/images/players/motorsport/max_verstappen.jpg'),
   },
   lewis_hamilton: {
     key: 'lewis_hamilton',
@@ -99,7 +99,7 @@ export const LOCAL_ATHLETE_ASSETS: Record<AthleteKey, AthleteInfo> = {
     sport: 'motorsport',
     teams: ['mercedes', 'ferrari'],
     competitions: ['formula 1', 'f1', 'grand prix'],
-    source: require('../../../assets/images/players/motorsport/lewis_hamilton.jpg'),
+    source: require('../../assets/images/players/motorsport/lewis_hamilton.jpg'),
   },
 };
 
