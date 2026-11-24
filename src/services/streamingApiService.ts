@@ -43,6 +43,8 @@ function cleanMatchName(name: string): string {
 export function isBannedSport(sport?: string, competition?: string, title?: string, genre?: string): boolean {
   const combined = `${sport || ''} ${competition || ''} ${title || ''} ${genre || ''}`.toLowerCase();
   return (
+    combined.includes('ufc') ||
+    combined.includes('ultimate fighting') ||
     combined.includes('cricket') ||
     combined.includes('ipl') ||
     combined.includes('t20') ||
@@ -117,6 +119,9 @@ class StreamingApiService {
   private readonly CACHE_TTL = 60000; // 60 seconds
   private inFlightLivePromise: Promise<LiveMatch[]> | null = null;
   private inFlightUpcomingPromise: Promise<LiveMatch[]> | null = null;
+  private inFlightResolutions = new Map<string, Promise<RawStreamSource[]>>();
+  private resolvedMirrorsCache = new Map<string, { data: RawStreamSource[]; timestamp: number }>();
+  private readonly MIRRORS_CACHE_TTL = 45000; // 45 seconds
 
   getCachedLiveMatches(): LiveMatch[] {
     return this.cachedLiveMatches;
@@ -164,7 +169,7 @@ class StreamingApiService {
 
     try {
       const [espnMatchesRes, fbLiveRes, ...dagResults] = await Promise.allSettled([
-        // 1. ESPN Real-time Multi-sport scoreboards (NBA, NHL, EPL, LaLiga, UCL, Serie A, Bundesliga, UFC)
+        // 1. ESPN Real-time Multi-sport scoreboards (NBA, NHL, EPL, LaLiga, UCL, Serie A, Bundesliga, Boxing)
         sportsApiService.getScoreboardMatches(undefined, false),
 
         // 2. Football-Data.org In-Play Matches
@@ -298,13 +303,13 @@ class StreamingApiService {
                 return;
               }
 
-              // Support combat sports (UFC, WWE, TNA, MMA) where event title is headline
+              // Support combat sports (Boxing, WWE, TNA, MMA) where event title is headline
               const isCombat =
                 catConfig.defaultSport === 'mma' ||
                 genre.includes('MMA') ||
                 genre.includes('WRESTLING') ||
-                /ufc|wwe|tna|aew|mma|boxing/i.test(cleanTitle) ||
-                /ufc|wwe|tna|aew|mma|boxing/i.test(m.description || '');
+                /wwe|tna|aew|mma|boxing/i.test(cleanTitle) ||
+                /wwe|tna|aew|mma|boxing/i.test(m.description || '');
 
               if (isCombat) {
                 if (!home) home = cleanTitle;
@@ -341,7 +346,7 @@ class StreamingApiService {
               const posterLogo1 = extractPosterParam(m.poster, 'b1');
               const posterLogo2 = extractPosterParam(m.poster, 'b2');
 
-              const combatLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png';
+              const combatLogo = LEAGUE_EMBLEMS['boxing'] || 'https://a.espncdn.com/i/teamlogos/leagues/500/boxing.png';
               const b1 = rawLogo1 || posterLogo1 || (isCombat ? combatLogo : getTeamCrest(home));
               const b2 = rawLogo2 || posterLogo2 || (isCombat ? combatLogo : getTeamCrest(away));
 
@@ -478,7 +483,7 @@ class StreamingApiService {
                   title: cleanTitle.replace(/^⏱️\s*/, ''),
                   homeTeam: home,
                   awayTeam: away,
-                  competition: isCombat ? 'UFC / Combat' : (m.genres?.[0] || genre),
+                  competition: isCombat ? 'Boxing / Combat' : (m.genres?.[0] || genre),
                   score: { home: 0, away: 0 },
                   minute: 0,
                   playTime: undefined,
@@ -495,20 +500,10 @@ class StreamingApiService {
                   time: eatKickoff,
                   kickoffTimestamp,
                   rawDate: typeof m.releaseInfo === 'string' ? m.releaseInfo : undefined,
-                  venue: isCombat ? 'Championship Octagon' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
+                  venue: isCombat ? 'Boxing Arena' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
                 });
                 return;
               }
-
-              // Active Live Game: Only attach direct fixture-specific stream
-              const directStreamUrl = `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`;
-              const directStreams: Array<{ id: string; name: string; url: string }> = [
-                {
-                  id: `srv-direct-${m.id}`,
-                  name: 'Server 1 (Direct Match Broadcast)',
-                  url: directStreamUrl,
-                },
-              ];
 
               let scoreHome = 0;
               let scoreAway = 0;
@@ -547,7 +542,7 @@ class StreamingApiService {
                 homeTeam: home,
                 awayTeam: away,
                 competition: isCombat
-                  ? 'UFC / Combat'
+                  ? 'Boxing / Combat'
                   : (matchedEspn?.competition && matchedEspn.competition !== 'Global Football'
                       ? matchedEspn.competition
                       : (m.genres?.[0] || genre)),
@@ -559,11 +554,11 @@ class StreamingApiService {
                 hasLiveStream: true,
                 homeBadge: b1,
                 awayBadge: b2,
-                streamUrl: directStreamUrl,
-                streams: directStreams,
+                streamUrl: undefined,
+                streams: [],
                 sport,
                 kickoffTime,
-                venue: isCombat ? 'Championship Octagon' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
+                venue: isCombat ? 'Boxing Arena' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
               });
             });
           } catch {
@@ -709,76 +704,49 @@ class StreamingApiService {
     homeTeam?: string,
     awayTeam?: string
   ): Promise<RawStreamSource[]> {
-    const mirrors: RawStreamSource[] = [];
-    let cleanId = itemId.replace(/\.json$/, '');
-    if (cleanId.startsWith('srv-direct-')) {
-      cleanId = cleanId.replace('srv-direct-', '');
-    }
-    if (cleanId.includes('/stream/tv/')) {
-      const match = cleanId.match(/\/stream\/tv\/([^/]+?)(?:\.json)?$/);
-      if (match) cleanId = match[1];
+    const cacheKey = `${itemId}_${competitionOrSport}_${homeTeam || ''}_${awayTeam || ''}`;
+    const cached = this.resolvedMirrorsCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.MIRRORS_CACHE_TTL && cached.data.length > 0) {
+      return cached.data;
     }
 
-    // 1. Direct DAG fixture ID lookup (handles nuvio_, moviebay_, or any sport fixture ID)
-    if (cleanId.startsWith('nuvio_') || cleanId.startsWith('moviebay_') || cleanId.includes('_sport_')) {
-      try {
-        const res = await fetch(`${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${cleanId}.json`, {
-          headers: API_CONFIG.DAG_HEADERS,
-        });
-        if (res.ok) {
-          const data = await res.json();
-          (data.streams || []).forEach((s: any, idx: number) => {
-            const playUrl = s.url || s.externalUrl;
-            if (playUrl) {
-              mirrors.push({
-                id: `stream-direct-${idx}`,
-                name: s.name || `Server ${idx + 1} (${s.resolution || 'HD Live'})`,
-                url: playUrl,
-              });
-            }
-          });
-        }
-      } catch {
-        // stream unavailable
-      }
+    if (this.inFlightResolutions.has(cacheKey)) {
+      return this.inFlightResolutions.get(cacheKey)!;
     }
 
-    // If direct stream succeeded, return it immediately
-    if (mirrors.length > 0) {
-      return mirrors;
-    }
-
-    // 2. Check if cached DAG catalog items match homeTeam and awayTeam
-    if (homeTeam && awayTeam && this.cachedDagMetas.length > 0) {
-      const clean = (s: string) =>
-        s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\b(fc|cf|sc|afc|club|united|city|women|ladies|men)\b/g, '').trim();
-      const hClean = clean(homeTeam);
-      const aClean = clean(awayTeam);
-      const hToks = hClean.split(/\s+/).filter(w => w.length >= 3);
-      const aToks = aClean.split(/\s+/).filter(w => w.length >= 3);
-
-      const matchedDag = this.cachedDagMetas.find(dm => {
-        const dName = clean(dm.name || '');
-        const dH = clean(dm.team1?.name || '');
-        const dA = clean(dm.team2?.name || '');
-        const allStr = `${dName} ${dH} ${dA}`;
-        const hHit = hToks.some(t => allStr.includes(t));
-        const aHit = aToks.some(t => allStr.includes(t));
-        return (hHit && aHit) || (dH === hClean && dA === aClean);
-      });
-
-      if (matchedDag?.id) {
+    const resolutionPromise = (async () => {
+      // 0. Ensure catalog readiness if cachedDagMetas is empty
+      if (this.cachedDagMetas.length === 0) {
         try {
-          const directRes = await fetch(`${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${matchedDag.id}.json`, {
+          await this.getLiveMatches();
+        } catch {
+          // ignore
+        }
+      }
+
+      const mirrors: RawStreamSource[] = [];
+      let cleanId = itemId.replace(/\.json$/, '');
+      if (cleanId.startsWith('srv-direct-')) {
+        cleanId = cleanId.replace('srv-direct-', '');
+      }
+      if (cleanId.includes('/stream/tv/')) {
+        const match = cleanId.match(/\/stream\/tv\/([^/]+?)(?:\.json)?$/);
+        if (match) cleanId = match[1];
+      }
+
+      // 1. Direct DAG fixture ID lookup (handles nuvio_, moviebay_, or any sport fixture ID)
+      if (cleanId.startsWith('nuvio_') || cleanId.startsWith('moviebay_') || cleanId.includes('_sport_')) {
+        try {
+          const res = await fetch(`${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${cleanId}.json`, {
             headers: API_CONFIG.DAG_HEADERS,
           });
-          if (directRes.ok) {
-            const dJson = await directRes.json();
-            (dJson.streams || []).forEach((s: any, idx: number) => {
+          if (res.ok) {
+            const data = await res.json();
+            (data.streams || []).forEach((s: any, idx: number) => {
               const playUrl = s.url || s.externalUrl;
-              if (playUrl) {
+              if (playUrl && typeof playUrl === 'string' && !playUrl.endsWith('.json') && !playUrl.includes('/stream/tv/')) {
                 mirrors.push({
-                  id: `stream-matched-${idx}`,
+                  id: `stream-direct-${idx}`,
                   name: s.name || `Server ${idx + 1} (${s.resolution || 'HD Live'})`,
                   url: playUrl,
                 });
@@ -786,129 +754,186 @@ class StreamingApiService {
             });
           }
         } catch {
-          // ignore
+          // stream unavailable
         }
       }
-    }
 
-    if (mirrors.length > 0) {
-      return mirrors;
-    }
-
-    // 3. Resolve verified 24/7 sports broadcast feeds for this competition/sport
-    if (isUnsupportedStreamingCompetition(competitionOrSport)) {
-      return [];
-    }
-
-    const CHANNEL_LABELS: Record<string, string> = {
-      [API_CONFIG.PRIORITY_CHANNELS.BEIN]: 'beIN Sports HD',
-      [API_CONFIG.PRIORITY_CHANNELS.GOLAZO]: 'CBS Sports Golazo',
-      [API_CONFIG.PRIORITY_CHANNELS.FOOTBALL]: 'Sky Sports Football',
-      [API_CONFIG.PRIORITY_CHANNELS.PL]: 'Sky Sports Premier League',
-      [API_CONFIG.PRIORITY_CHANNELS.MAIN_EVENT]: 'Sky Sports Main Event',
-      [API_CONFIG.PRIORITY_CHANNELS.UCL]: 'TNT Sports 1 HD',
-      [API_CONFIG.PRIORITY_CHANNELS.LALIGA]: 'LaLiga TV HD',
-      [API_CONFIG.PRIORITY_CHANNELS.DAZN]: 'DAZN LaLiga HD',
-      [API_CONFIG.PRIORITY_CHANNELS.NBA]: 'NBA TV HD',
-      [API_CONFIG.PRIORITY_CHANNELS.NBA_BACKUP]: 'NBA TV Backup',
-      [API_CONFIG.PRIORITY_CHANNELS.NHL]: 'NHL Network',
-      [API_CONFIG.PRIORITY_CHANNELS.F1]: 'Sky Sports F1 HD',
-      [API_CONFIG.PRIORITY_CHANNELS.TENNIS]: 'Sky Sport Tennis',
-    };
-
-    const primaryChannel = getBroadcastChannelId(competitionOrSport, '');
-    const compLower = (competitionOrSport || '').toLowerCase();
-    let secondaryChannels: string[] = [];
-
-    if (
-      compLower.includes('friendly') ||
-      compLower.includes('fifa') ||
-      compLower.includes('afc') ||
-      compLower.includes('caf') ||
-      compLower.includes('conmebol') ||
-      compLower.includes('concacaf') ||
-      compLower.includes('qualifier') ||
-      compLower.includes('international')
-    ) {
-      secondaryChannels = [
-        API_CONFIG.PRIORITY_CHANNELS.GOLAZO,
-        API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
-        API_CONFIG.PRIORITY_CHANNELS.MAIN_EVENT,
-      ];
-    } else if (compLower.includes('efl') || compLower.includes('championship')) {
-      secondaryChannels = [
-        API_CONFIG.PRIORITY_CHANNELS.MAIN_EVENT,
-        API_CONFIG.PRIORITY_CHANNELS.BEIN,
-      ];
-    } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.PL) {
-      secondaryChannels = [
-        API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
-        API_CONFIG.PRIORITY_CHANNELS.BEIN,
-      ];
-    } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.BEIN) {
-      secondaryChannels = [
-        API_CONFIG.PRIORITY_CHANNELS.GOLAZO,
-        API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
-      ];
-    } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.LALIGA) {
-      secondaryChannels = [
-        API_CONFIG.PRIORITY_CHANNELS.DAZN,
-        API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
-      ];
-    } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.UCL) {
-      secondaryChannels = [
-        API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
-        API_CONFIG.PRIORITY_CHANNELS.BEIN,
-      ];
-    } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.NBA) {
-      secondaryChannels = [
-        API_CONFIG.PRIORITY_CHANNELS.NBA_BACKUP,
-      ];
-    }
-
-    const channelsToFetch = Array.from(new Set([primaryChannel, ...secondaryChannels])).filter(Boolean);
-
-    let serverCounter = 1;
-    const channelResults = await Promise.allSettled(
-      channelsToFetch.map(async (chId) => {
-        const res = await fetch(`${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${chId}.json`, {
-          headers: API_CONFIG.DAG_HEADERS,
-        });
-        if (!res.ok) return [];
-        const data = await res.json();
-        const extracted: RawStreamSource[] = [];
-        const label = CHANNEL_LABELS[chId] || 'Live Satellite Feed';
-        (data.streams || []).forEach((s: any) => {
-          const playUrl = s.url || s.externalUrl;
-          if (playUrl) {
-            extracted.push({
-              id: `stream-bcast-${chId}-${extracted.length}`,
-              name: `Server ${serverCounter++} (${label})`,
-              url: playUrl,
-            });
-          }
-        });
-        return extracted;
-      })
-    );
-
-    channelResults.forEach(r => {
-      if (r.status === 'fulfilled' && Array.isArray(r.value)) {
-        mirrors.push(...r.value);
+      // If direct stream succeeded, return it immediately
+      if (mirrors.length > 0) {
+        return mirrors;
       }
-    });
 
-    // 4. Fallback endpoint if upstream manifest network is delayed
-    if (mirrors.length === 0) {
-      const label = CHANNEL_LABELS[primaryChannel] || 'Live HD Broadcast';
-      mirrors.push({
-        id: 'stream-fallback-1',
-        name: `Server 1 (${label})`,
-        url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${primaryChannel}.json`,
+      // 2. Check if cached DAG catalog items match homeTeam and awayTeam
+      if (homeTeam && awayTeam && this.cachedDagMetas.length > 0) {
+        const clean = (s: string) =>
+          s.toLowerCase().replace(/[^a-z0-9]/g, ' ').replace(/\b(fc|cf|sc|afc|club|united|city|women|ladies|men)\b/g, '').trim();
+        const hClean = clean(homeTeam);
+        const aClean = clean(awayTeam);
+        const hToks = hClean.split(/\s+/).filter(w => w.length >= 3);
+        const aToks = aClean.split(/\s+/).filter(w => w.length >= 3);
+
+        const matchedDag = this.cachedDagMetas.find(dm => {
+          const dName = clean(dm.name || '');
+          const dH = clean(dm.team1?.name || '');
+          const dA = clean(dm.team2?.name || '');
+          const allStr = `${dName} ${dH} ${dA}`;
+          const hHit = hToks.some(t => allStr.includes(t));
+          const aHit = aToks.some(t => allStr.includes(t));
+          return (hHit && aHit) || (dH === hClean && dA === aClean);
+        });
+
+        if (matchedDag?.id) {
+          try {
+            const directRes = await fetch(`${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${matchedDag.id}.json`, {
+              headers: API_CONFIG.DAG_HEADERS,
+            });
+            if (directRes.ok) {
+              const dJson = await directRes.json();
+              (dJson.streams || []).forEach((s: any, idx: number) => {
+                const playUrl = s.url || s.externalUrl;
+                if (playUrl && typeof playUrl === 'string' && !playUrl.endsWith('.json') && !playUrl.includes('/stream/tv/')) {
+                  mirrors.push({
+                    id: `stream-matched-${idx}`,
+                    name: s.name || `Server ${idx + 1} (${s.resolution || 'HD Live'})`,
+                    url: playUrl,
+                  });
+                }
+              });
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      if (mirrors.length > 0) {
+        return mirrors;
+      }
+
+      // 3. Resolve verified 24/7 sports broadcast feeds for this competition/sport
+      if (isUnsupportedStreamingCompetition(competitionOrSport)) {
+        return [];
+      }
+
+      const CHANNEL_LABELS: Record<string, string> = {
+        [API_CONFIG.PRIORITY_CHANNELS.BEIN]: 'beIN Sports HD',
+        [API_CONFIG.PRIORITY_CHANNELS.GOLAZO]: 'CBS Sports Golazo',
+        [API_CONFIG.PRIORITY_CHANNELS.FOOTBALL]: 'Sky Sports Football',
+        [API_CONFIG.PRIORITY_CHANNELS.PL]: 'Sky Sports Premier League',
+        [API_CONFIG.PRIORITY_CHANNELS.MAIN_EVENT]: 'Sky Sports Main Event',
+        [API_CONFIG.PRIORITY_CHANNELS.UCL]: 'TNT Sports 1 HD',
+        [API_CONFIG.PRIORITY_CHANNELS.LALIGA]: 'LaLiga TV HD',
+        [API_CONFIG.PRIORITY_CHANNELS.DAZN]: 'DAZN LaLiga HD',
+        [API_CONFIG.PRIORITY_CHANNELS.NBA]: 'NBA TV HD',
+        [API_CONFIG.PRIORITY_CHANNELS.NBA_BACKUP]: 'NBA TV Backup',
+        [API_CONFIG.PRIORITY_CHANNELS.NHL]: 'NHL Network',
+        [API_CONFIG.PRIORITY_CHANNELS.F1]: 'Sky Sports F1 HD',
+        [API_CONFIG.PRIORITY_CHANNELS.TENNIS]: 'Sky Sport Tennis',
+      };
+
+      const primaryChannel = getBroadcastChannelId(competitionOrSport, '');
+      const compLower = (competitionOrSport || '').toLowerCase();
+      let secondaryChannels: string[] = [];
+
+      if (
+        compLower.includes('friendly') ||
+        compLower.includes('fifa') ||
+        compLower.includes('afc') ||
+        compLower.includes('caf') ||
+        compLower.includes('conmebol') ||
+        compLower.includes('concacaf') ||
+        compLower.includes('qualifier') ||
+        compLower.includes('international')
+      ) {
+        secondaryChannels = [
+          API_CONFIG.PRIORITY_CHANNELS.GOLAZO,
+          API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
+          API_CONFIG.PRIORITY_CHANNELS.MAIN_EVENT,
+        ];
+      } else if (compLower.includes('efl') || compLower.includes('championship')) {
+        secondaryChannels = [
+          API_CONFIG.PRIORITY_CHANNELS.MAIN_EVENT,
+          API_CONFIG.PRIORITY_CHANNELS.BEIN,
+        ];
+      } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.PL) {
+        secondaryChannels = [
+          API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
+          API_CONFIG.PRIORITY_CHANNELS.BEIN,
+        ];
+      } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.BEIN) {
+        secondaryChannels = [
+          API_CONFIG.PRIORITY_CHANNELS.GOLAZO,
+          API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
+        ];
+      } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.LALIGA) {
+        secondaryChannels = [
+          API_CONFIG.PRIORITY_CHANNELS.DAZN,
+          API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
+        ];
+      } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.UCL) {
+        secondaryChannels = [
+          API_CONFIG.PRIORITY_CHANNELS.FOOTBALL,
+          API_CONFIG.PRIORITY_CHANNELS.BEIN,
+        ];
+      } else if (primaryChannel === API_CONFIG.PRIORITY_CHANNELS.NBA) {
+        secondaryChannels = [
+          API_CONFIG.PRIORITY_CHANNELS.NBA_BACKUP,
+        ];
+      }
+
+      const channelsToFetch = Array.from(new Set([primaryChannel, ...secondaryChannels])).filter(Boolean);
+
+      let serverCounter = 1;
+      const channelResults = await Promise.allSettled(
+        channelsToFetch.map(async (chId) => {
+          const res = await fetch(`${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${chId}.json`, {
+            headers: API_CONFIG.DAG_HEADERS,
+          });
+          if (!res.ok) return [];
+          const data = await res.json();
+          const extracted: RawStreamSource[] = [];
+          const label = CHANNEL_LABELS[chId] || 'Live Satellite Feed';
+          (data.streams || []).forEach((s: any) => {
+            const playUrl = s.url || s.externalUrl;
+            if (playUrl && typeof playUrl === 'string' && !playUrl.endsWith('.json') && !playUrl.includes('/stream/tv/')) {
+              extracted.push({
+                id: `stream-bcast-${chId}-${extracted.length}`,
+                name: `Server ${serverCounter++} (${label})`,
+                url: playUrl,
+              });
+            }
+          });
+          return extracted;
+        })
+      );
+
+      channelResults.forEach(r => {
+        if (r.status === 'fulfilled' && Array.isArray(r.value)) {
+          mirrors.push(...r.value);
+        }
       });
-    }
 
-    return mirrors;
+      // Strict filter: Guarantee no .json endpoints or invalid strings are returned as video streams
+      const validMirrors = mirrors.filter(m => {
+        if (!m.url || typeof m.url !== 'string') return false;
+        const u = m.url.trim().toLowerCase();
+        if (u.endsWith('.json') || u.includes('/stream/tv/')) return false;
+        return u.startsWith('http://') || u.startsWith('https://');
+      });
+
+      return validMirrors;
+    })();
+
+    this.inFlightResolutions.set(cacheKey, resolutionPromise);
+    try {
+      const result = await resolutionPromise;
+      if (result.length > 0) {
+        this.resolvedMirrorsCache.set(cacheKey, { data: result, timestamp: Date.now() });
+      }
+      return result;
+    } finally {
+      this.inFlightResolutions.delete(cacheKey);
+    }
   }
 
   /**

@@ -26,11 +26,8 @@ export function resolveCompetitionLogo(competitionIdOrName?: string): string {
     return LEAGUE_EMBLEMS['all'];
   }
 
-  // Combat Sports (UFC, MMA, Boxing, WWE)
-  if (clean.includes('ufc') || clean.includes('mma') || clean.includes('combat') || clean.includes('wwe') || clean.includes('wrestling')) {
-    return LEAGUE_EMBLEMS['ufc'];
-  }
-  if (clean.includes('boxing') || clean.includes('wbc')) {
+  // Combat Sports (Boxing, MMA, WWE)
+  if (clean.includes('boxing') || clean.includes('wbc') || clean.includes('wba') || clean.includes('ibf') || clean.includes('wbo') || clean.includes('mma') || clean.includes('combat') || clean.includes('wwe') || clean.includes('wrestling')) {
     return LEAGUE_EMBLEMS['boxing'];
   }
 
@@ -142,9 +139,6 @@ const LOCAL_CATEGORY_BADGES: Record<string, any> = {
   'all': require('../../../assets/badges/all.png'),
   'football': require('../../../assets/badges/football.png'),
   'soccer': require('../../../assets/badges/football.png'),
-  'ufc': require('../../../assets/badges/ufc.png'),
-  'mma': require('../../../assets/badges/ufc.png'),
-  'combat': require('../../../assets/badges/ufc.png'),
   'wwe': require('../../../assets/badges/wwe.png'),
   'tennis': require('../../../assets/badges/tennis.png'),
 };

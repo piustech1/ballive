@@ -1,35 +1,49 @@
-import React, { useState } from 'react';
-import { View, Image, StyleSheet, StyleProp, ViewStyle } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Image, StyleSheet, StyleProp, ViewStyle, ImageSourcePropType } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Colors from '../../theme/colors';
 
-// Verified, high-resolution authentic sports action photography
-const AUTHENTIC_SPORTS_PLAYER_PHOTOS: Record<string, string> = {
-  // Football / Soccer: Dynamic athletic action under stadium floodlights
-  soccer: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1200&auto=format&fit=crop',
-  football: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1200&auto=format&fit=crop',
+export type AthleteKey =
+  | 'nico_paz'
+  | 'michael_olise'
+  | 'raphinha'
+  | 'cristiano_ronaldo'
+  | 'erling_haaland'
+  | 'mohamed_salah'
+  | 'leon_goretzka'
+  | 'max_verstappen'
+  | 'lewis_hamilton';
 
-  // Basketball: High-intensity aerial dunk action
-  basketball: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=1200&auto=format&fit=crop',
+// Genuine, legally verified Creative Commons athlete photography stored locally for offline playback
+const LOCAL_ATHLETE_PHOTOS: Record<AthleteKey, ImageSourcePropType> = {
+  // Football Marquee Athletes
+  nico_paz: require('../../../assets/images/players/football/nico_paz.jpg'),
+  michael_olise: require('../../../assets/images/players/football/michael_olise.jpg'),
+  raphinha: require('../../../assets/images/players/football/raphinha.jpg'),
+  cristiano_ronaldo: require('../../../assets/images/players/football/cristiano_ronaldo.jpg'),
+  erling_haaland: require('../../../assets/images/players/football/erling_haaland.jpg'),
+  mohamed_salah: require('../../../assets/images/players/football/mohamed_salah.jpg'),
+  leon_goretzka: require('../../../assets/images/players/football/leon_goretzka.jpg'),
 
-  // Motorsport: High-speed racing driver & track action
-  motorsport: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?q=80&w=1200&auto=format&fit=crop',
-
-  // Combat / MMA: Focused athlete in corner / fight stance
-  mma: 'https://images.unsplash.com/photo-1517438322307-e67111335449?q=80&w=1200&auto=format&fit=crop',
-
-  // American Football
-  american_football: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?q=80&w=1200&auto=format&fit=crop',
-
-  // Ice Hockey
-  hockey: 'https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?q=80&w=1200&auto=format&fit=crop',
-
-  // Default fallback authentic sports action
-  default: 'https://images.unsplash.com/photo-1517466787929-bc90951d0974?q=80&w=1200&auto=format&fit=crop',
+  // Motorsport Marquee Drivers
+  max_verstappen: require('../../../assets/images/players/motorsport/max_verstappen.jpg'),
+  lewis_hamilton: require('../../../assets/images/players/motorsport/lewis_hamilton.jpg'),
 };
+
+const FOOTBALL_ROTATION: AthleteKey[] = [
+  'erling_haaland',
+  'cristiano_ronaldo',
+  'mohamed_salah',
+  'nico_paz',
+  'michael_olise',
+  'raphinha',
+  'leon_goretzka',
+];
 
 export interface CurvedHeaderPlayerBackgroundProps {
   sport?: string;
+  athlete?: AthleteKey;
+  screen?: 'home' | 'discover' | 'saved' | 'details';
   playerImageUrl?: string | null;
   opacity?: number;
   style?: StyleProp<ViewStyle>;
@@ -37,21 +51,59 @@ export interface CurvedHeaderPlayerBackgroundProps {
 
 export const CurvedHeaderPlayerBackground: React.FC<CurvedHeaderPlayerBackgroundProps> = ({
   sport = 'soccer',
+  athlete,
+  screen,
   playerImageUrl,
   opacity = 0.22,
   style,
 }) => {
   const [imageFailed, setImageFailed] = useState(false);
 
+  const resolvedSource: ImageSourcePropType = useMemo(() => {
+    // 1. Explicit athlete key passed
+    if (athlete && LOCAL_ATHLETE_PHOTOS[athlete]) {
+      return LOCAL_ATHLETE_PHOTOS[athlete];
+    }
+
+    // 2. Custom remote URL passed
+    if (playerImageUrl && playerImageUrl.trim().length > 10) {
+      return { uri: playerImageUrl.trim() };
+    }
+
+    const normSport = (sport || '').toLowerCase();
+    const dayOfMonth = new Date().getDate();
+
+    // 3. Motorsport / Racing / Formula 1
+    if (normSport.includes('motor') || normSport.includes('f1') || normSport.includes('racing') || normSport.includes('formula')) {
+      return dayOfMonth % 2 === 0
+        ? LOCAL_ATHLETE_PHOTOS.max_verstappen
+        : LOCAL_ATHLETE_PHOTOS.lewis_hamilton;
+    }
+
+    // 4. Screen-specific curated assignments
+    if (screen === 'discover') {
+      // Discover screen highlights breakout & tactical stars
+      const discoverKeys: AthleteKey[] = ['nico_paz', 'michael_olise', 'leon_goretzka'];
+      const key = discoverKeys[dayOfMonth % discoverKeys.length];
+      return LOCAL_ATHLETE_PHOTOS[key];
+    }
+
+    if (screen === 'saved') {
+      // Saved screen features legendary global icons
+      const savedKeys: AthleteKey[] = ['cristiano_ronaldo', 'mohamed_salah', 'erling_haaland'];
+      const key = savedKeys[dayOfMonth % savedKeys.length];
+      return LOCAL_ATHLETE_PHOTOS[key];
+    }
+
+    // 5. Default: Rotating daily marquee football star
+    const rotationIndex = dayOfMonth % FOOTBALL_ROTATION.length;
+    const selectedKey = FOOTBALL_ROTATION[rotationIndex];
+    return LOCAL_ATHLETE_PHOTOS[selectedKey];
+  }, [athlete, playerImageUrl, sport, screen]);
+
   if (imageFailed) {
     return null;
   }
-
-  const normSport = (sport || 'soccer').toLowerCase();
-  const sourceUri =
-    playerImageUrl && playerImageUrl.trim().length > 10
-      ? playerImageUrl.trim()
-      : AUTHENTIC_SPORTS_PLAYER_PHOTOS[normSport] || AUTHENTIC_SPORTS_PLAYER_PHOTOS.default;
 
   const headerBgColor = Colors.headerPurple || '#1E1730';
 
@@ -59,7 +111,7 @@ export const CurvedHeaderPlayerBackground: React.FC<CurvedHeaderPlayerBackground
     <View style={[styles.container, style]} pointerEvents="none">
       {/* 1. Underlying authentic sports athlete photo */}
       <Image
-        source={{ uri: sourceUri }}
+        source={resolvedSource}
         style={[styles.playerImage, { opacity }]}
         resizeMode="cover"
         onError={() => setImageFailed(true)}

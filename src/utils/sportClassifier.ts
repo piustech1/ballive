@@ -7,7 +7,7 @@
  * Rules:
  * - Association Football (soccer) is strictly displayed as: "Football"
  * - American Football (NFL / NCAA gridiron) is strictly displayed as: "American Football"
- * - Combat sports (UFC, MMA, Boxing, WWE) and Motorsports (F1, MotoGP, NASCAR)
+ * - Combat sports (Boxing, MMA, WWE) and Motorsports (F1, MotoGP, NASCAR)
  *   are identified to prevent inappropriate team-score or "VS" layouts.
  */
 
@@ -16,6 +16,7 @@ export type CanonicalSport =
   | 'american_football'
   | 'basketball'
   | 'hockey'
+  | 'boxing'
   | 'mma'
   | 'motorsport'
   | 'tennis'
@@ -49,15 +50,22 @@ export function getCanonicalSport(
     return 'american_football';
   }
 
-  // 2. Combat Sports (UFC, MMA, Boxing, WWE, Muay Thai, Bare Knuckle)
+  // 2. Combat Sports (Boxing, MMA, WWE, Muay Thai, Bare Knuckle)
+  if (
+    s === 'boxing' ||
+    c.includes('boxing') ||
+    c.includes('wbc') ||
+    c.includes('wba') ||
+    c.includes('ibf') ||
+    c.includes('wbo')
+  ) {
+    return 'boxing';
+  }
+
   if (
     s === 'mma' ||
-    s === 'ufc' ||
-    s === 'boxing' ||
     s === 'combat' ||
-    c.includes('ufc') ||
     c.includes('mma') ||
-    c.includes('boxing') ||
     c.includes('bellator') ||
     c.includes('pfl') ||
     c.includes('wwe') ||
@@ -66,12 +74,11 @@ export function getCanonicalSport(
     c.includes('bkfc') ||
     c.includes('muay thai') ||
     c.includes('kickboxing') ||
-    combined.includes('ufc') ||
     combined.includes('bellator') ||
     combined.includes('pfl') ||
     combined.includes('bkfc')
   ) {
-    return 'mma';
+    return 'boxing';
   }
 
   // 3. Motorsports & Racing (F1, MotoGP, NASCAR, IndyCar, Ferrari Challenge, Supercars, WEC)
@@ -188,8 +195,9 @@ export function getSportDisplayName(sport?: string | null, competition?: string 
       return 'Basketball';
     case 'hockey':
       return 'Hockey';
+    case 'boxing':
     case 'mma':
-      return 'UFC & Combat';
+      return 'Boxing & Combat';
     case 'motorsport':
       return 'Formula 1';
     case 'tennis':
@@ -200,11 +208,12 @@ export function getSportDisplayName(sport?: string | null, competition?: string 
 }
 
 /**
- * Returns true if the event is a combat sport (UFC, MMA, Boxing, WWE).
+ * Returns true if the event is a combat sport (Boxing, MMA, WWE).
  * These sports do NOT use football-style team score layouts.
  */
 export function isCombatSport(sport?: string | null, competition?: string | null, eventName?: string | null): boolean {
-  return getCanonicalSport(sport, competition, eventName) === 'mma';
+  const c = getCanonicalSport(sport, competition, eventName);
+  return c === 'boxing' || c === 'mma';
 }
 
 /**
@@ -220,7 +229,7 @@ export function isMotorsport(sport?: string | null, competition?: string | null,
  */
 export function isNonScoreSport(sport?: string | null, competition?: string | null, eventName?: string | null): boolean {
   const canonical = getCanonicalSport(sport, competition, eventName);
-  return canonical === 'mma' || canonical === 'motorsport';
+  return canonical === 'boxing' || canonical === 'mma' || canonical === 'motorsport';
 }
 
 /**

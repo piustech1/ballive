@@ -62,12 +62,6 @@ const CATEGORY_TILES: CategoryTile[] = [
     image: require('../../../assets/categories/nhl.png'),
   },
   {
-    id: 'mma',
-    label: 'UFC',
-    name: 'MMA / UFC',
-    image: require('../../../assets/categories/ufc.png'),
-  },
-  {
     id: 'motorsport',
     label: 'F1',
     name: 'Formula 1 & Motorsport',

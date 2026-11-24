@@ -3,7 +3,7 @@
  * 
  * Strict Artwork Authentication Engine:
  * 1. ONLY accepts genuine event-specific match artwork:
- *    - Authentic broadcaster stream promo graphics (e.g. UEFA Nations League, NFL broadcast cards, UFC fight posters).
+ *    - Authentic broadcaster stream promo graphics (e.g. UEFA Nations League, NFL broadcast cards, Boxing fight posters).
  *    - Official ESPN event cards (espncdn.com/i/cards, espncdn.com/images/match).
  *    - Clean ondemand.st broadcast artwork.
  * 2. STRICTLY REJECTS:
@@ -72,10 +72,6 @@ export const SPORT_ARTWORK_POOLS: Record<string, string[]> = {
     'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?auto=format&fit=crop&w=800&q=80',
   ],
   mma: [
-    'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=800&q=80',
-  ],
-  ufc: [
     'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
     'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=800&q=80',
   ],
@@ -212,10 +208,10 @@ export function normalizeSportKey(
     return 'boxing';
   }
 
-  // Combat / MMA / UFC / Wrestling
+  // Combat / MMA / Boxing / Wrestling
   if (
-    s === 'mma' || s === 'ufc' || s === 'combat' || s === 'wrestling' || s === 'wwe' ||
-    c.includes('ufc') || c.includes('mma') || c.includes('bellator') || c.includes('pfl') ||
+    s === 'mma' || s === 'combat' || s === 'wrestling' || s === 'wwe' ||
+    c.includes('mma') || c.includes('bellator') || c.includes('pfl') ||
     c.includes('wwe') || c.includes('wrestling') || c.includes('aew') || c.includes('tna') ||
     c.includes('cage') || c.includes('fight night')
   ) {
@@ -347,8 +343,7 @@ export function isGenuineEventArtwork(rawUrl?: string | null): boolean {
         target.includes('thesportsdb.com') ||
         target.includes('r2.thesportsdb.com') ||
         target.includes('uefa.com') ||
-        target.includes('nfl.com') ||
-        target.includes('ufc.com')
+        target.includes('nfl.com')
       ) {
         return true;
       }
@@ -359,7 +354,7 @@ export function isGenuineEventArtwork(rawUrl?: string | null): boolean {
         return false;
       }
     }
-    // Verified event promos from DAG catalogs (e.g. Nations League promo cards, UFC fight cards)
+    // Verified event promos from DAG catalogs (e.g. Nations League promo cards, Boxing fight cards)
     if (
       s.includes('/stream_icon') ||
       s.includes('/event_poster') ||
@@ -376,7 +371,6 @@ export function isGenuineEventArtwork(rawUrl?: string | null): boolean {
     s.includes('cloudinary.com') ||
     s.includes('uefa.com') ||
     s.includes('nfl.com') ||
-    s.includes('ufc.com') ||
     s.includes('wwe.com')
   ) {
     return true;
@@ -472,7 +466,7 @@ export function normalizeCompetitionKey(competition?: string): string | null {
   if (c.includes('nba') || c.includes('basketball')) return 'nba';
   if (c.includes('nhl') || c.includes('hockey')) return 'nhl';
   if (c.includes('nfl') || c.includes('american football')) return 'nfl';
-  if (c.includes('ufc') || c.includes('mma') || c.includes('combat') || c.includes('wwe')) return 'ufc';
+  if (c.includes('boxing') || c.includes('mma') || c.includes('combat') || c.includes('wwe')) return 'boxing';
   if (c.includes('f1') || c.includes('formula')) return 'f1';
   return null;
 }

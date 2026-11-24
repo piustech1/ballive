@@ -38,7 +38,7 @@ export const SavedHeader: React.FC<SavedHeaderProps> = ({
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
       {/* ── ATMOSPHERIC SPORTS PLAYER BACKGROUND ARTWORK ── */}
-      <CurvedHeaderPlayerBackground sport="soccer" />
+      <CurvedHeaderPlayerBackground sport="soccer" screen="saved" />
 
       {/* ── SCREEN TITLE & SUBTITLE ── */}
       <View style={styles.titleContainer}>

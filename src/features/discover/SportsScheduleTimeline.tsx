@@ -186,7 +186,7 @@ function getShortCompetition(comp?: string, sport?: string): string {
   }
   if (canonical === 'hockey') return 'NHL';
   if (canonical === 'basketball') return 'NBA';
-  if (canonical === 'mma') return 'UFC & Combat';
+  if (canonical === 'mma') return 'Boxing & Combat';
   if (canonical === 'motorsport') return 'Formula 1';
   if (canonical === 'soccer') {
     const c = comp.toUpperCase();

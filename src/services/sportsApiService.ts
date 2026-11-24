@@ -42,22 +42,6 @@ export interface NbaStandingsResult {
   western: NbaStandingsRow[];
 }
 
-export interface UfcRankItem {
-  rank: string;
-  name: string;
-  nickname?: string;
-  avatar: string;
-  record: string;
-  country: string;
-  isChampion: boolean;
-  trend?: string;
-}
-
-export interface UfcDivisionRankings {
-  id: string;
-  division: string;
-  fighters: UfcRankItem[];
-}
 
 export interface SportLeagueConfig {
   sport: 'soccer' | 'basketball' | 'hockey' | 'football' | 'mma' | 'racing' | 'tennis';
@@ -82,7 +66,7 @@ export function resolveLeagueKey(rawKey?: string | null): string {
   const clean = rawKey.toLowerCase().replace(/^(comp-|league-)/, '').trim();
   if (isUnsupportedStreamingCompetition(clean)) return '';
   if (clean === 'motorsport' || clean === 'formula1' || clean === 'formula-1') return 'f1';
-  if (clean === 'mma' || clean === 'wwe' || clean === 'boxing' || clean === 'combat') return 'ufc';
+  if (clean === 'mma' || clean === 'wwe' || clean === 'boxing' || clean === 'combat') return 'boxing';
   if (clean === 'american_football' || clean === 'american-football' || clean === 'gridiron') return 'nfl';
   if (clean === 'basketball') return 'nba';
   if (clean === 'hockey') return 'nhl';
@@ -225,12 +209,12 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png',
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
   },
-  'ufc': {
+  'boxing': {
     sport: 'mma',
-    league: 'ufc',
-    name: 'UFC & Mixed Martial Arts',
-    shortName: 'UFC',
-    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png',
+    league: 'boxing',
+    name: 'World Championship Boxing',
+    shortName: 'Boxing',
+    logo: LEAGUE_EMBLEMS['boxing'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
   },
   'f1': {
@@ -463,7 +447,6 @@ export function parseCompetitionInfo(ev: any, cfg: SportLeagueConfig): ParsedCom
 class SportsApiService {
   private standingsCache = new Map<string, { data: StandingsRow[]; timestamp: number }>();
   private nbaStandingsCache: { data: NbaStandingsResult; timestamp: number } | null = null;
-  private ufcRankingsCache: { data: UfcDivisionRankings[]; timestamp: number } | null = null;
   private intelCache = new Map<string, { data: MatchIntelResponse; timestamp: number }>();
   private globalEventsCache: { events: any[]; timestamp: number } | null = null;
   private scoreboardCache = new Map<string, { data: LiveMatch[]; timestamp: number }>();
@@ -1290,89 +1273,6 @@ class SportsApiService {
     return { eastern: [], western: [] };
   }
 
-  /**
-   * Fetches official UFC Rankings across divisions from ESPN.
-   */
-  async getUfcRankings(): Promise<UfcDivisionRankings[]> {
-    if (this.ufcRankingsCache && Date.now() - this.ufcRankingsCache.timestamp < this.CACHE_TTL) {
-      return this.ufcRankingsCache.data;
-    }
-
-    try {
-      const url = 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/rankings';
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-
-      const divisionDefs = [
-        { id: 'p4p', division: "Men's Pound for Pound", ranksName: "Men's Pound for Pound Rankings" },
-        { id: 'heavyweight', division: 'Heavyweight', champName: 'Heavyweight Division Champions (Up to 265 pounds)', ranksName: 'Heavyweight Division Rankings (Up to 265 pounds)' },
-        { id: 'lightheavyweight', division: 'Light Heavyweight', champName: 'Light Heavyweight Division Champions (Up to 205 pounds)', ranksName: 'Light Heavyweight Division Rankings (Up to 205 pounds)' },
-        { id: 'middleweight', division: 'Middleweight', champName: 'Middleweight Division Champions (Up to 185 pounds)', ranksName: 'Middleweight Division Rankings (Up to 185 pounds)' },
-        { id: 'welterweight', division: 'Welterweight', champName: 'Welterweight Division Champions (Up to 170 pounds)', ranksName: 'Welterweight Division Rankings (Up to 170 pounds)' },
-        { id: 'lightweight', division: 'Lightweight', champName: 'Lightweight Division Champions (Up to 155 pounds)', ranksName: 'Lightweight Division Rankings (Up to 155 pounds)' },
-        { id: 'featherweight', division: 'Featherweight', champName: 'Featherweight Division Champions (Up to 145 pounds)', ranksName: 'Featherweight Division Rankings (Up to 145 pounds)' },
-        { id: 'bantamweight', division: 'Bantamweight', champName: 'Bantamweight Division Champions (Up to 135 pounds)', ranksName: 'Bantamweight Division Rankings (Up to 135 pounds)' },
-        { id: 'flyweight', division: 'Flyweight', champName: 'Flyweight Division Champions (Up to 125 pounds)', ranksName: 'Flyweight Division Rankings (Up to 125 pounds)' },
-        { id: 'women_p4p', division: "Women's Pound for Pound", ranksName: "Women's Pound for Pound Rankings" },
-        { id: 'women_bantam', division: "Women's Bantamweight", champName: "Women's Bantamweight Division Champions (Up to 135 pounds)", ranksName: "Women's Bantamweight Division Rankings (Up to 135 pounds)" },
-        { id: 'women_fly', division: "Women's Flyweight", champName: "Women's Flyweight Division Champions (Up to 125 pounds)", ranksName: "Women's Flyweight Division Rankings (Up to 125 pounds)" },
-        { id: 'women_straw', division: "Women's Strawweight", champName: "Women's Strawweight Division Champions (Up to 115 pounds)", ranksName: "Women's Strawweight Division Rankings (Up to 115 pounds)" },
-      ];
-
-      const defaultAvatar = 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/default.png&w=120&h=120';
-
-      const divisions: UfcDivisionRankings[] = divisionDefs.map(def => {
-        const fighters: UfcRankItem[] = [];
-        const champCat = def.champName ? data.rankings?.find((r: any) => r.name === def.champName) : null;
-        const ranksCat = data.rankings?.find((r: any) => r.name === def.ranksName);
-
-        const champAthlete = champCat?.ranks?.[0]?.athlete;
-        if (champAthlete) {
-          fighters.push({
-            rank: 'C',
-            name: champAthlete.displayName || 'Champion',
-            nickname: champAthlete.nickname,
-            avatar: champAthlete.headshot || (champAthlete.id ? `https://a.espncdn.com/i/headshots/mma/players/full/${champAthlete.id}.png` : defaultAvatar),
-            record: champCat.ranks[0].recordSummary || '',
-            country: champAthlete.citizenshipCountry || '',
-            isChampion: true,
-          });
-        }
-
-        if (ranksCat?.ranks) {
-          ranksCat.ranks.forEach((r: any) => {
-            if (champAthlete && r.athlete?.id === champAthlete.id) return;
-            fighters.push({
-              rank: `#${r.current}`,
-              name: r.athlete?.displayName || 'Contender',
-              nickname: r.athlete?.nickname,
-              avatar: r.athlete?.headshot || (r.athlete?.id ? `https://a.espncdn.com/i/headshots/mma/players/full/${r.athlete.id}.png` : defaultAvatar),
-              record: r.recordSummary || '',
-              country: r.athlete?.citizenshipCountry || '',
-              isChampion: Boolean(r.hasAccolade),
-              trend: r.trend,
-            });
-          });
-        }
-
-        return {
-          id: def.id,
-          division: def.division,
-          fighters,
-        };
-      }).filter(d => d.fighters.length > 0);
-
-      if (divisions.length > 0) {
-        this.ufcRankingsCache = { data: divisions, timestamp: Date.now() };
-        return divisions;
-      }
-    } catch (e) {
-      console.warn('[SportsApiService] UFC Rankings fetch failed:', e);
-    }
-
-    return [];
-  }
 
   /**
    * Fetches real match details, boxscore statistics, real Starting Rosters, and chronological events
@@ -1666,7 +1566,7 @@ class SportsApiService {
       : matchup.sport || (
         compLower.includes('nba') || compLower.includes('basketball') ? 'basketball' :
         compLower.includes('nhl') || compLower.includes('hockey') ? 'hockey' :
-        compLower.includes('ufc') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling') || compLower.includes('tna') || compLower.includes('aew') ? 'mma' :
+        compLower.includes('boxing') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling') || compLower.includes('tna') || compLower.includes('aew') ? 'mma' :
         compLower.includes('nfl') || compLower.includes('american football') ? 'american_football' :
         compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport') ? 'motorsport' :
         compLower.includes('tennis') ? 'tennis' : 'soccer'

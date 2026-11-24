@@ -69,7 +69,7 @@ export function getBroadcastChannelId(competition: string = '', sport: string = 
   if (sportLower.includes('tennis') || compLower.includes('atp') || compLower.includes('wta')) {
     return API_CONFIG.PRIORITY_CHANNELS.TENNIS;
   }
-  if (sportLower.includes('mma') || compLower.includes('ufc') || compLower.includes('wwe') || compLower.includes('combat')) {
+  if (sportLower.includes('mma') || sportLower.includes('boxing') || compLower.includes('wwe') || compLower.includes('combat') || compLower.includes('boxing')) {
     return API_CONFIG.PRIORITY_CHANNELS.UCL;
   }
 
@@ -137,6 +137,14 @@ export function isUnsupportedStreamingCompetition(competition?: string | null, t
   const comp = (competition || '').toLowerCase();
   const tit = (title || '').toLowerCase();
   const combined = `${comp} ${tit}`;
+
+  // UFC & Ultimate Fighting Championship (explicitly removed from BALLIVE)
+  if (
+    combined.includes('ufc') ||
+    combined.includes('ultimate fighting')
+  ) {
+    return true;
+  }
 
   // Coupe de France (French Cup)
   if (

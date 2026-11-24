@@ -80,7 +80,7 @@ export const MMAFightCard: React.FC<MMAFightCardProps> = ({
 
   const { isLive, isUpcoming, isFinished, playTime } = statusInfo;
 
-  const competition = match.competition || 'UFC Championship';
+  const competition = match.competition || 'World Championship Boxing';
   const rawImage =
     (match as any).imageUrl ||
     (match as any).matchBannerUrl ||
@@ -112,8 +112,8 @@ export const MMAFightCard: React.FC<MMAFightCardProps> = ({
       {/* Top Header Row */}
       <View style={styles.topRow}>
         <View style={styles.eventBadge}>
-          <View style={styles.ufcTag}>
-            <Text style={styles.ufcTagText}>UFC</Text>
+          <View style={styles.fightTag}>
+            <Text style={styles.fightTagText}>FIGHT</Text>
           </View>
           <Text style={styles.eventText} numberOfLines={1}>
             {competition}
@@ -263,14 +263,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  ufcTag: {
+  fightTag: {
     backgroundColor: '#DC2626',
     paddingHorizontal: 5,
     paddingVertical: 1.5,
     borderRadius: 4,
     marginRight: 6,
   },
-  ufcTagText: {
+  fightTagText: {
     color: '#FFFFFF',
     fontSize: 9.5,
     fontWeight: '900',

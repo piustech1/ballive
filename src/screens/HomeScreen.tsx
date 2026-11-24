@@ -13,7 +13,8 @@ import { LiveStreamsSection } from '../features/home/LiveStreamsSection';
 import { LiveMatch } from '../constants/mockData';
 
 import { useAppNavigation } from '../navigation/NavigationContext';
-import { getMarqueeMatchOfTheDay, navigateToMatch } from '../navigation/navHelpers';
+import { navigateToMatch } from '../navigation/navHelpers';
+import { useMatchOfTheDay } from '../hooks/useMatchOfTheDay';
 import { MatchOfTheDayTicker } from '../features/home/MatchOfTheDayTicker';
 import { FilterBottomSheet } from '../features/home/FilterBottomSheet';
 import { QuickAccessLauncher } from '../features/home/QuickAccessLauncher';
@@ -52,7 +53,7 @@ export const HomeScreen: React.FC = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await loadRealMatches();
+    await Promise.all([loadRealMatches(), refreshMotd()]);
     setIsRefreshing(false);
   };
 
@@ -84,8 +85,8 @@ export const HomeScreen: React.FC = () => {
           matchesCategory = canonical === 'basketball';
         } else if (cat === 'nhl' || cat === 'hockey') {
           matchesCategory = canonical === 'hockey';
-        } else if (cat === 'mma' || cat === 'ufc') {
-          matchesCategory = canonical === 'mma';
+        } else if (cat === 'boxing' || cat === 'combat') {
+          matchesCategory = canonical === 'boxing' || canonical === 'mma';
         } else if (cat === 'nfl' || cat === 'american_football') {
           matchesCategory = canonical === 'american_football';
         } else if (cat === 'motorsport' || cat === 'f1') {
@@ -162,10 +163,7 @@ export const HomeScreen: React.FC = () => {
   );
   const displayedMatches = isFilterApplied ? filteredMatches : liveMatches;
 
-  const motdMatch = useMemo(
-    () => getMarqueeMatchOfTheDay(displayedMatches.length > 0 ? displayedMatches : liveMatches),
-    [displayedMatches, liveMatches]
-  );
+  const { motdMatch, refreshMotd } = useMatchOfTheDay(displayedMatches.length > 0 ? displayedMatches : liveMatches);
 
   return (
     <View style={styles.container}>

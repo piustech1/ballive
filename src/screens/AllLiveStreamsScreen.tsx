@@ -33,7 +33,7 @@ import { sortMatchesWithLiveFirst } from '../utils/matchStatus';
 import { getCanonicalSport } from '../utils/sportClassifier';
 
 type StreamFilter = 'all' | 'live' | 'upcoming' | 'available';
-type SportFilter = 'all' | 'football' | 'american_football' | 'basketball' | 'hockey' | 'mma' | 'motorsport';
+type SportFilter = 'all' | 'football' | 'american_football' | 'basketball' | 'hockey' | 'boxing' | 'motorsport';
 
 interface FilterOption {
   id: StreamFilter;
@@ -66,7 +66,7 @@ const SPORT_TABS: SportTab[] = [
   { id: 'american_football', label: 'American Football', icon: Shield },
   { id: 'basketball', label: 'Basketball', icon: Activity },
   { id: 'hockey', label: 'Hockey', icon: Shield },
-  { id: 'mma', label: 'MMA / UFC', icon: Shield },
+  { id: 'boxing', label: 'Boxing', icon: Shield },
   { id: 'motorsport', label: 'Motorsport', icon: Activity },
 ];
 
@@ -77,7 +77,7 @@ function parseInitialSport(raw?: string): SportFilter {
   if (s === 'nfl' || s === 'american_football') return 'american_football';
   if (s === 'nba' || s === 'basketball') return 'basketball';
   if (s === 'nhl' || s === 'hockey') return 'hockey';
-  if (s === 'mma' || s === 'ufc' || s === 'combat') return 'mma';
+  if (s === 'boxing' || s === 'combat') return 'boxing';
   if (s === 'motorsport' || s === 'f1') return 'motorsport';
   return 'all';
 }
@@ -145,8 +145,8 @@ export const AllLiveStreamsScreen: React.FC = () => {
           if (canonical !== 'basketball') return false;
         } else if (selectedSport === 'hockey') {
           if (canonical !== 'hockey') return false;
-        } else if (selectedSport === 'mma') {
-          if (canonical !== 'mma') return false;
+        } else if (selectedSport === 'boxing') {
+          if (canonical !== 'boxing' && canonical !== 'mma') return false;
         } else if (selectedSport === 'motorsport') {
           if (canonical !== 'motorsport') return false;
         }

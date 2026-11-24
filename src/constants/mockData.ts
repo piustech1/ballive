@@ -7,6 +7,7 @@ export type SportType =
   | 'soccer'
   | 'basketball'
   | 'hockey'
+  | 'boxing'
   | 'mma'
   | 'american_football'
   | 'tennis'
@@ -92,12 +93,12 @@ export const COMPETITION_CATEGORIES: CompetitionCategory[] = [
     sport: 'hockey',
   },
   {
-    id: 'mma',
-    name: 'UFC & Combat',
-    shortLabel: 'UFC/WWE',
+    id: 'boxing',
+    name: 'Boxing',
+    shortLabel: 'Boxing',
     color: '#EF4444',
     iconName: 'award',
-    sport: 'mma',
+    sport: 'boxing',
   },
   {
     id: 'nfl',
@@ -167,16 +168,6 @@ export const FEATURED_COMPETITIONS: FeaturedCompetition[] = [
     crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
     verified: true,
     sport: 'hockey',
-  },
-  {
-    id: 'comp-ufc',
-    name: 'UFC & Mixed Martial Arts',
-    country: 'Global',
-    matchesCount: 5,
-    season: 'Championship Series',
-    crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png',
-    verified: true,
-    sport: 'mma',
   },
   {
     id: 'comp-laliga',

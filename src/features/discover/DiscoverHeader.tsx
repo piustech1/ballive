@@ -28,7 +28,7 @@ export const DiscoverHeader: React.FC<DiscoverHeaderProps> = ({
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) + 8 }]}>
       {/* ── ATMOSPHERIC SPORTS PLAYER BACKGROUND ARTWORK ── */}
-      <CurvedHeaderPlayerBackground sport="soccer" />
+      <CurvedHeaderPlayerBackground sport="soccer" screen="discover" />
 
       {/* ── TOP UTILITY & TITLE ROW ── */}
       <View style={styles.topRow}>

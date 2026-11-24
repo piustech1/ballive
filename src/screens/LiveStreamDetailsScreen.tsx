@@ -35,6 +35,7 @@ import {
   ArrowLeft,
   Check,
   CheckCircle,
+  RefreshCw,
 } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
@@ -165,12 +166,10 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
   useEffect(() => {
     let isMounted = true;
-    const rawFallback = isLive
-      ? activeMatch.streamUrl || streamingApiService.getDefaultStreamUrl(activeMatch.competition, activeMatch.sport)
-      : activeMatch.streamUrl;
+    const abortController = new AbortController();
 
-    const isDirectMediaUrl = rawFallback && !rawFallback.endsWith('.json') && !rawFallback.includes('/stream/tv/');
-    const fallbackStream = isDirectMediaUrl ? rawFallback : undefined;
+    const isDirectMediaUrl = activeMatch.streamUrl && !activeMatch.streamUrl.endsWith('.json') && !activeMatch.streamUrl.includes('/stream/tv/');
+    const fallbackStream = isLive && isDirectMediaUrl ? activeMatch.streamUrl : undefined;
 
     setActiveStreamUrl(fallbackStream);
     setActiveStreams(
@@ -192,21 +191,42 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
         : undefined,
     });
 
-    if (activeMatch.id) {
-      streamingApiService
-        .resolveStreamMirrors(
-          activeMatch.id,
-          activeMatch.competition,
-          activeMatch.homeTeam.name,
-          activeMatch.awayTeam.name
-        )
-        .then(mirrors => {
-          if (isMounted && mirrors.length > 0) {
+    // Only resolve live streams if fixture is actively live and not concluded
+    if (activeMatch.id && isLive && !isFinished) {
+      const resolveWithRetry = async (attempt = 1) => {
+        if (!isMounted || abortController.signal.aborted) return;
+        try {
+          const mirrors = await streamingApiService.resolveStreamMirrors(
+            activeMatch.id,
+            activeMatch.competition,
+            activeMatch.homeTeam.name,
+            activeMatch.awayTeam.name
+          );
+          if (!isMounted || abortController.signal.aborted) return;
+          if (mirrors.length > 0) {
             setActiveStreams(mirrors);
             setActiveStreamUrl(mirrors[0].url);
+          } else if (attempt < 3) {
+            const delay = attempt === 1 ? 1200 : 2500;
+            setTimeout(() => {
+              if (isMounted && !abortController.signal.aborted) {
+                resolveWithRetry(attempt + 1);
+              }
+            }, delay);
           }
-        })
-        .catch(() => {});
+        } catch {
+          if (attempt < 3 && isMounted && !abortController.signal.aborted) {
+            const delay = attempt === 1 ? 1200 : 2500;
+            setTimeout(() => {
+              if (isMounted && !abortController.signal.aborted) {
+                resolveWithRetry(attempt + 1);
+              }
+            }, delay);
+          }
+        }
+      };
+
+      resolveWithRetry(1);
     }
 
     // Dynamic Live Matches for Related Streams
@@ -265,6 +285,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
     return () => {
       isMounted = false;
+      abortController.abort();
       clearInterval(pollInterval);
     };
   }, [activeMatch.id, activeMatch.streamUrl, activeMatch.homeTeam.name, activeMatch.awayTeam.name, activeMatch.sport]);
@@ -347,6 +368,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
         <SecondaryScreenHeader
           title={activeMatch.competition}
           subtitle={`${activeMatch.homeTeam.name} vs ${activeMatch.awayTeam.name}`}
+          sport={activeMatch.sport}
           rightAction={{
             icon: Share2,
             onPress: handleShare,
@@ -381,6 +403,29 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             <Text style={styles.upcomingPlayerSubtitle}>
               Establishing live satellite stream for {activeMatch.competition}. Please wait a moment...
             </Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              style={[styles.remindMePill, { marginTop: 14 }]}
+              onPress={() => {
+                streamingApiService
+                  .resolveStreamMirrors(
+                    activeMatch.id,
+                    activeMatch.competition,
+                    activeMatch.homeTeam.name,
+                    activeMatch.awayTeam.name
+                  )
+                  .then(mirrors => {
+                    if (mirrors.length > 0) {
+                      setActiveStreams(mirrors);
+                      setActiveStreamUrl(mirrors[0].url);
+                    }
+                  })
+                  .catch(() => {});
+              }}
+            >
+              <RefreshCw size={13} color="#FFFFFF" strokeWidth={2.2} style={{ marginRight: 6 }} />
+              <Text style={styles.remindMePillText}>Retry Stream</Text>
+            </TouchableOpacity>
           </View>
         ) : isFinished ? (
           /* Completed / Concluded Match Experience */
@@ -465,7 +510,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             <View style={styles.combatIdentityCard}>
               <View style={styles.combatTopRow}>
                 <View style={styles.racingCategoryPill}>
-                  <Text style={styles.racingCategoryText}>UFC & COMBAT</Text>
+                  <Text style={styles.racingCategoryText}>BOXING & COMBAT</Text>
                 </View>
                 <Text style={styles.combatCompTitle} numberOfLines={1}>
                   {activeMatch.competition}

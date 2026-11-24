@@ -27,6 +27,7 @@ interface SecondaryScreenHeaderProps {
   rightAction?: HeaderAction;
   secondaryRightAction?: HeaderAction;
   rightCustomComponent?: React.ReactNode;
+  sport?: string;
 }
 
 export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
@@ -36,6 +37,7 @@ export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
   rightAction,
   secondaryRightAction,
   rightCustomComponent,
+  sport,
 }) => {
   const insets = useSafeAreaInsets();
   const { goBack } = useAppNavigation();
@@ -51,7 +53,7 @@ export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
   return (
     <View style={[styles.container, { paddingTop: Math.max(insets.top, 10) + 4 }]}>
       {/* ── ATMOSPHERIC SPORTS PLAYER BACKGROUND ARTWORK ── */}
-      <CurvedHeaderPlayerBackground />
+      <CurvedHeaderPlayerBackground sport={sport} screen="details" />
 
       <View style={styles.contentRow}>
         {/* Left Native Back Action */}

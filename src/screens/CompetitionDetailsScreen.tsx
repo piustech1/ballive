@@ -40,8 +40,6 @@ import {
   sportsApiService,
   NbaStandingsRow,
   NbaStandingsResult,
-  UfcDivisionRankings,
-  UfcRankItem,
 } from '../services/sportsApiService';
 
 interface CompetitionDetailsScreenProps {
@@ -63,7 +61,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
   const compSport = ('sport' in competition ? competition.sport : undefined) || (
     competition.id.includes('nba') || competition.name.toLowerCase().includes('nba') ? 'basketball' :
     competition.id.includes('nhl') || competition.name.toLowerCase().includes('nhl') ? 'hockey' :
-    competition.id.includes('ufc') || competition.name.toLowerCase().includes('ufc') || competition.name.toLowerCase().includes('mma') || competition.name.toLowerCase().includes('wwe') || competition.name.toLowerCase().includes('boxing') ? 'mma' :
+    competition.id.includes('mma') || competition.name.toLowerCase().includes('mma') || competition.name.toLowerCase().includes('wwe') || competition.name.toLowerCase().includes('boxing') ? 'mma' :
     competition.id.includes('nfl') || competition.name.toLowerCase().includes('nfl') ? 'american_football' :
     competition.id.includes('f1') || competition.id.includes('motorsport') || competition.name.toLowerCase().includes('formula') ? 'motorsport' :
     competition.id.includes('tennis') || competition.name.toLowerCase().includes('tennis') ? 'tennis' :
@@ -78,18 +76,18 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
   const isMotorsport = compSport === 'motorsport';
   const isTennis = compSport === 'tennis';
 
-  // Combat Pound-for-Pound Rankings
+  // World Boxing Championship Pound-for-Pound Rankings
   const combatRankings = [
-    { rank: 'C', name: 'Islam Makhachev', division: 'Lightweight Champion', record: '27-1-0', country: 'Dagestan', p4p: '#1 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/3929452.png&w=120&h=120' },
-    { rank: 'C', name: 'Jon Jones', division: 'Heavyweight Champion', record: '28-1-0', country: 'United States', p4p: '#2 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/2335639.png&w=120&h=120' },
-    { rank: 'C', name: 'Alex Pereira', division: 'Light Heavyweight Champion', record: '12-2-0', country: 'Brazil', p4p: '#3 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4898132.png&w=120&h=120' },
-    { rank: 'C', name: 'Ilia Topuria', division: 'Featherweight Champion', record: '16-0-0', country: 'Georgia / Spain', p4p: '#4 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4687352.png&w=120&h=120' },
-    { rank: 'C', name: 'Dricus du Plessis', division: 'Middleweight Champion', record: '22-2-0', country: 'South Africa', p4p: '#5 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4285640.png&w=120&h=120' },
-    { rank: 'C', name: 'Belal Muhammad', division: 'Welterweight Champion', record: '24-3-0', country: 'United States', p4p: '#6 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/3153832.png&w=120&h=120' },
-    { rank: 'C', name: 'Merab Dvalishvili', division: 'Bantamweight Champion', record: '18-4-0', country: 'Georgia', p4p: '#7 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4271427.png&w=120&h=120' },
-    { rank: 'C', name: 'Alexandre Pantoja', division: 'Flyweight Champion', record: '28-5-0', country: 'Brazil', p4p: '#8 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/3028213.png&w=120&h=120' },
-    { rank: 'C', name: 'Tom Aspinall', division: 'Interim Heavyweight Champion', record: '15-3-0', country: 'United Kingdom', p4p: '#9 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4684752.png&w=120&h=120' },
-    { rank: 'C', name: 'Max Holloway', division: 'BMF Champion', record: '26-8-0', country: 'United States', p4p: '#10 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/2614933.png&w=120&h=120' },
+    { rank: 'C', name: 'Oleksandr Usyk', division: 'Heavyweight Undisputed Champion', record: '22-0-0', country: 'Ukraine', p4p: '#1 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/3929452.png&w=120&h=120' },
+    { rank: 'C', name: 'Terence Crawford', division: 'Super Welterweight Champion', record: '41-0-0', country: 'United States', p4p: '#2 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/2335639.png&w=120&h=120' },
+    { rank: 'C', name: 'Naoya Inoue', division: 'Super Bantamweight Undisputed Champion', record: '28-0-0', country: 'Japan', p4p: '#3 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4898132.png&w=120&h=120' },
+    { rank: 'C', name: 'Canelo Alvarez', division: 'Super Middleweight Champion', record: '61-2-2', country: 'Mexico', p4p: '#4 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4687352.png&w=120&h=120' },
+    { rank: 'C', name: 'Artur Beterbiev', division: 'Light Heavyweight Undisputed Champion', record: '21-0-0', country: 'Canada', p4p: '#5 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4285640.png&w=120&h=120' },
+    { rank: '1', name: 'Dmitry Bivol', division: 'Light Heavyweight Contender', record: '23-1-0', country: 'Kyrgyzstan', p4p: '#6 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/3153832.png&w=120&h=120' },
+    { rank: 'C', name: 'Gervonta Davis', division: 'Lightweight Champion', record: '30-0-0', country: 'United States', p4p: '#7 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4271427.png&w=120&h=120' },
+    { rank: '1', name: 'Tyson Fury', division: 'Heavyweight Contender', record: '34-1-1', country: 'United Kingdom', p4p: '#8 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/3028213.png&w=120&h=120' },
+    { rank: 'C', name: 'Shakur Stevenson', division: 'Lightweight Champion', record: '22-0-0', country: 'United States', p4p: '#9 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4684752.png&w=120&h=120' },
+    { rank: '1', name: 'Anthony Joshua', division: 'Heavyweight Contender', record: '28-4-0', country: 'United Kingdom', p4p: '#10 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/2614933.png&w=120&h=120' },
   ];
 
   // F1 Drivers Championship
@@ -164,30 +162,30 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
     if (isCombat) {
       return [
         {
-          id: 'ufc-main-event',
-          competition: 'UFC 312',
-          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png',
+          id: 'box-main-event',
+          competition: 'Undisputed Heavyweight Championship',
+          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/boxing.png',
           status: 'UPCOMING',
-          kickoffDate: 'Sat, 15 Mar',
+          kickoffDate: 'Sat, 17 May',
           kickoffTime: '22:00 EST',
-          homeTeam: { id: 'team-makhachev', name: 'Islam Makhachev (C)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/3929452.png&w=120&h=120', score: 0 },
-          awayTeam: { id: 'team-tsarukyan', name: 'Arman Tsarukyan (#1)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4414441.png&w=120&h=120', score: 0 },
-          venue: 'T-Mobile Arena, Las Vegas',
+          homeTeam: { id: 'team-usyk', name: 'Oleksandr Usyk (C)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/3929452.png&w=120&h=120', score: 0 },
+          awayTeam: { id: 'team-fury', name: 'Tyson Fury (#1)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/3028213.png&w=120&h=120', score: 0 },
+          venue: 'Kingdom Arena, Riyadh',
           hasLiveBroadcast: true,
-          sport: 'mma',
+          sport: 'boxing',
         },
         {
-          id: 'ufc-co-main',
-          competition: 'UFC 312',
-          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/ufc.png',
+          id: 'box-co-main',
+          competition: 'Super Middleweight Championship',
+          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/boxing.png',
           status: 'UPCOMING',
-          kickoffDate: 'Sat, 15 Mar',
-          kickoffTime: '21:30 EST',
-          homeTeam: { id: 'team-pereira', name: 'Alex Pereira (C)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4898132.png&w=120&h=120', score: 0 },
-          awayTeam: { id: 'team-ankalaev', name: 'Magomed Ankalaev (#1)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/4285641.png&w=120&h=120', score: 0 },
-          venue: 'T-Mobile Arena, Las Vegas',
+          kickoffDate: 'Sat, 17 May',
+          kickoffTime: '21:00 EST',
+          homeTeam: { id: 'team-canelo', name: 'Canelo Alvarez (C)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4687352.png&w=120&h=120', score: 0 },
+          awayTeam: { id: 'team-crawford', name: 'Terence Crawford (#1)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/2335639.png&w=120&h=120', score: 0 },
+          venue: 'Allegiant Stadium, Las Vegas',
           hasLiveBroadcast: true,
-          sport: 'mma',
+          sport: 'boxing',
         },
       ];
     }
@@ -267,34 +265,8 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
     return () => { isMounted = false; };
   }, [isBasketball]);
 
-  // Dynamic UFC Division Rankings
-  const [ufcRankings, setUfcRankings] = useState<UfcDivisionRankings[]>([]);
-  const [selectedUfcDivision, setSelectedUfcDivision] = useState<string>('p4p');
-  const [isLoadingUfc, setIsLoadingUfc] = useState(false);
-
-  React.useEffect(() => {
-    if (!isCombat) return;
-    let isMounted = true;
-    setIsLoadingUfc(true);
-    sportsApiService.getUfcRankings().then(res => {
-      if (isMounted && res.length > 0) {
-        setUfcRankings(res);
-        if (!selectedUfcDivision || !res.find(d => d.id === selectedUfcDivision)) {
-          setSelectedUfcDivision(res[0].id);
-        }
-      }
-    }).catch(() => {}).finally(() => {
-      if (isMounted) setIsLoadingUfc(false);
-    });
-    return () => { isMounted = false; };
-  }, [isCombat]);
-
-  const activeUfcDivision = useMemo(() => {
-    if (ufcRankings.length > 0) {
-      return ufcRankings.find(d => d.id === selectedUfcDivision) || ufcRankings[0];
-    }
-    return null;
-  }, [ufcRankings, selectedUfcDivision]);
+  // Boxing Division Selection
+  const [selectedBoxingDivision, setSelectedBoxingDivision] = useState<string>('p4p');
 
   return (
     <View style={styles.root}>
@@ -484,8 +456,8 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
               {isCombat ? (
                 <>
                   <View style={styles.tableHeaderSection}>
-                    <Text style={styles.cardHeaderTitle}>Official UFC Division Rankings</Text>
-                    <Text style={styles.seasonBadgeLabel}>ESPN Open API</Text>
+                    <Text style={styles.cardHeaderTitle}>World Boxing Championship Rankings</Text>
+                    <Text style={styles.seasonBadgeLabel}>WBC • WBA • IBF • WBO</Text>
                   </View>
 
                   {/* Horizontal Division Selector */}
@@ -495,25 +467,21 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                     contentContainerStyle={styles.divisionPillList}
                     style={styles.divisionScroll}
                   >
-                    {(ufcRankings.length > 0 ? ufcRankings : [
-                      { id: 'p4p', division: "Men's P4P", fighters: [] },
-                      { id: 'heavyweight', division: 'Heavyweight', fighters: [] },
-                      { id: 'lightheavyweight', division: 'Light Heavyweight', fighters: [] },
-                      { id: 'middleweight', division: 'Middleweight', fighters: [] },
-                      { id: 'welterweight', division: 'Welterweight', fighters: [] },
-                      { id: 'lightweight', division: 'Lightweight', fighters: [] },
-                      { id: 'featherweight', division: 'Featherweight', fighters: [] },
-                      { id: 'bantamweight', division: 'Bantamweight', fighters: [] },
-                      { id: 'flyweight', division: 'Flyweight', fighters: [] },
-                      { id: 'women_p4p', division: "Women's P4P", fighters: [] },
-                    ]).map(div => {
-                      const isActive = selectedUfcDivision === div.id;
+                    {[
+                      { id: 'p4p', division: "Pound for Pound" },
+                      { id: 'heavyweight', division: 'Heavyweight' },
+                      { id: 'lightheavyweight', division: 'Light Heavyweight' },
+                      { id: 'supermiddle', division: 'Super Middleweight' },
+                      { id: 'welterweight', division: 'Welterweight' },
+                      { id: 'lightweight', division: 'Lightweight' },
+                    ].map(div => {
+                      const isActive = selectedBoxingDivision === div.id;
                       return (
                         <TouchableOpacity
                           key={div.id}
                           activeOpacity={0.8}
                           style={[styles.divisionPill, isActive && styles.divisionPillActive]}
-                          onPress={() => setSelectedUfcDivision(div.id)}
+                          onPress={() => setSelectedBoxingDivision(div.id)}
                         >
                           <Text style={[styles.divisionPillText, isActive && styles.divisionPillTextActive]}>
                             {div.division}
@@ -523,53 +491,33 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                     })}
                   </ScrollView>
 
-                  {isLoadingUfc ? (
-                    <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-                      <Text style={{ color: '#A098B5', fontSize: 13, fontWeight: '600' }}>
-                        Loading official UFC rankings...
-                      </Text>
-                    </View>
-                  ) : (
-                    <View style={{ gap: 4, marginTop: 10 }}>
-                      {/* Active division fighters or fallback combatRankings (NO ROW NAVIGATION - informational only) */}
-                      {(activeUfcDivision && activeUfcDivision.fighters.length > 0
-                        ? activeUfcDivision.fighters
-                        : combatRankings.map(c => ({
-                            rank: c.rank,
-                            name: c.name,
-                            avatar: c.avatar,
-                            record: c.record,
-                            country: c.country,
-                            isChampion: c.rank === 'C',
-                            trend: c.p4p,
-                          }))
-                      ).map((fighter, idx) => (
-                        <View key={`${fighter.name}-${idx}`} style={styles.fighterRankRow}>
-                          <View style={fighter.isChampion || fighter.rank === 'C' ? styles.champRankBadge : styles.contenderRankBadge}>
-                            <Text style={fighter.isChampion || fighter.rank === 'C' ? styles.champRankText : styles.contenderRankText}>
-                              {fighter.rank}
-                            </Text>
-                          </View>
-                          <Image
-                            source={{ uri: fighter.avatar || 'https://a.espncdn.com/combiner/i?img=/i/headshots/mma/players/full/default.png&w=120&h=120' }}
-                            style={styles.fighterAvatar}
-                          />
-                          <View style={styles.fighterMeta}>
-                            <Text style={styles.fighterName} numberOfLines={1}>{fighter.name}</Text>
-                            <Text style={styles.fighterDivision} numberOfLines={1}>
-                              {fighter.country ? `${fighter.country} • ` : ''}{fighter.isChampion ? 'Undisputed Champion' : 'Official Contender'}
-                            </Text>
-                          </View>
-                          <View style={styles.fighterRecordPill}>
-                            <Text style={styles.fighterRecordText}>{fighter.record || 'Pro'}</Text>
-                            {fighter.trend ? (
-                              <Text style={{ fontSize: 9, color: '#A098B5', textAlign: 'right', marginTop: 1 }}>{fighter.trend}</Text>
-                            ) : null}
-                          </View>
+                  <View style={{ gap: 4, marginTop: 10 }}>
+                    {combatRankings.map((fighter, idx) => (
+                      <View key={`${fighter.name}-${idx}`} style={styles.fighterRankRow}>
+                        <View style={fighter.rank === 'C' ? styles.champRankBadge : styles.contenderRankBadge}>
+                          <Text style={fighter.rank === 'C' ? styles.champRankText : styles.contenderRankText}>
+                            {fighter.rank}
+                          </Text>
                         </View>
-                      ))}
-                    </View>
-                  )}
+                        <Image
+                          source={{ uri: fighter.avatar || 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/default.png&w=120&h=120' }}
+                          style={styles.fighterAvatar}
+                        />
+                        <View style={styles.fighterMeta}>
+                          <Text style={styles.fighterName} numberOfLines={1}>{fighter.name}</Text>
+                          <Text style={styles.fighterDivision} numberOfLines={1}>
+                            {fighter.country ? `${fighter.country} • ` : ''}{fighter.division}
+                          </Text>
+                        </View>
+                        <View style={styles.fighterRecordPill}>
+                          <Text style={styles.fighterRecordText}>{fighter.record || 'Pro'}</Text>
+                          {fighter.p4p ? (
+                            <Text style={{ fontSize: 9, color: '#A098B5', textAlign: 'right', marginTop: 1 }}>{fighter.p4p}</Text>
+                          ) : null}
+                        </View>
+                      </View>
+                    ))}
+                  </View>
                 </>
               ) : isBasketball ? (
                 <>
@@ -1416,7 +1364,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#F8BE38',
   },
-  // ── UFC Division Selector Styles ──
+  // ── Boxing Division Selector Styles ──
   divisionScroll: {
     marginBottom: 8,
   },
