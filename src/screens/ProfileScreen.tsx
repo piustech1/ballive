@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Linking,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
 import {
   Shield,
@@ -49,6 +50,7 @@ export const ProfileScreen: React.FC = () => {
     toggleMatchReminder,
   } = useProfile();
   const { navigate } = useAppNavigation();
+  const insets = useSafeAreaInsets();
 
   // ── MODAL VISIBILITY STATES ──
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -60,10 +62,10 @@ export const ProfileScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.headerPurple} translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* ── TOP CURVED APP BAR CAVITY WITH ROTATING ATHLETE BACKGROUND ── */}
-      <View style={styles.headerCavity}>
+      <View style={[styles.headerCavity, { paddingTop: Math.max(insets.top, 16) + 4 }]}>
         <CurvedHeaderPlayerBackground sport="soccer" screen="profile" />
         <ProfileHeader onSettingsPress={() => setSettingsModalVisible(true)} />
         <ProfileIdentityCard

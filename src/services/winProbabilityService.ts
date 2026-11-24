@@ -14,6 +14,7 @@
  */
 
 import { API_CONFIG } from '../config/api';
+import { sportsApiService } from './sportsApiService';
 
 export interface WinProbabilityResult {
   isAvailable: boolean;
@@ -89,6 +90,24 @@ export class WinProbabilityService {
         if (sportLower.includes('basketball')) espnSport = 'basketball';
         else if (sportLower.includes('hockey')) espnSport = 'hockey';
         else if (sportLower.includes('football') || sportLower.includes('nfl')) espnSport = 'football';
+      }
+    } else if (homeTeam && awayTeam) {
+      try {
+        const preferred = isTwoWay
+          ? (sportLower.includes('basketball') ? 'basketball' : (sportLower.includes('hockey') ? 'hockey' : 'soccer'))
+          : 'soccer';
+        const matched = await sportsApiService.findEspnEvent(homeTeam, awayTeam, preferred);
+        if (matched && matched.id) {
+          espnEventId = matched.id;
+          if (matched.league && matched.league !== 'all') {
+            espnLeague = matched.league;
+          }
+          if (matched.sport) {
+            espnSport = matched.sport === 'football' ? 'soccer' : matched.sport;
+          }
+        }
+      } catch {
+        // Fallback without failing
       }
     }
 

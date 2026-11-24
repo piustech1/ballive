@@ -183,7 +183,7 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.headerPurple} translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* ── SCREEN HEADER (Status Bar + 2x2 Grid + Bell + Branding + Search + Filter) ── */}
       <Header

@@ -400,7 +400,85 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
     logoUrl: LEAGUE_EMBLEMS['ucl'],
     accentColor: '#0A1E5C',
     sport: 'soccer',
-    providerAliases: ['uefa.champions', 'champions league', 'ucl', 'uefa champions league'],
+    providerAliases: ['uefa.champions', 'uefa champions league', 'ucl'],
+    clubSignatures: [],
+  },
+  afc_champions_league: {
+    id: 'afc_champions_league',
+    name: 'AFC Champions League Elite',
+    shortName: 'AFC Champions League',
+    country: 'Asia',
+    region: 'Asia',
+    logoUrl: 'https://a.espncdn.com/i/leaguelogos/soccer/500/296.png',
+    accentColor: '#E5A823',
+    sport: 'soccer',
+    providerAliases: [
+      'afc champions league',
+      'afc champions league elite',
+      'afc champions league two',
+      'afc champions',
+      'acl elite',
+      'asian champions league',
+      'afc.champions',
+      'afc champions league 2',
+      'afc cup',
+    ],
+    clubSignatures: [
+      'al hilal',
+      'al nassr',
+      'al ahli saudi',
+      'al ain',
+      'al sadd',
+      'al rayyan',
+      'persepolis',
+      'esteghlal',
+      'vissel kobe',
+      'kawasaki frontale',
+      'yokohama f marinos',
+      'pohang steelers',
+      'ulsan hd',
+      'gwangju fc',
+      'shanghai port',
+      'shanghai shenhua',
+      'shandong taishan',
+    ],
+  },
+  saudi_king_cup: {
+    id: 'saudi_king_cup',
+    name: 'King Cup of Champions',
+    shortName: 'King Cup',
+    country: 'Saudi Arabia',
+    region: 'Middle East',
+    logoUrl: 'https://media.api-sports.io/football/leagues/309.png',
+    accentColor: '#005A36',
+    sport: 'soccer',
+    providerAliases: [
+      'king cup',
+      'saudi king cup',
+      'custodian of the two holy mosques cup',
+      'king cup of champions',
+      'saudi cup',
+      'kings cup',
+    ],
+    clubSignatures: [],
+  },
+  arab_club_champions: {
+    id: 'arab_club_champions',
+    name: 'Arab Club Champions Cup',
+    shortName: 'King Salman Cup',
+    country: 'Arab World',
+    region: 'Middle East',
+    logoUrl: 'https://media.api-sports.io/football/leagues/883.png',
+    accentColor: '#1F3864',
+    sport: 'soccer',
+    providerAliases: [
+      'arab club champions cup',
+      'arab club championship',
+      'king salman club cup',
+      'arab champions league',
+      'uafa club cup',
+      'arab club cup',
+    ],
     clubSignatures: [],
   },
   europa_league: {
@@ -672,6 +750,23 @@ export class CompetitionResolverService {
             normCand.includes('fifa world u17');
           if (isU17) {
             return this.buildResolved(comp, posterLb);
+          }
+        }
+
+        // Strict separation: UEFA Champions League vs AFC / Arab / Non-UEFA Champions League
+        if (comp.id === 'champions_league') {
+          const isNonUefaCup =
+            normCand.includes('afc') ||
+            normCand.includes('asian') ||
+            normCand.includes('arab') ||
+            normCand.includes('gulf') ||
+            normCand.includes('caf') ||
+            normCand.includes('concacaf') ||
+            normCand.includes('elite') ||
+            normCand.includes('two') ||
+            normCand.includes('asia');
+          if (isNonUefaCup) {
+            continue;
           }
         }
 

@@ -280,12 +280,8 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
               }
             }
 
-            if (video.canPlayType('application/vnd.apple.mpegurl')) {
-              video.src = streamSource;
-              video.play().catch(function(e) {
-                console.log('Native HLS autoplay deferred:', e);
-              });
-            } else if (Hls.isSupported()) {
+            // Priority 1: MSE-based HLS via Hls.js (Required on Android Chromium WebView to prevent DEMUXER_ERROR_COULD_NOT_PARSE)
+            if (Hls.isSupported()) {
               const hls = new Hls({
                 enableWorker: true,
                 lowLatencyMode: true,
@@ -324,6 +320,7 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
                 }
               });
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+              // Priority 2: Native HLS (Safari / iOS WebView where Hls.js MSE is not supported)
               video.src = streamSource;
               video.addEventListener('loadedmetadata', function () {
                 video.play().catch(function(e) {
@@ -394,11 +391,10 @@ export const LiveStreamPlayer: React.FC<LiveStreamPlayerProps> = ({
               }}
             />
 
-            {/* Buffering Indicator Overlay */}
+            {/* Buffering Indicator Overlay (Subtle centered spinner, no text cards) */}
             {isBuffering && (
               <View style={styles.bufferingOverlay} pointerEvents="none">
-                <ActivityIndicator size="large" color="#7952FC" />
-                <Text style={styles.bufferingText}>Connecting live satellite feed...</Text>
+                <ActivityIndicator size="small" color="#7952FC" />
               </View>
             )}
           </View>
@@ -526,17 +522,10 @@ const styles = StyleSheet.create({
   },
   bufferingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(14, 13, 20, 0.85)',
+    backgroundColor: 'rgba(10, 8, 18, 0.45)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
     zIndex: 10,
-  },
-  bufferingText: {
-    color: '#ECE6F0',
-    fontSize: 12.5,
-    fontWeight: '600',
-    letterSpacing: 0.2,
   },
   offlineSurface: {
     flex: 1,

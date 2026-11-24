@@ -358,22 +358,34 @@ export function determineMatchRoute(match: any): ScreenRoute {
       ? (match as DiscoverMatchup)
       : resolveLiveMatchToMatchup(match as LiveMatch);
 
-  const isLive =
-    statusInfo.isLive ||
-    match.status === 'LIVE' ||
-    matchup.status === 'LIVE' ||
-    Boolean(match.isLive) ||
-    Boolean(matchup.isLive) ||
-    (match.minute !== undefined && match.minute > 0) ||
-    (matchup.minute !== undefined && matchup.minute > 0) ||
-    match.playTime === 'HT' ||
-    matchup.playTime === 'HT' ||
-    Boolean(match.playTime && match.playTime.includes('LIVE')) ||
-    Boolean(matchup.playTime && matchup.playTime.includes('LIVE')) ||
-    Boolean(match.hasLiveBroadcast || match.streamUrl || matchup.hasLiveBroadcast || matchup.streamUrl);
+  const isFinished =
+    statusInfo.isFinished ||
+    match.status === 'FT' ||
+    match.status === 'FINAL' ||
+    match.status === 'AET' ||
+    match.status === 'PEN' ||
+    match.state === 'post' ||
+    (matchup as any).status === 'FT' ||
+    (matchup as any).status === 'FINAL' ||
+    (matchup as any).state === 'post';
+
+  // Match is authoritatively live only when not finished AND actively in-play
+  const isAuthoritativelyLive =
+    !isFinished &&
+    (statusInfo.isLive ||
+      match.status === 'LIVE' ||
+      matchup.status === 'LIVE' ||
+      Boolean(match.isLive) ||
+      Boolean(matchup.isLive) ||
+      (match.minute !== undefined && match.minute > 0 && match.minute <= 130) ||
+      (matchup.minute !== undefined && matchup.minute > 0 && matchup.minute <= 130) ||
+      match.playTime === 'HT' ||
+      matchup.playTime === 'HT' ||
+      Boolean(typeof match.playTime === 'string' && match.playTime.includes('LIVE')) ||
+      Boolean(typeof matchup.playTime === 'string' && matchup.playTime.includes('LIVE')));
 
   // If match is authoritatively LIVE, route to LiveStreamDetails
-  if (isLive) {
+  if (isAuthoritativelyLive) {
     return {
       name: 'LiveStreamDetails',
       params: { match: matchup },

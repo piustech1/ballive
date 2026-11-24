@@ -10,6 +10,7 @@ import {
   Share,
   StatusBar,
   BackHandler,
+  ActivityIndicator,
 } from 'react-native';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import {
@@ -43,6 +44,8 @@ import { LiveBadge } from '../components/common/LiveBadge';
 import { TeamCrest } from '../components/common/TeamCrest';
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
+import { WinProbabilityBar } from '../components/match/WinProbabilityBar';
+import { winProbabilityService, WinProbabilityResult } from '../services/winProbabilityService';
 import { useProfile } from '../hooks/useProfile';
 import { useSavedMatches } from '../hooks/useSavedMatches';
 import { getAllLiveStreamMatches, resolveLiveMatchToMatchup, determineMatchRoute } from '../navigation/navHelpers';
@@ -81,6 +84,8 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
   const [activeStreamUrl, setActiveStreamUrl] = useState<string | undefined>(activeMatch.streamUrl);
   const [activeStreams, setActiveStreams] = useState<any[] | undefined>(activeMatch.streams);
+  const [winProb, setWinProb] = useState<WinProbabilityResult | null>(null);
+  const [isLoadingProb, setIsLoadingProb] = useState(false);
 
   const isRacing = useMemo(
     () =>
@@ -154,6 +159,41 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     }
     return [];
   });
+
+  // Fetch authentic win probability directly from provider
+  useEffect(() => {
+    let isCancelled = false;
+    setIsLoadingProb(true);
+    winProbabilityService
+      .getWinProbability({
+        matchId: activeMatch.id,
+        sport: activeMatch.sport,
+        competition: activeMatch.competition,
+        homeTeam: activeMatch.homeTeam?.name,
+        awayTeam: activeMatch.awayTeam?.name,
+      })
+      .then(res => {
+        if (!isCancelled) {
+          setWinProb(res);
+          setIsLoadingProb(false);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setIsLoadingProb(false);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    activeMatch.id,
+    activeMatch.sport,
+    activeMatch.competition,
+    activeMatch.homeTeam?.name,
+    activeMatch.awayTeam?.name,
+  ]);
 
   useEffect(() => {
     let isMounted = true;
@@ -385,38 +425,9 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             style={isFullscreen ? { width: '100%', height: '100%' } : undefined}
           />
         ) : isLive ? (
-          /* Live Stream Connecting / Buffering Experience */
+          /* Live Stream Buffering Surface (Subtle centered spinner blending seamlessly into dark player) */
           <View style={styles.upcomingPlayerSurface}>
-            <View style={styles.upcomingCountdownIcon}>
-              <Radio size={28} color="#7952FC" strokeWidth={2.4} />
-            </View>
-            <Text style={styles.upcomingPlayerTitle}>Connecting to Live Broadcast...</Text>
-            <Text style={styles.upcomingPlayerSubtitle}>
-              Establishing live satellite stream for {activeMatch.competition}. Please wait a moment...
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.remindMePill, { marginTop: 14 }]}
-              onPress={() => {
-                streamingApiService
-                  .resolveStreamMirrors(
-                    activeMatch.id,
-                    activeMatch.competition,
-                    activeMatch.homeTeam.name,
-                    activeMatch.awayTeam.name
-                  )
-                  .then(mirrors => {
-                    if (mirrors.length > 0) {
-                      setActiveStreams(mirrors);
-                      setActiveStreamUrl(mirrors[0].url);
-                    }
-                  })
-                  .catch(() => {});
-              }}
-            >
-              <RefreshCw size={13} color="#FFFFFF" strokeWidth={2.2} style={{ marginRight: 6 }} />
-              <Text style={styles.remindMePillText}>Retry Stream</Text>
-            </TouchableOpacity>
+            <ActivityIndicator size="small" color="#7952FC" />
           </View>
         ) : isFinished ? (
           /* Completed / Concluded Match Experience */
@@ -552,63 +563,16 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             </View>
           )}
 
-          {/* ── 3. MATCH ACTIONS BAR ── */}
-          <View style={styles.actionsBar}>
-            {isLive ? (
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={[styles.actionPrimaryBtn, styles.actionPrimaryBtnLive]}
-                onPress={handleEnterFullscreen}
-              >
-                <Radio size={16} color="#FFFFFF" strokeWidth={2.4} />
-                <Text style={styles.actionPrimaryBtnText}>Watch Fullscreen</Text>
-              </TouchableOpacity>
-            ) : isFinished ? (
-              <View style={[styles.actionPrimaryBtn, styles.actionPrimaryBtnFinished]}>
-                <Clock size={16} color="#A098B5" strokeWidth={2.2} />
-                <Text style={[styles.actionPrimaryBtnText, { color: '#A098B5' }]}>
-                  Match Concluded (FT)
-                </Text>
-              </View>
-            ) : (
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[styles.actionPrimaryBtn, isReminderSet && styles.actionPrimaryBtnActive]}
-                onPress={() => toggleMatchReminder(activeMatch.id)}
-              >
-                {isReminderSet ? (
-                  <BellRing size={16} color="#FFFFFF" strokeWidth={2.4} />
-                ) : (
-                  <Bell size={16} color="#FFFFFF" strokeWidth={2.2} />
-                )}
-                <Text style={styles.actionPrimaryBtnText}>
-                  {isReminderSet ? 'Alert Enabled' : 'Notify Kickoff'}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={[styles.iconActionBtn, isSaved && styles.iconActionBtnActive]}
-              onPress={() => toggleSave(activeMatch)}
-              accessibilityLabel="Bookmark match"
-            >
-              {isSaved ? (
-                <BookmarkCheck size={18} color="#7952FC" strokeWidth={2.4} />
-              ) : (
-                <Bookmark size={18} color="#A098B5" strokeWidth={2} />
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={styles.iconActionBtn}
-              onPress={handleShare}
-              accessibilityLabel="Share match"
-            >
-              <Share2 size={18} color="#A098B5" strokeWidth={2} />
-            </TouchableOpacity>
-          </View>
+          {/* ── 3. LIVE WIN PROBABILITY EXPLAINER ── */}
+          <WinProbabilityBar
+            homeTeamName={activeMatch.homeTeam.name}
+            awayTeamName={activeMatch.awayTeam.name}
+            homeCrest={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)}
+            awayCrest={activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)}
+            sport={activeMatch.sport}
+            probabilityData={winProb}
+            isLoading={isLoadingProb}
+          />
 
           {/* ── 4. MORE LIVE & UPCOMING FIXTURES (VERTICAL FULL-WIDTH LIST) ── */}
           {otherMatches.length > 0 && (

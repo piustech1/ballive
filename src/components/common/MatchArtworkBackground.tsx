@@ -41,6 +41,7 @@ export interface MatchArtworkBackgroundProps {
   competition?: string;
   competitionLogo?: string;
   originalArtworkUrl?: string | null;
+  featured?: boolean;
   style?: StyleProp<ViewStyle>;
   imageStyle?: StyleProp<ImageStyle>;
   children?: React.ReactNode;
@@ -58,6 +59,7 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
   competition,
   competitionLogo,
   originalArtworkUrl,
+  featured = false,
   style,
   imageStyle,
   children,
@@ -91,6 +93,9 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
     return awayCrest || getTeamCrest(awayTeamId || awayTeamName) || DEFAULT_CREST;
   }, [awayCrest, awayTeamId, awayTeamName]);
 
+  // Enlarge fallback emblems from 52 to 68-72 (and 76 on featured cards)
+  const emblemSize = featured ? 76 : 68;
+
   return (
     <View style={[styles.container, style]}>
       {/* ── BASE LAYER: DEDICATED LEAGUE / SPORT FALLBACK ARTWORK ── */}
@@ -109,7 +114,7 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
               uri={resolvedHomeCrest}
               teamId={homeTeamId}
               teamName={homeTeamName}
-              size={52}
+              size={emblemSize}
             />
           </View>
 
@@ -119,7 +124,7 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
               uri={resolvedAwayCrest}
               teamId={awayTeamId}
               teamName={awayTeamName}
-              size={52}
+              size={emblemSize}
             />
           </View>
         </View>
@@ -177,8 +182,8 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 22,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
   leftEmblemSlot: {
     alignItems: 'center',

@@ -84,7 +84,7 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({ onNavigateToDiscover }
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.headerPurple} translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* ── HEADER WITH SEGMENTED TABS ── */}
       <SavedHeader

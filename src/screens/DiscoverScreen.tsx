@@ -268,7 +268,7 @@ export const DiscoverScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.headerPurple} translucent={false} />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
       {/* ── A. DISCOVER HEADER ── */}
       <DiscoverHeader

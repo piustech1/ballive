@@ -21,6 +21,9 @@ export const LEAGUE_THUMBNAILS: Record<string, ImageSourcePropType> = {
   mls: require('../../assets/images/thumbnails/mls.jpg'),
   nba: require('../../assets/images/thumbnails/nba.webp'),
   hockey: require('../../assets/images/thumbnails/hockey.jpg'),
+  csl: require('../../assets/images/thumbnails/csl.jpg'),
+  j1: require('../../assets/images/thumbnails/j1.jpg'),
+  fifa_u17: require('../../assets/images/thumbnails/fifa_u17.jpg'),
 };
 
 export type LeagueThumbnailKey = keyof typeof LEAGUE_THUMBNAILS;
@@ -55,7 +58,37 @@ export function getLeagueThumbnailKey(
     return 'hockey';
   }
 
-  // 3. UEFA Conference League (must check before Europa League to avoid substring collision)
+  // 3. FIFA U-17 World Cup
+  if (
+    comp.includes('u-17') ||
+    comp.includes('u17') ||
+    comp.includes('under-17') ||
+    comp.includes('under 17')
+  ) {
+    return 'fifa_u17';
+  }
+
+  // 4. Meiji Yasuda J1 League
+  if (
+    comp.includes('j1') ||
+    comp.includes('j-league') ||
+    comp.includes('j.league') ||
+    comp.includes('meiji yasuda') ||
+    comp.includes('jpn.1')
+  ) {
+    return 'j1';
+  }
+
+  // 5. Chinese Super League (CSL)
+  if (
+    comp.includes('csl') ||
+    comp.includes('chinese super') ||
+    comp.includes('chn.1')
+  ) {
+    return 'csl';
+  }
+
+  // 6. UEFA Conference League (must check before Europa League to avoid substring collision)
   if (
     comp.includes('conference') ||
     comp.includes('uecl') ||
@@ -65,12 +98,21 @@ export function getLeagueThumbnailKey(
     return 'conference_league';
   }
 
-  // 4. UEFA Champions League
+  // 7. UEFA Champions League (Strictly guarded against AFC, Arab, Asian, Gulf, and other regional cups)
+  const isNonUefa =
+    comp.includes('afc') ||
+    comp.includes('asian') ||
+    comp.includes('arab') ||
+    comp.includes('gulf') ||
+    comp.includes('caf') ||
+    comp.includes('concacaf');
+
   if (
-    comp.includes('champions league') ||
-    comp.includes('ucl') ||
-    comp.includes('uefa.champions') ||
-    comp === 'champions'
+    !isNonUefa &&
+    (comp.includes('champions league') ||
+      comp.includes('ucl') ||
+      comp.includes('uefa.champions') ||
+      comp === 'champions')
   ) {
     return 'champions_league';
   }
