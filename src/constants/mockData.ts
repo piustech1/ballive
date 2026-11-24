@@ -7,8 +7,6 @@ export type SportType =
   | 'soccer'
   | 'basketball'
   | 'hockey'
-  | 'boxing'
-  | 'mma'
   | 'american_football'
   | 'tennis'
   | 'motorsport'
@@ -91,14 +89,6 @@ export const COMPETITION_CATEGORIES: CompetitionCategory[] = [
     color: '#08B3E5',
     iconName: 'shield',
     sport: 'hockey',
-  },
-  {
-    id: 'boxing',
-    name: 'Boxing',
-    shortLabel: 'Boxing',
-    color: '#EF4444',
-    iconName: 'award',
-    sport: 'boxing',
   },
   {
     id: 'nfl',

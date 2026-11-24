@@ -66,7 +66,6 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
   else if (compLower.includes('bundesliga')) compLogo = LEAGUE_EMBLEMS['bundesliga'];
   else if (compLower.includes('nba') || compLower.includes('basketball')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png';
   else if (compLower.includes('nhl') || compLower.includes('hockey')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png';
-  else if (compLower.includes('boxing') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling') || compLower.includes('tna') || compLower.includes('aew')) compLogo = LEAGUE_EMBLEMS['boxing'];
   else if (compLower.includes('nfl') || compLower.includes('american football')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
   else if (compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png';
   else if (compLower.includes('tennis')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/tennis.png';
@@ -101,13 +100,12 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     : live.sport || (
       compLower.includes('nba') || compLower.includes('basketball') ? 'basketball' :
       compLower.includes('nhl') || compLower.includes('hockey') ? 'hockey' :
-      compLower.includes('boxing') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling') || compLower.includes('tna') || compLower.includes('aew') ? 'mma' :
       compLower.includes('nfl') || compLower.includes('american football') ? 'american_football' :
       compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport') ? 'motorsport' :
       compLower.includes('tennis') ? 'tennis' : 'soccer'
     );
 
-  const venue = compLower.includes('nba') ? 'NBA Arena' : compLower.includes('nhl') ? 'NHL Ice Arena' : compLower.includes('boxing') || compLower.includes('mma') ? 'Boxing Arena' : 'Premier Sports Stadium';
+  const venue = compLower.includes('nba') ? 'NBA Arena' : compLower.includes('nhl') ? 'NHL Ice Arena' : 'Premier Sports Stadium';
 
   const statusInfo = normalizeMatchStatus({
     rawStatus: live.status,
@@ -241,10 +239,6 @@ export function findCompetitionById(id: string): DiscoverCompetition {
     const f1 = EXPLORE_COMPETITIONS.find(c => c.id === 'f1');
     if (f1) return f1;
   }
-  if (clean === 'mma' || clean === 'combat') {
-    const boxing = EXPLORE_COMPETITIONS.find(c => c.id === 'boxing');
-    if (boxing) return boxing;
-  }
   if (clean === 'nfl' || clean === 'american_football' || clean === 'american-football') {
     const nfl = EXPLORE_COMPETITIONS.find(c => c.id === 'nfl');
     if (nfl) return nfl;
@@ -256,10 +250,6 @@ export function findCompetitionById(id: string): DiscoverCompetition {
   if (clean === 'cricket') {
     const cricket = EXPLORE_COMPETITIONS.find(c => c.id === 'cricket');
     if (cricket) return cricket;
-  }
-  if (clean === 'boxing') {
-    const boxing = EXPLORE_COMPETITIONS.find(c => c.id === 'boxing');
-    if (boxing) return boxing;
   }
   if (clean === 'wc' || clean === 'world-cup') {
     const wc = EXPLORE_COMPETITIONS.find(c => c.id === 'wc');

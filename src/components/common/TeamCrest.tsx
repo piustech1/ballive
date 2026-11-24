@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Image,
@@ -10,12 +10,11 @@ import {
 } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { DEFAULT_CREST } from '../../utils/teamCrestResolver';
+import { teamEmblemService } from '../../services/teamEmblemService';
 
-// Module-level cache for broken or invalid URLs to prevent repeated network retries
-const brokenUrlCache = new Set<string>();
-
-interface TeamCrestProps {
+export interface TeamCrestProps {
   uri?: string | null;
+  teamId?: string;
   teamName?: string;
   size?: number;
   width?: number;
@@ -89,10 +88,12 @@ export const NeutralSportsShield: React.FC<{ size: number }> = React.memo(({ siz
  * Universal BALLIVE Team Crest Component
  * Displays team badges completely flat on card/screen surfaces without circular discs,
  * outlines, depressed containers, or decorative shadows.
+ * Utilizes TeamEmblemService for persistent caching and request deduplication.
  * Gracefully falls back to a neutral sports shield on error or missing source.
  */
 export const TeamCrest: React.FC<TeamCrestProps> = React.memo(({
   uri,
+  teamId,
   teamName,
   size = 28,
   width,
@@ -102,28 +103,63 @@ export const TeamCrest: React.FC<TeamCrestProps> = React.memo(({
   resizeMode = 'contain',
 }) => {
   const [hasError, setHasError] = useState(false);
+  const cacheKey = useMemo(() => {
+    return teamEmblemService.getCacheKey(teamId, teamName, uri);
+  }, [teamId, teamName, uri]);
+
+  const [activeUri, setActiveUri] = useState<string | null>(() => {
+    return teamEmblemService.getCachedUri(cacheKey) || uri || null;
+  });
 
   const effectiveWidth = width ?? size;
   const effectiveHeight = height ?? size;
 
+  // Background fetch/persist with TeamEmblemService
+  useEffect(() => {
+    let isMounted = true;
+    setHasError(false);
+
+    const cached = teamEmblemService.getCachedUri(cacheKey);
+    if (cached) {
+      setActiveUri(cached);
+      return;
+    }
+
+    teamEmblemService
+      .getOrFetchEmblem(teamId, teamName, uri)
+      .then((resolved) => {
+        if (isMounted && resolved) {
+          setActiveUri(resolved);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setHasError(true);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [cacheKey, teamId, teamName, uri]);
+
   // Determine if URL is invalid, unmapped, broken, or placeholder
-  const isInvalidUrl = useMemo(() => {
-    if (!uri || typeof uri !== 'string') return true;
-    const trimmed = uri.trim();
+  const isInvalid = useMemo(() => {
+    if (!activeUri || typeof activeUri !== 'string') return true;
+    const trimmed = activeUri.trim();
     if (!trimmed || trimmed === DEFAULT_CREST) return true;
-    // Exclude third-party initial monograms or placeholder services
     if (trimmed.includes('ui-avatars.com') || trimmed.includes('default-team-logo')) return true;
-    return brokenUrlCache.has(trimmed);
-  }, [uri]);
+    return teamEmblemService.isBroken(trimmed);
+  }, [activeUri]);
 
   const handleError = () => {
-    if (uri) {
-      brokenUrlCache.add(uri.trim());
+    if (activeUri) {
+      teamEmblemService.markBroken(activeUri);
     }
     setHasError(true);
   };
 
-  const shouldShowFallback = isInvalidUrl || hasError;
+  const shouldShowFallback = isInvalid || hasError;
 
   return (
     <View
@@ -139,7 +175,7 @@ export const TeamCrest: React.FC<TeamCrestProps> = React.memo(({
         <NeutralSportsShield size={Math.min(effectiveWidth, effectiveHeight)} />
       ) : (
         <Image
-          source={{ uri: uri!.trim() }}
+          source={{ uri: activeUri!.trim() }}
           style={[styles.image, style]}
           resizeMode={resizeMode}
           onError={handleError}

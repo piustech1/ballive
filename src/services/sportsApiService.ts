@@ -66,7 +66,7 @@ export function resolveLeagueKey(rawKey?: string | null): string {
   const clean = rawKey.toLowerCase().replace(/^(comp-|league-)/, '').trim();
   if (isUnsupportedStreamingCompetition(clean)) return '';
   if (clean === 'motorsport' || clean === 'formula1' || clean === 'formula-1') return 'f1';
-  if (clean === 'mma' || clean === 'wwe' || clean === 'boxing' || clean === 'combat') return 'boxing';
+  if (clean === 'mma' || clean === 'wwe' || clean === 'boxing' || clean === 'combat') return '';
   if (clean === 'american_football' || clean === 'american-football' || clean === 'gridiron') return 'nfl';
   if (clean === 'basketball') return 'nba';
   if (clean === 'hockey') return 'nhl';
@@ -207,14 +207,6 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     name: 'NFL Football',
     shortName: 'NFL',
     logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png',
-    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
-  },
-  'boxing': {
-    sport: 'mma',
-    league: 'boxing',
-    name: 'World Championship Boxing',
-    shortName: 'Boxing',
-    logo: LEAGUE_EMBLEMS['boxing'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
   },
   'f1': {
@@ -1566,17 +1558,10 @@ class SportsApiService {
       : matchup.sport || (
         compLower.includes('nba') || compLower.includes('basketball') ? 'basketball' :
         compLower.includes('nhl') || compLower.includes('hockey') ? 'hockey' :
-        compLower.includes('boxing') || compLower.includes('mma') || compLower.includes('wwe') || compLower.includes('wrestling') || compLower.includes('tna') || compLower.includes('aew') ? 'mma' :
         compLower.includes('nfl') || compLower.includes('american football') ? 'american_football' :
         compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport') ? 'motorsport' :
         compLower.includes('tennis') ? 'tennis' : 'soccer'
       );
-
-    if (resolvedSport === 'mma') {
-      const intel = buildCombatIntel(matchup);
-      this.intelCache.set(cacheKey, { data: intel, timestamp: Date.now() });
-      return intel;
-    }
 
     if (resolvedSport === 'basketball') {
       const intel = buildBasketballIntel(matchup);

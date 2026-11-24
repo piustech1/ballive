@@ -85,8 +85,6 @@ export const HomeScreen: React.FC = () => {
           matchesCategory = canonical === 'basketball';
         } else if (cat === 'nhl' || cat === 'hockey') {
           matchesCategory = canonical === 'hockey';
-        } else if (cat === 'boxing' || cat === 'combat') {
-          matchesCategory = canonical === 'boxing' || canonical === 'mma';
         } else if (cat === 'nfl' || cat === 'american_football') {
           matchesCategory = canonical === 'american_football';
         } else if (cat === 'motorsport' || cat === 'f1') {

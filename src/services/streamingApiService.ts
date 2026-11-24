@@ -162,7 +162,6 @@ class StreamingApiService {
       { file: 'moviebay_sports_basketball.json', defaultSport: 'basketball' as const, isLiveSource: false },
       { file: 'moviebay_sports_hockey.json', defaultSport: 'hockey' as const, isLiveSource: false },
       { file: 'moviebay_sports_american_football.json', defaultSport: 'american_football' as const, isLiveSource: false },
-      { file: 'moviebay_sports_mma.json', defaultSport: 'mma' as const, isLiveSource: false },
       { file: 'moviebay_sports_motorsport.json', defaultSport: 'motorsport' as const, isLiveSource: false },
       { file: 'moviebay_sports_upcoming.json', defaultSport: 'soccer' as const, isLiveSource: false },
     ];
@@ -303,22 +302,22 @@ class StreamingApiService {
                 return;
               }
 
-              // Support combat sports (Boxing, WWE, TNA, MMA) where event title is headline
+              // Completely exclude combat sports (Boxing, UFC, MMA, WWE, Bare Knuckle)
               const isCombat =
-                catConfig.defaultSport === 'mma' ||
                 genre.includes('MMA') ||
                 genre.includes('WRESTLING') ||
-                /wwe|tna|aew|mma|boxing/i.test(cleanTitle) ||
-                /wwe|tna|aew|mma|boxing/i.test(m.description || '');
+                genre.includes('BOXING') ||
+                genre.includes('COMBAT') ||
+                /wwe|tna|aew|mma|boxing|ufc|bellator|pfl|bkfc/i.test(cleanTitle) ||
+                /wwe|tna|aew|mma|boxing|ufc|bellator|pfl|bkfc/i.test(m.description || '');
 
               if (isCombat) {
-                if (!home) home = cleanTitle;
-                if (!away) away = 'Championship Card';
-              } else {
-                // Exclude fake fixtures ("vs Opponent" or standalone TV channel titles)
-                if (!away || away.toLowerCase() === 'opponent' || away.toLowerCase().includes('live 24/7') || (home && home.toLowerCase().includes('tv') && !m.team2)) {
-                  return;
-                }
+                return;
+              }
+
+              // Exclude fake fixtures ("vs Opponent" or standalone TV channel titles)
+              if (!away || away.toLowerCase() === 'opponent' || away.toLowerCase().includes('live 24/7') || (home && home.toLowerCase().includes('tv') && !m.team2)) {
+                return;
               }
 
               seenMatchIds.add(m.id);
@@ -330,8 +329,6 @@ class StreamingApiService {
                 sport = 'basketball';
               } else if (genre.includes('HOCKEY') || titleLower.includes('nhl')) {
                 sport = 'hockey';
-              } else if (isCombat) {
-                sport = 'mma';
               } else if (genre.includes('AMERICAN FOOTBALL') || titleLower.includes('nfl')) {
                 sport = 'american_football';
               } else if (genre.includes('MOTORSPORT') || titleLower.includes('f1') || titleLower.includes('formula')) {
@@ -346,9 +343,8 @@ class StreamingApiService {
               const posterLogo1 = extractPosterParam(m.poster, 'b1');
               const posterLogo2 = extractPosterParam(m.poster, 'b2');
 
-              const combatLogo = LEAGUE_EMBLEMS['boxing'] || 'https://a.espncdn.com/i/teamlogos/leagues/500/boxing.png';
-              const b1 = rawLogo1 || posterLogo1 || (isCombat ? combatLogo : getTeamCrest(home));
-              const b2 = rawLogo2 || posterLogo2 || (isCombat ? combatLogo : getTeamCrest(away));
+              const b1 = rawLogo1 || posterLogo1 || getTeamCrest(home);
+              const b2 = rawLogo2 || posterLogo2 || getTeamCrest(away);
 
               // Deduplicate against existing authentic matches (e.g. ESPN scoreboards)
               const cleanHome = cleanName(home);
@@ -436,7 +432,7 @@ class StreamingApiService {
               const maxDurationMs =
                 sport === 'basketball' || sport === 'hockey'
                   ? 180 * 60 * 1000
-                  : sport === 'mma' || sport === 'american_football'
+                  : sport === 'american_football'
                   ? 240 * 60 * 1000
                   : 140 * 60 * 1000; // soccer default
 
@@ -483,7 +479,7 @@ class StreamingApiService {
                   title: cleanTitle.replace(/^⏱️\s*/, ''),
                   homeTeam: home,
                   awayTeam: away,
-                  competition: isCombat ? 'Boxing / Combat' : (m.genres?.[0] || genre),
+                  competition: m.genres?.[0] || genre,
                   score: { home: 0, away: 0 },
                   minute: 0,
                   playTime: undefined,
@@ -500,7 +496,7 @@ class StreamingApiService {
                   time: eatKickoff,
                   kickoffTimestamp,
                   rawDate: typeof m.releaseInfo === 'string' ? m.releaseInfo : undefined,
-                  venue: isCombat ? 'Boxing Arena' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
+                  venue: sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
                 });
                 return;
               }
@@ -541,11 +537,9 @@ class StreamingApiService {
                 title: cleanTitle.replace(/^🔴\s*LIVE:\s*/i, ''),
                 homeTeam: home,
                 awayTeam: away,
-                competition: isCombat
-                  ? 'Boxing / Combat'
-                  : (matchedEspn?.competition && matchedEspn.competition !== 'Global Football'
-                      ? matchedEspn.competition
-                      : (m.genres?.[0] || genre)),
+                competition: (matchedEspn?.competition && matchedEspn.competition !== 'Global Football'
+                  ? matchedEspn.competition
+                  : (m.genres?.[0] || genre)),
                 score: { home: scoreHome, away: scoreAway },
                 minute,
                 playTime,
@@ -558,7 +552,7 @@ class StreamingApiService {
                 streams: [],
                 sport,
                 kickoffTime,
-                venue: isCombat ? 'Boxing Arena' : sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
+                venue: sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
               });
             });
           } catch {

@@ -3,22 +3,13 @@
  * 
  * Strict Artwork Priority Engine:
  * 1. Valid original event-specific thumbnail (TheSportsDB, ESPN, broadcaster CDNs)
- *    -> Renders and preserves original event artwork.
+ *    -> Renders and preserves genuine match artwork.
  * 2. Original thumbnail missing, null, empty, invalid, or failed to load
- *    -> Renders the authentic solid team-color match versus artwork matching reference geometry.
- * 
- * Continuous Background Presence:
- * - Solid team-color artwork is always mounted as the reliable base canvas.
- * - When remote genuine artwork is fetching, users immediately see the authentic versus artwork
- *   instead of a black or blank void.
- * - Once genuine artwork successfully decodes, it cleanly overlays the canvas without layout shifts.
- * 
- * Proportional Geometry (Reference Image: media_1794769783467.png):
- * - Sharp 50/50 vertical division between home and away team brand colors.
- * - Home team's official crest centered horizontally & vertically in left 50%.
- * - Away team's official crest centered horizontally & vertically in right 50%.
- * - Official competition emblem badge centered on the dividing line seam.
- * - Subtle bottom contrast vignette ensures card text and live scores remain razor-sharp.
+ *    -> Renders dedicated league fallback background artwork (Premier League, LaLiga,
+ *       Bundesliga, Champions League, Europa League, Conference League, General Football).
+ *    -> Overlays transparent home emblem on the left and away emblem on the right directly
+ *       without circular discs, white backgrounds, or typography overlays.
+ * 3. Failure fallback: Clean neutral dark container (#161224).
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -33,8 +24,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { isGenuineEventArtwork } from '../../utils/sportBackgroundResolver';
 import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
-import { getMatchupColors } from '../../utils/teamColorResolver';
-import { CompetitionLogo, resolveCompetitionLogo } from './CompetitionLogo';
+import { resolveThumbnailBackground } from '../../utils/thumbnailBackgroundResolver';
 import { TeamCrest } from './TeamCrest';
 
 export interface MatchArtworkBackgroundProps {
@@ -65,8 +55,6 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
   sport,
   homeCrest,
   awayCrest,
-  homeColor: propHomeColor,
-  awayColor: propAwayColor,
   competition,
   competitionLogo,
   originalArtworkUrl,
@@ -80,77 +68,62 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
   );
 
   const [imageLoadFailed, setImageLoadFailed] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
 
   // Reset load states when original artwork URL changes
   useEffect(() => {
     setImageLoadFailed(false);
-    setImageLoaded(false);
   }, [originalArtworkUrl]);
 
   // Determine whether to show overlay genuine artwork
   const shouldUseOriginal = isOriginalGenuine && !imageLoadFailed;
 
-  // 2. Resolve team brand colors with scientific collision avoidance
-  const { homeColor, awayColor } = useMemo(() => {
-    if (propHomeColor && propAwayColor) {
-      return { homeColor: propHomeColor, awayColor: propAwayColor };
-    }
-    const resolved = getMatchupColors(homeTeamName, awayTeamName, homeTeamId, awayTeamId);
-    return {
-      homeColor: propHomeColor || resolved.homeColor,
-      awayColor: propAwayColor || resolved.awayColor,
-    };
-  }, [homeTeamName, awayTeamName, homeTeamId, awayTeamId, propHomeColor, propAwayColor]);
+  // 2. Resolve league-specific fallback background artwork
+  const fallbackSource = useMemo(() => {
+    return resolveThumbnailBackground(competition, sport);
+  }, [competition, sport]);
 
-  // 3. Resolve team crests
+  // 3. Resolve team crests with stable IDs and names
   const resolvedHomeCrest = useMemo(() => {
-    return homeCrest || getTeamCrest(homeTeamName) || DEFAULT_CREST;
-  }, [homeCrest, homeTeamName]);
+    return homeCrest || getTeamCrest(homeTeamId || homeTeamName) || DEFAULT_CREST;
+  }, [homeCrest, homeTeamId, homeTeamName]);
 
   const resolvedAwayCrest = useMemo(() => {
-    return awayCrest || getTeamCrest(awayTeamName) || DEFAULT_CREST;
-  }, [awayCrest, awayTeamName]);
-
-  const resolvedCompLogo = useMemo(() => {
-    return competitionLogo || resolveCompetitionLogo(competition);
-  }, [competitionLogo, competition]);
+    return awayCrest || getTeamCrest(awayTeamId || awayTeamName) || DEFAULT_CREST;
+  }, [awayCrest, awayTeamId, awayTeamName]);
 
   return (
     <View style={[styles.container, style]}>
-      {/* ── BASE LAYER: SOLID TEAM-COLOR MATCH VERSUS ARTWORK (Always present underneath) ── */}
-      <View style={[StyleSheet.absoluteFillObject, styles.splitCanvas]}>
-        {/* Left Half: Home Team Primary Solid Brand Color */}
-        <View style={[styles.halfSection, { backgroundColor: homeColor }]}>
-          <View style={styles.crestWrapper}>
+      {/* ── BASE LAYER: DEDICATED LEAGUE / SPORT FALLBACK ARTWORK ── */}
+      <Image
+        source={fallbackSource}
+        style={[StyleSheet.absoluteFillObject, styles.fallbackImage]}
+        resizeMode="cover"
+      />
+
+      {/* ── EMBLEMS OVERLAY ON FALLBACK THUMBNAIL (Home Left, Away Right) ── */}
+      {!shouldUseOriginal ? (
+        <View style={[StyleSheet.absoluteFillObject, styles.emblemsContainer]} pointerEvents="none">
+          {/* Left Slot: Home Team Emblem */}
+          <View style={styles.leftEmblemSlot}>
             <TeamCrest
               uri={resolvedHomeCrest}
+              teamId={homeTeamId}
               teamName={homeTeamName}
-              size={48}
+              size={52}
             />
           </View>
-        </View>
 
-        {/* Right Half: Away Team Primary Solid Brand Color */}
-        <View style={[styles.halfSection, { backgroundColor: awayColor }]}>
-          <View style={styles.crestWrapper}>
+          {/* Right Slot: Away Team Emblem */}
+          <View style={styles.rightEmblemSlot}>
             <TeamCrest
               uri={resolvedAwayCrest}
+              teamId={awayTeamId}
               teamName={awayTeamName}
-              size={48}
+              size={52}
             />
           </View>
         </View>
-
-        {/* Center Seam: Official Competition Emblem Badge */}
-        <View style={styles.centerBadgeContainer}>
-          <CompetitionLogo
-            competitionId={competition}
-            uri={resolvedCompLogo}
-            size={20}
-          />
-        </View>
-      </View>
+      ) : null}
 
       {/* ── OVERLAY LAYER: ORIGINAL GENUINE EVENT ARTWORK (When available & loaded) ── */}
       {shouldUseOriginal && originalArtworkUrl ? (
@@ -166,16 +139,16 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
         />
       ) : null}
 
-      {/* Subtle bottom vignette to ensure team crests, scores, and text remain sharp */}
+      {/* Subtle bottom vignette to ensure card text and live scores remain razor-sharp */}
       <LinearGradient
-        colors={['transparent', 'rgba(12, 9, 18, 0.65)']}
+        colors={['transparent', 'rgba(14, 10, 22, 0.62)']}
         start={{ x: 0, y: 0.55 }}
-        end={{ x: 1, y: 1 }}
+        end={{ x: 0, y: 1 }}
         style={StyleSheet.absoluteFillObject}
         pointerEvents="none"
       />
 
-      {/* Overlay Children: Top competition row, bottom matchup scores & crests */}
+      {/* Overlay Children: Top competition row, status pills, bookmark */}
       {children}
     </View>
   );
@@ -190,53 +163,32 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     backgroundColor: '#161224',
   },
+  fallbackImage: {
+    width: '100%',
+    height: '100%',
+  },
   originalImage: {
     width: '100%',
     height: '100%',
   },
-  splitCanvas: {
+  emblemsContainer: {
     flexDirection: 'row',
     width: '100%',
     height: '100%',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 22,
+    paddingTop: 16,
   },
-  halfSection: {
-    flex: 1,
-    height: '100%',
+  leftEmblemSlot: {
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    backgroundColor: 'transparent',
   },
-  crestWrapper: {
-    width: '100%',
-    height: '100%',
+  rightEmblemSlot: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  centerBadgeContainer: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -15 }, { translateY: -15 }],
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(20, 15, 30, 0.92)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.22)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 5,
-    zIndex: 10,
+    backgroundColor: 'transparent',
   },
 });
 

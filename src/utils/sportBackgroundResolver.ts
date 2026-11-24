@@ -71,18 +71,6 @@ export const SPORT_ARTWORK_POOLS: Record<string, string[]> = {
     'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80',
     'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?auto=format&fit=crop&w=800&q=80',
   ],
-  mma: [
-    'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=800&q=80',
-  ],
-  combat: [
-    'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=800&q=80',
-  ],
-  boxing: [
-    'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
-  ],
   motorsport: [
     'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
   ],
@@ -200,23 +188,7 @@ export function normalizeSportKey(
     return 'hockey';
   }
 
-  // Boxing
-  if (
-    s === 'boxing' ||
-    c.includes('boxing') || c.includes('wbc') || c.includes('wba') || c.includes('ibf') || c.includes('wbo')
-  ) {
-    return 'boxing';
-  }
 
-  // Combat / MMA / Boxing / Wrestling
-  if (
-    s === 'mma' || s === 'combat' || s === 'wrestling' || s === 'wwe' ||
-    c.includes('mma') || c.includes('bellator') || c.includes('pfl') ||
-    c.includes('wwe') || c.includes('wrestling') || c.includes('aew') || c.includes('tna') ||
-    c.includes('cage') || c.includes('fight night')
-  ) {
-    return 'mma';
-  }
 
   // American Football / NFL
   if (
@@ -466,7 +438,6 @@ export function normalizeCompetitionKey(competition?: string): string | null {
   if (c.includes('nba') || c.includes('basketball')) return 'nba';
   if (c.includes('nhl') || c.includes('hockey')) return 'nhl';
   if (c.includes('nfl') || c.includes('american football')) return 'nfl';
-  if (c.includes('boxing') || c.includes('mma') || c.includes('combat') || c.includes('wwe')) return 'boxing';
   if (c.includes('f1') || c.includes('formula')) return 'f1';
   return null;
 }

@@ -87,12 +87,8 @@ export const LEAGUE_EMBLEMS: Record<string, string> = {
   'formula-1': 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
   'formula1': 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
   'motorsport': 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
-  'mma': 'https://a.espncdn.com/i/teamlogos/leagues/500/boxing.png',
-  'combat': 'https://a.espncdn.com/i/teamlogos/leagues/500/boxing.png',
-  'wwe': 'https://a.espncdn.com/i/teamlogos/leagues/500/boxing.png',
   'tennis': 'https://cdn-icons-png.flaticon.com/512/33/33736.png',
   'cricket': 'https://a.espncdn.com/i/teamlogos/leagues/500/cricket.png',
-  'boxing': 'https://a.espncdn.com/i/teamlogos/leagues/500/boxing.png',
 };
 
 export const SPORT_BACKDROPS: Record<string, string> = {
@@ -102,8 +98,6 @@ export const SPORT_BACKDROPS: Record<string, string> = {
   hockey: 'https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?auto=format&fit=crop&w=800&q=80',
   american_football: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80',
   nfl: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80',
-  mma: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80',
-  boxing: 'https://images.unsplash.com/photo-1549719386-74dfcbf7dbed?auto=format&fit=crop&w=800&q=80',
   motorsport: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
   tennis: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=800&q=80',
   cricket: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80',

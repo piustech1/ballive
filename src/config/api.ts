@@ -69,9 +69,6 @@ export function getBroadcastChannelId(competition: string = '', sport: string = 
   if (sportLower.includes('tennis') || compLower.includes('atp') || compLower.includes('wta')) {
     return API_CONFIG.PRIORITY_CHANNELS.TENNIS;
   }
-  if (sportLower.includes('mma') || sportLower.includes('boxing') || compLower.includes('wwe') || compLower.includes('combat') || compLower.includes('boxing')) {
-    return API_CONFIG.PRIORITY_CHANNELS.UCL;
-  }
 
   // Soccer / Association Football
   // International Friendlies, FIFA, AFC, CAF, World Cup Qualifiers (e.g. Iran vs Palestine)
@@ -138,10 +135,24 @@ export function isUnsupportedStreamingCompetition(competition?: string | null, t
   const tit = (title || '').toLowerCase();
   const combined = `${comp} ${tit}`;
 
-  // UFC & Ultimate Fighting Championship (explicitly removed from BALLIVE)
+  // Combat Sports (Boxing, MMA, UFC, WWE, Bellator, PFL, BKFC - explicitly eliminated from BALLIVE)
   if (
     combined.includes('ufc') ||
-    combined.includes('ultimate fighting')
+    combined.includes('ultimate fighting') ||
+    combined.includes('boxing') ||
+    combined.includes('boxe') ||
+    combined.includes('wbc') ||
+    combined.includes('wba') ||
+    combined.includes('ibf') ||
+    combined.includes('wbo') ||
+    combined.includes('wwe') ||
+    combined.includes('mma') ||
+    combined.includes('combat') ||
+    combined.includes('bellator') ||
+    combined.includes('pfl') ||
+    combined.includes('bkfc') ||
+    combined.includes('muay thai') ||
+    combined.includes('kickboxing')
   ) {
     return true;
   }

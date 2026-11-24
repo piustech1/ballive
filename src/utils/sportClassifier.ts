@@ -16,8 +16,6 @@ export type CanonicalSport =
   | 'american_football'
   | 'basketball'
   | 'hockey'
-  | 'boxing'
-  | 'mma'
   | 'motorsport'
   | 'tennis'
   | 'other';
@@ -50,38 +48,7 @@ export function getCanonicalSport(
     return 'american_football';
   }
 
-  // 2. Combat Sports (Boxing, MMA, WWE, Muay Thai, Bare Knuckle)
-  if (
-    s === 'boxing' ||
-    c.includes('boxing') ||
-    c.includes('wbc') ||
-    c.includes('wba') ||
-    c.includes('ibf') ||
-    c.includes('wbo')
-  ) {
-    return 'boxing';
-  }
-
-  if (
-    s === 'mma' ||
-    s === 'combat' ||
-    c.includes('mma') ||
-    c.includes('bellator') ||
-    c.includes('pfl') ||
-    c.includes('wwe') ||
-    c.includes('one championship') ||
-    c.includes('bare knuckle') ||
-    c.includes('bkfc') ||
-    c.includes('muay thai') ||
-    c.includes('kickboxing') ||
-    combined.includes('bellator') ||
-    combined.includes('pfl') ||
-    combined.includes('bkfc')
-  ) {
-    return 'boxing';
-  }
-
-  // 3. Motorsports & Racing (F1, MotoGP, NASCAR, IndyCar, Ferrari Challenge, Supercars, WEC)
+  // 2. Motorsports & Racing (F1, MotoGP, NASCAR, IndyCar, Ferrari Challenge, Supercars, WEC)
   if (
     s === 'motorsport' ||
     s === 'motorsports' ||
@@ -195,9 +162,6 @@ export function getSportDisplayName(sport?: string | null, competition?: string 
       return 'Basketball';
     case 'hockey':
       return 'Hockey';
-    case 'boxing':
-    case 'mma':
-      return 'Boxing & Combat';
     case 'motorsport':
       return 'Formula 1';
     case 'tennis':
@@ -209,11 +173,10 @@ export function getSportDisplayName(sport?: string | null, competition?: string 
 
 /**
  * Returns true if the event is a combat sport (Boxing, MMA, WWE).
- * These sports do NOT use football-style team score layouts.
+ * Combat sports have been completely eliminated from BALLIVE.
  */
-export function isCombatSport(sport?: string | null, competition?: string | null, eventName?: string | null): boolean {
-  const c = getCanonicalSport(sport, competition, eventName);
-  return c === 'boxing' || c === 'mma';
+export function isCombatSport(_sport?: string | null, _competition?: string | null, _eventName?: string | null): boolean {
+  return false;
 }
 
 /**
@@ -225,11 +188,10 @@ export function isMotorsport(sport?: string | null, competition?: string | null,
 }
 
 /**
- * Returns true if the event is a non-score event (Combat, Motorsports).
+ * Returns true if the event is a non-score event (Motorsports).
  */
 export function isNonScoreSport(sport?: string | null, competition?: string | null, eventName?: string | null): boolean {
-  const canonical = getCanonicalSport(sport, competition, eventName);
-  return canonical === 'boxing' || canonical === 'mma' || canonical === 'motorsport';
+  return getCanonicalSport(sport, competition, eventName) === 'motorsport';
 }
 
 /**

@@ -26,10 +26,7 @@ export function resolveCompetitionLogo(competitionIdOrName?: string): string {
     return LEAGUE_EMBLEMS['all'];
   }
 
-  // Combat Sports (Boxing, MMA, WWE)
-  if (clean.includes('boxing') || clean.includes('wbc') || clean.includes('wba') || clean.includes('ibf') || clean.includes('wbo') || clean.includes('mma') || clean.includes('combat') || clean.includes('wwe') || clean.includes('wrestling')) {
-    return LEAGUE_EMBLEMS['boxing'];
-  }
+
 
   // Motorsport / Formula 1
   if (clean.includes('f1') || clean.includes('formula') || clean.includes('motorsport') || clean.includes('racing')) {

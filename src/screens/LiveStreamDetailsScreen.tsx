@@ -57,7 +57,7 @@ import { LiveStreamPlayer } from '../components/player/LiveStreamPlayer';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
-import { isMotorsport, isCombatSport, cleanEventTitle } from '../utils/sportClassifier';
+import { isMotorsport, cleanEventTitle } from '../utils/sportClassifier';
 
 interface LiveStreamDetailsScreenProps {
   match: DiscoverMatchup;
@@ -92,15 +92,6 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     [activeMatch.sport, activeMatch.competition, activeMatch.homeTeam?.name, activeMatch.awayTeam?.name]
   );
 
-  const isCombat = useMemo(
-    () =>
-      isCombatSport(
-        activeMatch.sport,
-        activeMatch.competition,
-        `${activeMatch.homeTeam?.name || ''} ${activeMatch.awayTeam?.name || ''}`
-      ),
-    [activeMatch.sport, activeMatch.competition, activeMatch.homeTeam?.name, activeMatch.awayTeam?.name]
-  );
 
   const normalizedStatus = useMemo(
     () =>
@@ -503,43 +494,6 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                       </Text>
                     </View>
                   )}
-                </View>
-              </View>
-            </View>
-          ) : isCombat ? (
-            <View style={styles.combatIdentityCard}>
-              <View style={styles.combatTopRow}>
-                <View style={styles.racingCategoryPill}>
-                  <Text style={styles.racingCategoryText}>BOXING & COMBAT</Text>
-                </View>
-                <Text style={styles.combatCompTitle} numberOfLines={1}>
-                  {activeMatch.competition}
-                </Text>
-              </View>
-              <View style={styles.combatFightersRow}>
-                <View style={styles.combatFighterSide}>
-                  <Text style={styles.combatFighterName} numberOfLines={1}>
-                    {activeMatch.homeTeam.name}
-                  </Text>
-                  <Text style={styles.cornerSubLabelRed}>RED CORNER</Text>
-                </View>
-                <View style={styles.combatCenterBadge}>
-                  {isLive ? (
-                    <View style={styles.racingLiveBadge}>
-                      <View style={styles.liveClockDot} />
-                      <Text style={styles.racingLiveBadgeText}>BOUT LIVE</Text>
-                    </View>
-                  ) : (
-                    <View style={styles.vsBadge}>
-                      <Text style={styles.vsText}>VS</Text>
-                    </View>
-                  )}
-                </View>
-                <View style={styles.combatFighterSide}>
-                  <Text style={styles.combatFighterName} numberOfLines={1}>
-                    {activeMatch.awayTeam.name}
-                  </Text>
-                  <Text style={styles.cornerSubLabelBlue}>BLUE CORNER</Text>
                 </View>
               </View>
             </View>

@@ -22,7 +22,6 @@ import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
 import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
-import { MMAFightCard } from '../components/common/MMAFightCard';
 import { TeamCrest } from '../components/common/TeamCrest';
 import {
   DiscoverCompetition,
@@ -61,7 +60,6 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
   const compSport = ('sport' in competition ? competition.sport : undefined) || (
     competition.id.includes('nba') || competition.name.toLowerCase().includes('nba') ? 'basketball' :
     competition.id.includes('nhl') || competition.name.toLowerCase().includes('nhl') ? 'hockey' :
-    competition.id.includes('mma') || competition.name.toLowerCase().includes('mma') || competition.name.toLowerCase().includes('wwe') || competition.name.toLowerCase().includes('boxing') ? 'mma' :
     competition.id.includes('nfl') || competition.name.toLowerCase().includes('nfl') ? 'american_football' :
     competition.id.includes('f1') || competition.id.includes('motorsport') || competition.name.toLowerCase().includes('formula') ? 'motorsport' :
     competition.id.includes('tennis') || competition.name.toLowerCase().includes('tennis') ? 'tennis' :
@@ -69,26 +67,11 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
     'soccer'
   );
 
-  const isCombat = compSport === 'mma';
   const isBasketball = compSport === 'basketball';
   const isHockey = compSport === 'hockey';
   const isAmericanFootball = compSport === 'american_football';
   const isMotorsport = compSport === 'motorsport';
   const isTennis = compSport === 'tennis';
-
-  // World Boxing Championship Pound-for-Pound Rankings
-  const combatRankings = [
-    { rank: 'C', name: 'Oleksandr Usyk', division: 'Heavyweight Undisputed Champion', record: '22-0-0', country: 'Ukraine', p4p: '#1 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/3929452.png&w=120&h=120' },
-    { rank: 'C', name: 'Terence Crawford', division: 'Super Welterweight Champion', record: '41-0-0', country: 'United States', p4p: '#2 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/2335639.png&w=120&h=120' },
-    { rank: 'C', name: 'Naoya Inoue', division: 'Super Bantamweight Undisputed Champion', record: '28-0-0', country: 'Japan', p4p: '#3 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4898132.png&w=120&h=120' },
-    { rank: 'C', name: 'Canelo Alvarez', division: 'Super Middleweight Champion', record: '61-2-2', country: 'Mexico', p4p: '#4 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4687352.png&w=120&h=120' },
-    { rank: 'C', name: 'Artur Beterbiev', division: 'Light Heavyweight Undisputed Champion', record: '21-0-0', country: 'Canada', p4p: '#5 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4285640.png&w=120&h=120' },
-    { rank: '1', name: 'Dmitry Bivol', division: 'Light Heavyweight Contender', record: '23-1-0', country: 'Kyrgyzstan', p4p: '#6 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/3153832.png&w=120&h=120' },
-    { rank: 'C', name: 'Gervonta Davis', division: 'Lightweight Champion', record: '30-0-0', country: 'United States', p4p: '#7 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4271427.png&w=120&h=120' },
-    { rank: '1', name: 'Tyson Fury', division: 'Heavyweight Contender', record: '34-1-1', country: 'United Kingdom', p4p: '#8 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/3028213.png&w=120&h=120' },
-    { rank: 'C', name: 'Shakur Stevenson', division: 'Lightweight Champion', record: '22-0-0', country: 'United States', p4p: '#9 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4684752.png&w=120&h=120' },
-    { rank: '1', name: 'Anthony Joshua', division: 'Heavyweight Contender', record: '28-4-0', country: 'United Kingdom', p4p: '#10 P4P', avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/2614933.png&w=120&h=120' },
-  ];
 
   // F1 Drivers Championship
   const f1Drivers = [
@@ -159,36 +142,6 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
         },
       ];
     }
-    if (isCombat) {
-      return [
-        {
-          id: 'box-main-event',
-          competition: 'Undisputed Heavyweight Championship',
-          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/boxing.png',
-          status: 'UPCOMING',
-          kickoffDate: 'Sat, 17 May',
-          kickoffTime: '22:00 EST',
-          homeTeam: { id: 'team-usyk', name: 'Oleksandr Usyk (C)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/3929452.png&w=120&h=120', score: 0 },
-          awayTeam: { id: 'team-fury', name: 'Tyson Fury (#1)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/3028213.png&w=120&h=120', score: 0 },
-          venue: 'Kingdom Arena, Riyadh',
-          hasLiveBroadcast: true,
-          sport: 'boxing',
-        },
-        {
-          id: 'box-co-main',
-          competition: 'Super Middleweight Championship',
-          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/boxing.png',
-          status: 'UPCOMING',
-          kickoffDate: 'Sat, 17 May',
-          kickoffTime: '21:00 EST',
-          homeTeam: { id: 'team-canelo', name: 'Canelo Alvarez (C)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/4687352.png&w=120&h=120', score: 0 },
-          awayTeam: { id: 'team-crawford', name: 'Terence Crawford (#1)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/2335639.png&w=120&h=120', score: 0 },
-          venue: 'Allegiant Stadium, Las Vegas',
-          hasLiveBroadcast: true,
-          sport: 'boxing',
-        },
-      ];
-    }
     if (isTennis) {
       return [
         {
@@ -212,7 +165,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
         competition.name.toLowerCase().includes(m.competition.toLowerCase())) &&
         (m.sport === compSport || (!m.sport && compSport === 'soccer'))
     );
-  }, [isMotorsport, isCombat, isTennis, compSport, competition.name]);
+  }, [isMotorsport, isTennis, compSport, competition.name]);
 
   // Dynamic Real Competition Fixtures via sportsApiService
   const [fixtures, setFixtures] = useState<DiscoverMatchup[]>([]);
@@ -265,8 +218,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
     return () => { isMounted = false; };
   }, [isBasketball]);
 
-  // Boxing Division Selection
-  const [selectedBoxingDivision, setSelectedBoxingDivision] = useState<string>('p4p');
+
 
   return (
     <View style={styles.root}>
@@ -309,7 +261,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             <View style={styles.metaItem}>
               <Trophy size={13} color="#A098B5" strokeWidth={2} />
               <Text style={styles.metaText}>
-                {isCombat ? `${teamsCount} Contenders` : isBasketball || isHockey ? `${teamsCount} Franchises` : `${teamsCount} Clubs`}
+                {isBasketball || isHockey ? `${teamsCount} Franchises` : `${teamsCount} Clubs`}
               </Text>
             </View>
           </View>
@@ -349,7 +301,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             onPress={() => setActiveTab('matches')}
           >
             <Text style={[styles.tabText, activeTab === 'matches' && styles.tabTextActive]}>
-              {isCombat ? `Fight Card (${displayFixtures.length})` : isMotorsport ? `Grand Prix (${displayFixtures.length})` : isTennis ? `Draws (${displayFixtures.length})` : `Matches (${displayFixtures.length})`}
+              {isMotorsport ? `Grand Prix (${displayFixtures.length})` : isTennis ? `Draws (${displayFixtures.length})` : `Matches (${displayFixtures.length})`}
             </Text>
           </TouchableOpacity>
 
@@ -358,7 +310,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             onPress={() => setActiveTab('standings')}
           >
             <Text style={[styles.tabText, activeTab === 'standings' && styles.tabTextActive]}>
-              {isCombat ? 'Rankings' : isMotorsport ? 'Championship' : isTennis ? 'Rankings' : isBasketball ? 'Conference' : isHockey ? 'Divisions' : isAmericanFootball ? 'Divisions' : 'Standings'}
+              {isMotorsport ? 'Championship' : isTennis ? 'Rankings' : isBasketball ? 'Conference' : isHockey ? 'Divisions' : isAmericanFootball ? 'Divisions' : 'Standings'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -368,20 +320,13 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           <View style={styles.tabSection}>
             {/* Upcoming Marquee Fixture */}
             <View style={styles.sectionCard}>
-              <Text style={styles.cardHeaderTitle}>{isCombat ? 'Main Event' : 'Featured Match'}</Text>
+              <Text style={styles.cardHeaderTitle}>Featured Match</Text>
               {displayFixtures[0] && (
-                isCombat ? (
-                  <MMAFightCard
-                    match={displayFixtures[0]}
-                    onPress={() => navigateToMatch(navigate, displayFixtures[0])}
-                  />
-                ) : (
-                  <UniversalMatchCard
-                    match={displayFixtures[0]}
-                    layout="featured"
-                    onPress={() => navigateToMatch(navigate, displayFixtures[0])}
-                  />
-                )
+                <UniversalMatchCard
+                  match={displayFixtures[0]}
+                  layout="featured"
+                  onPress={() => navigateToMatch(navigate, displayFixtures[0])}
+                />
               )}
             </View>
 
@@ -417,7 +362,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           <View style={styles.tabSection}>
             <View style={styles.sectionCard}>
               <Text style={styles.cardHeaderTitle}>
-                {isCombat ? 'Fight Card & Scheduled Bouts' : isMotorsport ? 'Grand Prix Schedule' : isTennis ? 'Tournament Draws' : 'Fixtures & Matchdays'}
+                {isMotorsport ? 'Grand Prix Schedule' : isTennis ? 'Tournament Draws' : 'Fixtures & Matchdays'}
               </Text>
               <View style={styles.fixturesList}>
                 {displayFixtures.length === 0 ? (
@@ -429,18 +374,11 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                 ) : (
                   displayFixtures.map(fixture => (
                     <View key={fixture.id} style={{ marginBottom: 12 }}>
-                      {isCombat ? (
-                        <MMAFightCard
-                          match={fixture}
-                          onPress={() => navigateToMatch(navigate, fixture)}
-                        />
-                      ) : (
-                        <UniversalMatchCard
-                          match={fixture}
-                          layout="full"
-                          onPress={() => navigateToMatch(navigate, fixture)}
-                        />
-                      )}
+                      <UniversalMatchCard
+                        match={fixture}
+                        layout="full"
+                        onPress={() => navigateToMatch(navigate, fixture)}
+                      />
                     </View>
                   ))
                 )}
@@ -453,73 +391,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
         {activeTab === 'standings' && (
           <View style={styles.tabSection}>
             <View style={styles.sectionCard}>
-              {isCombat ? (
-                <>
-                  <View style={styles.tableHeaderSection}>
-                    <Text style={styles.cardHeaderTitle}>World Boxing Championship Rankings</Text>
-                    <Text style={styles.seasonBadgeLabel}>WBC • WBA • IBF • WBO</Text>
-                  </View>
-
-                  {/* Horizontal Division Selector */}
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.divisionPillList}
-                    style={styles.divisionScroll}
-                  >
-                    {[
-                      { id: 'p4p', division: "Pound for Pound" },
-                      { id: 'heavyweight', division: 'Heavyweight' },
-                      { id: 'lightheavyweight', division: 'Light Heavyweight' },
-                      { id: 'supermiddle', division: 'Super Middleweight' },
-                      { id: 'welterweight', division: 'Welterweight' },
-                      { id: 'lightweight', division: 'Lightweight' },
-                    ].map(div => {
-                      const isActive = selectedBoxingDivision === div.id;
-                      return (
-                        <TouchableOpacity
-                          key={div.id}
-                          activeOpacity={0.8}
-                          style={[styles.divisionPill, isActive && styles.divisionPillActive]}
-                          onPress={() => setSelectedBoxingDivision(div.id)}
-                        >
-                          <Text style={[styles.divisionPillText, isActive && styles.divisionPillTextActive]}>
-                            {div.division}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-
-                  <View style={{ gap: 4, marginTop: 10 }}>
-                    {combatRankings.map((fighter, idx) => (
-                      <View key={`${fighter.name}-${idx}`} style={styles.fighterRankRow}>
-                        <View style={fighter.rank === 'C' ? styles.champRankBadge : styles.contenderRankBadge}>
-                          <Text style={fighter.rank === 'C' ? styles.champRankText : styles.contenderRankText}>
-                            {fighter.rank}
-                          </Text>
-                        </View>
-                        <Image
-                          source={{ uri: fighter.avatar || 'https://a.espncdn.com/combiner/i?img=/i/headshots/boxing/players/full/default.png&w=120&h=120' }}
-                          style={styles.fighterAvatar}
-                        />
-                        <View style={styles.fighterMeta}>
-                          <Text style={styles.fighterName} numberOfLines={1}>{fighter.name}</Text>
-                          <Text style={styles.fighterDivision} numberOfLines={1}>
-                            {fighter.country ? `${fighter.country} • ` : ''}{fighter.division}
-                          </Text>
-                        </View>
-                        <View style={styles.fighterRecordPill}>
-                          <Text style={styles.fighterRecordText}>{fighter.record || 'Pro'}</Text>
-                          {fighter.p4p ? (
-                            <Text style={{ fontSize: 9, color: '#A098B5', textAlign: 'right', marginTop: 1 }}>{fighter.p4p}</Text>
-                          ) : null}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              ) : isBasketball ? (
+              {isBasketball ? (
                 <>
                   <View style={styles.tableHeaderSection}>
                     <Text style={styles.cardHeaderTitle}>NBA Conference Standings</Text>
@@ -1346,53 +1218,6 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  fighterDivision: {
-    fontSize: 11,
-    color: '#A098B5',
-    marginTop: 1,
-  },
-  fighterRecordPill: {
-    backgroundColor: '#2A2045',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignItems: 'flex-end',
-  },
-  fighterRecordText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#F8BE38',
-  },
-  // ── Boxing Division Selector Styles ──
-  divisionScroll: {
-    marginBottom: 8,
-  },
-  divisionPillList: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingVertical: 4,
-  },
-  divisionPill: {
-    backgroundColor: '#181524',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  divisionPillActive: {
-    backgroundColor: '#7952FC',
-    borderColor: '#7952FC',
-  },
-  divisionPillText: {
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: '#A098B5',
-  },
-  divisionPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '800',
   },
   // ── NBA Conference Standings Styles ──
   nbaConfToggleBar: {

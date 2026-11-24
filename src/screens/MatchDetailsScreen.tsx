@@ -58,12 +58,9 @@ import {
 export type NormalizedSport =
   | 'football'
   | 'basketball'
-  | 'mma'
-  | 'boxing'
   | 'nfl'
   | 'hockey'
   | 'motorsport'
-  | 'wrestling'
   | 'tennis'
   | 'cricket'
   | 'other';
@@ -104,10 +101,6 @@ export function normalizeSport(rawSport?: string, competitionName?: string): Nor
   if (isSoccer && !s.includes('american') && !c.includes('nfl')) {
     return 'football';
   }
-
-  if (s === 'boxing' || c.includes('boxing') || c.includes('wbc') || c.includes('wba')) return 'boxing';
-  if (s === 'wrestling' || c.includes('wwe') || c.includes('aew') || c.includes('tna') || c.includes('wrestling')) return 'wrestling';
-  if (s === 'mma' || s === 'combat' || c.includes('mma') || c.includes('bellator') || c.includes('pfl')) return 'mma';
   if (s === 'basketball' || c.includes('nba') || c.includes('euroleague') || c.includes('basketball')) return 'basketball';
   if (s === 'hockey' || c.includes('nhl') || c.includes('khl') || c.includes('hockey')) return 'hockey';
   if (s === 'american_football' || s === 'nfl' || c.includes('nfl') || c.includes('american football')) return 'nfl';

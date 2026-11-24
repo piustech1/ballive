@@ -19,8 +19,7 @@ const ELITE_TEAMS = [
   'juventus', 'ac milan', 'milan', 'chelsea', 'manchester united', 'man utd',
   'atletico madrid', 'atletico', 'borussia dortmund', 'dortmund', 'bayer leverkusen',
   'los angeles lakers', 'la lakers', 'lakers', 'boston celtics', 'celtics', 'golden state warriors',
-  'kansas city chiefs', 'chiefs', 'san francisco 49ers', '49ers', 'dallas cowboys',
-  'oleksandr usyk', 'usyk', 'tyson fury', 'fury', 'canelo alvarez', 'canelo', 'terence crawford', 'crawford'
+  'kansas city chiefs', 'chiefs', 'san francisco 49ers', '49ers', 'dallas cowboys'
 ];
 
 const MARQUEE_DERBIES: Array<{ teams: [string, string]; boost: number; name: string }> = [
@@ -117,8 +116,6 @@ export function calculateMatchAnticipationScore(
     score += 75;
   } else if (comp.includes('nfl') || comp.includes('super bowl')) {
     score += 75;
-  } else if (comp.includes('boxing') || comp.includes('wbc') || comp.includes('wba') || comp.includes('ibf') || comp.includes('wbo')) {
-    score += 85;
   } else if (comp.includes('formula 1') || comp.includes('f1') || comp.includes('grand prix')) {
     score += 75;
   } else if (comp.includes('nhl')) {

@@ -101,13 +101,6 @@ export const InlineMatchDetailsModule: React.FC<InlineMatchDetailsModuleProps> =
   // Dynamic sport tabs
   const tabs = useMemo(() => {
     switch (sport) {
-      case 'mma':
-      case 'boxing':
-        return [
-          { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'lineups' as TabKey, label: 'Tale of Tape' },
-          { key: 'events' as TabKey, label: 'Rounds' },
-        ];
       case 'basketball':
         return [
           { key: 'overview' as TabKey, label: 'Overview' },
@@ -230,18 +223,7 @@ export const InlineMatchDetailsModule: React.FC<InlineMatchDetailsModuleProps> =
         {/* ── TAB 2: LINEUPS ── */}
         {activeTab === 'lineups' && (
           <View style={styles.tabSection}>
-            {sport === 'mma' || sport === 'boxing' ? (
-              /* COMBAT: TALE OF THE TAPE */
-              <View style={styles.solidCard}>
-                <Text style={styles.cardHeaderTitle}>TALE OF THE TAPE</Text>
-                <TapeMetric left="31" label="AGE" right="28" />
-                <TapeMetric left="5 ft 10 in" label="HEIGHT" right="5 ft 11 in" />
-                <TapeMetric left="72.0 in" label="REACH" right="74.5 in" />
-                <TapeMetric left="Southpaw" label="STANCE" right="Orthodox" />
-                <TapeMetric left="4.28" label="STRIKES / MIN" right="3.95" />
-                <TapeMetric left="58%" label="STRIKE ACC." right="51%" />
-              </View>
-            ) : sport === 'basketball' ? (
+            {sport === 'basketball' ? (
               /* BASKETBALL: STARTING 5 ROTATION */
               <View style={styles.solidCard}>
                 <Text style={styles.cardHeaderTitle}>STARTING 5 LINEUP</Text>
@@ -354,20 +336,12 @@ export const InlineMatchDetailsModule: React.FC<InlineMatchDetailsModuleProps> =
           <View style={styles.tabSection}>
             <View style={styles.solidCard}>
               <Text style={styles.cardHeaderTitle}>
-                {sport === 'mma' || sport === 'boxing'
-                  ? 'ROUND-BY-ROUND BREAKDOWN'
-                  : sport === 'basketball'
+                {sport === 'basketball'
                   ? 'QUARTER SCORING'
                   : 'MATCH TIMELINE'}
               </Text>
 
-              {sport === 'mma' || sport === 'boxing' ? (
-                <>
-                  <EventRow min="R1" text="High pace striking exchange; sharp combinations landed" />
-                  <EventRow min="R2" text="Takedown scored; dominant cage control and ground strikes" />
-                  <EventRow min="R3" text="Active exchange; submission defense and clean counters" />
-                </>
-              ) : sport === 'basketball' ? (
+              {sport === 'basketball' ? (
                 <>
                   <EventRow min="Q1" text={`${matchup.homeTeam.name} 28 — 24 ${matchup.awayTeam.name}`} />
                   <EventRow min="Q2" text={`${matchup.homeTeam.name} 32 — 28 ${matchup.awayTeam.name}`} />
