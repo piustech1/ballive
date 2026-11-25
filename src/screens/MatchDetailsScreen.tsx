@@ -496,6 +496,8 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
           <>
             {/* ── 3. UPCOMING: WIN PROBABILITY EXPLAINER (Directly beneath match hero banner) ── */}
             <WinProbabilityBar
+              homeTeamId={activeMatchup.homeTeam.id}
+              awayTeamId={activeMatchup.awayTeam.id}
               homeTeamName={activeMatchup.homeTeam.name}
               awayTeamName={activeMatchup.awayTeam.name}
               homeCrest={homeCrest}
@@ -629,6 +631,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   >
                     <TeamCrest
                       uri={homeCrest}
+                      teamId={activeMatchup.homeTeam.id}
                       teamName={activeMatchup.homeTeam.name}
                       size={48}
                       containerStyle={styles.crestFlatContainer}
@@ -675,6 +678,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   >
                     <TeamCrest
                       uri={awayCrest}
+                      teamId={activeMatchup.awayTeam.id}
                       teamName={activeMatchup.awayTeam.name}
                       size={48}
                       containerStyle={styles.crestFlatContainer}
@@ -696,6 +700,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   >
                     <TeamCrest
                       uri={homeCrest}
+                      teamId={activeMatchup.homeTeam.id}
                       teamName={activeMatchup.homeTeam.name}
                       size={48}
                       containerStyle={styles.crestFlatContainer}
@@ -739,6 +744,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   >
                     <TeamCrest
                       uri={awayCrest}
+                      teamId={activeMatchup.awayTeam.id}
                       teamName={activeMatchup.awayTeam.name}
                       size={48}
                       containerStyle={styles.crestFlatContainer}

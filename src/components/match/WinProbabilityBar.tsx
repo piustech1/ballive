@@ -9,6 +9,8 @@ import { getTeamAbbreviation } from '../../utils/teamAbbreviationResolver';
 import { WinProbabilityResult } from '../../services/winProbabilityService';
 
 export interface WinProbabilityBarProps {
+  homeTeamId?: string;
+  awayTeamId?: string;
   homeTeamName: string;
   awayTeamName: string;
   homeCrest?: string;
@@ -21,6 +23,8 @@ export interface WinProbabilityBarProps {
 }
 
 export const WinProbabilityBar: React.FC<WinProbabilityBarProps> = ({
+  homeTeamId,
+  awayTeamId,
   homeTeamName,
   awayTeamName,
   homeCrest,
@@ -88,6 +92,7 @@ export const WinProbabilityBar: React.FC<WinProbabilityBarProps> = ({
               <View style={styles.badgeWrapperLeft}>
                 <TeamCrest
                   uri={homeCrest}
+                  teamId={homeTeamId}
                   teamName={homeTeamName}
                   size={28}
                   containerStyle={styles.crestContainer}
@@ -130,6 +135,7 @@ export const WinProbabilityBar: React.FC<WinProbabilityBarProps> = ({
               <View style={styles.badgeWrapperRight}>
                 <TeamCrest
                   uri={awayCrest}
+                  teamId={awayTeamId}
                   teamName={awayTeamName}
                   size={28}
                   containerStyle={styles.crestContainer}

@@ -101,6 +101,7 @@ export const FollowedTeamsModal: React.FC<FollowedTeamsModalProps> = ({
               >
                 <TeamCrest
                   uri={team.crestUrl}
+                  teamId={team.id}
                   teamName={team.name}
                   size={44}
                   containerStyle={styles.crestFlatContainer}

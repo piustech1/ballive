@@ -55,6 +55,7 @@ export const PopularTeams: React.FC<PopularTeamsProps> = ({
             {/* Centered Crest */}
             <TeamCrest
               uri={team.crestUrl}
+              teamId={team.id}
               teamName={team.name}
               size={52}
               containerStyle={styles.crestFlatContainer}

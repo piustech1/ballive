@@ -418,6 +418,7 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
           <View style={styles.topTeamRow}>
             <TeamCrest
               uri={homeCrest}
+              teamId={match.homeTeam.id}
               teamName={homeName}
               size={18}
               containerStyle={{ marginRight: 8 }}
@@ -432,6 +433,7 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
           <View style={styles.topTeamRow}>
             <TeamCrest
               uri={awayCrest}
+              teamId={match.awayTeam.id}
               teamName={awayName}
               size={18}
               containerStyle={{ marginRight: 8 }}
@@ -559,7 +561,8 @@ const SmallMatchCard: React.FC<SmallMatchCardProps> = ({
             <View style={styles.smallTeamRow}>
               <TeamCrest
                 uri={homeCrest}
-                teamName={homeAbbr}
+                teamId={match.homeTeam.id}
+                teamName={match.homeTeam.name || homeAbbr}
                 size={15}
                 containerStyle={{ marginRight: 6 }}
               />
@@ -572,7 +575,8 @@ const SmallMatchCard: React.FC<SmallMatchCardProps> = ({
             <View style={styles.smallTeamRow}>
               <TeamCrest
                 uri={awayCrest}
-                teamName={awayAbbr}
+                teamId={match.awayTeam.id}
+                teamName={match.awayTeam.name || awayAbbr}
                 size={15}
                 containerStyle={{ marginRight: 6 }}
               />

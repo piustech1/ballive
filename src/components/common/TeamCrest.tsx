@@ -11,6 +11,7 @@ import {
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import { teamEmblemService } from '../../services/teamEmblemService';
+import { imageCacheService, ImagePriority } from '../../services/imageCacheService';
 
 export interface TeamCrestProps {
   uri?: string | null;
@@ -19,6 +20,7 @@ export interface TeamCrestProps {
   size?: number;
   width?: number;
   height?: number;
+  priority?: ImagePriority;
   style?: StyleProp<ImageStyle>;
   containerStyle?: StyleProp<ViewStyle>;
   resizeMode?: ImageResizeMode;
@@ -27,11 +29,10 @@ export interface TeamCrestProps {
 /**
  * Clean, neutral sports club shield rendered via SVG.
  * Resolution-independent, styled to complement BALLIVE's dark visual identity.
- * Does not suggest any specific club while maintaining an authentic sports crest silhouette.
  */
 export const NeutralSportsShield: React.FC<{ size: number }> = React.memo(({ size }) => {
   const width = size;
-  const height = Math.round(size * 1.15); // Authentic heraldic shield proportion (1 : 1.15)
+  const height = Math.round(size * 1.15);
 
   return (
     <Svg width={width} height={height} viewBox="0 0 100 115" fill="none">
@@ -51,7 +52,6 @@ export const NeutralSportsShield: React.FC<{ size: number }> = React.memo(({ siz
         </LinearGradient>
       </Defs>
 
-      {/* Outer Shield Boundary */}
       <Path
         d="M 14 8 L 86 8 Q 92 8 92 14 L 92 56 C 92 86 54 105 50 108 C 46 105 8 86 8 56 L 8 14 Q 8 8 14 8 Z"
         fill="url(#shieldGrad)"
@@ -59,7 +59,6 @@ export const NeutralSportsShield: React.FC<{ size: number }> = React.memo(({ siz
         strokeWidth="3.5"
       />
 
-      {/* Inner Inset Accent Shield */}
       <Path
         d="M 20 16 L 80 16 Q 84 16 84 20 L 84 55 C 84 79 53 95 50 98 C 47 95 16 79 16 55 L 16 20 Q 16 16 20 16 Z"
         stroke="#4C3B78"
@@ -68,13 +67,11 @@ export const NeutralSportsShield: React.FC<{ size: number }> = React.memo(({ siz
         fill="none"
       />
 
-      {/* Subtle Central Sports Chevron */}
       <Path
         d="M 24 38 L 50 56 L 76 38 L 76 48 L 50 66 L 24 48 Z"
         fill="url(#chevronGrad)"
       />
 
-      {/* Minimalist Geometric Football / Sports Pentagram Core */}
       <Path
         d="M 50 24 L 59 31 L 55 41 L 45 41 L 41 31 Z"
         fill="#A58BFC"
@@ -86,10 +83,8 @@ export const NeutralSportsShield: React.FC<{ size: number }> = React.memo(({ siz
 
 /**
  * Universal BALLIVE Team Crest Component
- * Displays team badges completely flat on card/screen surfaces without circular discs,
- * outlines, depressed containers, or decorative shadows.
- * Utilizes TeamEmblemService for persistent caching and request deduplication.
- * Gracefully falls back to a neutral sports shield on error or missing source.
+ * Renders team emblems flat on dark surfaces without circles/outlines, backed by
+ * persistent disk caching, prioritized download queueing, and candidate fallback recovery.
  */
 export const TeamCrest: React.FC<TeamCrestProps> = React.memo(({
   uri,
@@ -98,68 +93,100 @@ export const TeamCrest: React.FC<TeamCrestProps> = React.memo(({
   size = 28,
   width,
   height,
+  priority = 0,
   style,
   containerStyle,
   resizeMode = 'contain',
 }) => {
-  const [hasError, setHasError] = useState(false);
-  const cacheKey = useMemo(() => {
-    return teamEmblemService.getCacheKey(teamId, teamName, uri);
-  }, [teamId, teamName, uri]);
+  const candidates = useMemo(
+    () => teamEmblemService.buildCandidates(teamId, teamName, uri),
+    [teamId, teamName, uri]
+  );
+  const entityKey = useMemo(
+    () => teamEmblemService.getEntityKey(teamId, teamName),
+    [teamId, teamName]
+  );
+  const identitySignature = `${entityKey || ''}|${candidates.join('|')}`;
 
-  const [activeUri, setActiveUri] = useState<string | null>(() => {
-    return teamEmblemService.getCachedUri(cacheKey) || uri || null;
-  });
+  const immediateUri = useMemo(
+    () => imageCacheService.getImmediateCachedUri('team', candidates, entityKey),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [identitySignature]
+  );
+
+  const [resolvedUri, setResolvedUri] = useState<string | null>(immediateUri);
+  const [fallbackIdx, setFallbackIdx] = useState<number>(-1);
+  const [exhausted, setExhausted] = useState(false);
 
   const effectiveWidth = width ?? size;
   const effectiveHeight = height ?? size;
 
-  // Background fetch/persist with TeamEmblemService
+  // Resolve cleanly from disk/priority queue whenever team or URI changes
   useEffect(() => {
     let isMounted = true;
-    setHasError(false);
+    setFallbackIdx(-1);
+    setExhausted(false);
 
-    const cached = teamEmblemService.getCachedUri(cacheKey);
-    if (cached) {
-      setActiveUri(cached);
+    if (immediateUri) {
+      setResolvedUri(immediateUri);
+      return;
+    }
+
+    setResolvedUri(null);
+    if (candidates.length === 0 && !entityKey) {
+      setExhausted(true);
       return;
     }
 
     teamEmblemService
-      .getOrFetchEmblem(teamId, teamName, uri)
-      .then((resolved) => {
-        if (isMounted && resolved) {
-          setActiveUri(resolved);
+      .getOrFetchEmblem(teamId, teamName, uri, priority)
+      .then(result => {
+        if (!isMounted) return;
+        if (result && result !== DEFAULT_CREST) {
+          setResolvedUri(result);
+        } else if (candidates.length > 0) {
+          setFallbackIdx(0);
+          setResolvedUri(candidates[0]);
+        } else {
+          setExhausted(true);
         }
       })
       .catch(() => {
-        if (isMounted) {
-          setHasError(true);
+        if (!isMounted) return;
+        if (candidates.length > 0) {
+          setFallbackIdx(0);
+          setResolvedUri(candidates[0]);
+        } else {
+          setExhausted(true);
         }
       });
 
     return () => {
       isMounted = false;
     };
-  }, [cacheKey, teamId, teamName, uri]);
+  }, [identitySignature, immediateUri, priority, teamId, teamName, uri, candidates, entityKey]);
 
-  // Determine if URL is invalid, unmapped, broken, or placeholder
-  const isInvalid = useMemo(() => {
-    if (!activeUri || typeof activeUri !== 'string') return true;
-    const trimmed = activeUri.trim();
-    if (!trimmed || trimmed === DEFAULT_CREST) return true;
-    if (trimmed.includes('ui-avatars.com') || trimmed.includes('default-team-logo')) return true;
-    return teamEmblemService.isBroken(trimmed);
-  }, [activeUri]);
-
-  const handleError = () => {
-    if (activeUri) {
-      teamEmblemService.markBroken(activeUri);
+  const handleImageError = () => {
+    if (resolvedUri) {
+      imageCacheService.reportLoadError(resolvedUri, 'team').catch(() => {});
     }
-    setHasError(true);
+
+    // Advance cleanly through secondary verified candidates before showing fallback shield
+    const nextIdx = fallbackIdx + 1;
+    if (nextIdx < candidates.length && candidates[nextIdx] !== resolvedUri) {
+      setFallbackIdx(nextIdx);
+      setResolvedUri(candidates[nextIdx]);
+    } else if (nextIdx + 1 < candidates.length) {
+      setFallbackIdx(nextIdx + 1);
+      setResolvedUri(candidates[nextIdx + 1]);
+    } else {
+      setExhausted(true);
+      setResolvedUri(null);
+    }
   };
 
-  const shouldShowFallback = isInvalid || hasError;
+  const activeSourceUri =
+    !exhausted && resolvedUri && resolvedUri !== DEFAULT_CREST ? resolvedUri : null;
 
   return (
     <View
@@ -171,15 +198,15 @@ export const TeamCrest: React.FC<TeamCrestProps> = React.memo(({
       accessibilityRole="image"
       accessibilityLabel={teamName ? `${teamName} crest` : 'Team crest'}
     >
-      {shouldShowFallback ? (
-        <NeutralSportsShield size={Math.min(effectiveWidth, effectiveHeight)} />
-      ) : (
+      {activeSourceUri ? (
         <Image
-          source={{ uri: activeUri!.trim() }}
+          source={{ uri: activeSourceUri }}
           style={[styles.image, style]}
           resizeMode={resizeMode}
-          onError={handleError}
+          onError={handleImageError}
         />
+      ) : (
+        <NeutralSportsShield size={Math.min(effectiveWidth, effectiveHeight)} />
       )}
     </View>
   );

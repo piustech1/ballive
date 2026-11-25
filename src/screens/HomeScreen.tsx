@@ -19,6 +19,7 @@ import { MatchOfTheDayTicker } from '../features/home/MatchOfTheDayTicker';
 import { FilterBottomSheet } from '../features/home/FilterBottomSheet';
 import { QuickAccessLauncher } from '../features/home/QuickAccessLauncher';
 import { streamingApiService } from '../services/streamingApiService';
+import { startupPreloader } from '../services/startupPreloader';
 import { sortMatchesWithLiveFirst } from '../utils/matchStatus';
 import { getCanonicalSport } from '../utils/sportClassifier';
 
@@ -37,6 +38,7 @@ export const HomeScreen: React.FC = () => {
       const real = await streamingApiService.getLiveMatches();
       if (real && real.length > 0) {
         setLiveMatches(real);
+        startupPreloader.preloadMatches(real);
       }
     } catch {
       // Keep existing matches on network error

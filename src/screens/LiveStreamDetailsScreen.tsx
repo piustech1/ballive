@@ -551,6 +551,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                 >
                   <TeamCrest
                     uri={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)}
+                    teamId={activeMatch.homeTeam.id}
                     teamName={activeMatch.homeTeam.name}
                     size={48}
                     containerStyle={styles.crestFlatContainer}
@@ -596,6 +597,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                 >
                   <TeamCrest
                     uri={activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)}
+                    teamId={activeMatch.awayTeam.id}
                     teamName={activeMatch.awayTeam.name}
                     size={48}
                     containerStyle={styles.crestFlatContainer}
@@ -610,6 +612,8 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
 
           {/* ── 3. LIVE WIN PROBABILITY EXPLAINER ── */}
           <WinProbabilityBar
+            homeTeamId={activeMatch.homeTeam.id}
+            awayTeamId={activeMatch.awayTeam.id}
             homeTeamName={activeMatch.homeTeam.name}
             awayTeamName={activeMatch.awayTeam.name}
             homeCrest={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)}

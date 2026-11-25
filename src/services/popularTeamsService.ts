@@ -4,6 +4,7 @@ import { SportType } from '../constants/mockData';
 import { streamingApiService } from './streamingApiService';
 import { normalizeTeamId } from './profileStorage';
 import { getTeamCrest, DEFAULT_CREST } from '../utils/teamCrestResolver';
+import { teamEmblemService } from './teamEmblemService';
 
 interface StandingSource {
   sport: SportType;
@@ -265,6 +266,15 @@ class PopularTeamsService {
 
         // 3. Ensure core baseline teams are always present even on partial network responses
         POPULAR_TEAMS.forEach(addIfUnique);
+
+        teamEmblemService.preloadEmblems(
+          combined.slice(0, 24).map(t => ({
+            teamId: t.id,
+            teamName: t.name,
+            crestUrl: t.crestUrl,
+            priority: 5,
+          }))
+        );
 
         this.cachedTeams = combined;
         this.cacheTimestamp = Date.now();

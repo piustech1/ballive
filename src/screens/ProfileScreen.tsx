@@ -206,7 +206,7 @@ export const ProfileScreen: React.FC = () => {
               icon={Info}
               iconColor="#A58BFC"
               label="About BALLIVE"
-              badgeValue="v2.8.4"
+              badgeValue="v2.8.5"
               isLast
               onPress={() => navigate({ name: 'About' })}
             />

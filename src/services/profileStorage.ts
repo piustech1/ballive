@@ -145,12 +145,55 @@ const TEAM_ID_ALIASES: Record<string, string> = {
   'team-manchester-city': 'team-man-city',
   'manchester-city': 'team-man-city',
   'man-city': 'team-man-city',
+  'team-manchester-united': 'team-man-utd',
+  'manchester-united': 'team-man-utd',
+  'man-utd': 'team-man-utd',
   'team-real-madrid': 'team-real-madrid',
   'real-madrid': 'team-real-madrid',
   'team-arsenal': 'team-arsenal',
   'arsenal': 'team-arsenal',
   'team-liverpool': 'team-liverpool',
   'liverpool': 'team-liverpool',
+  'team-chelsea': 'team-chelsea',
+  'chelsea': 'team-chelsea',
+  'team-tottenham-hotspur': 'team-tottenham',
+  'tottenham-hotspur': 'team-tottenham',
+  'tottenham': 'team-tottenham',
+  'team-bayern-munich': 'team-bayern',
+  'bayern-munich': 'team-bayern',
+  'fc-bayern-munich': 'team-bayern',
+  'bayern': 'team-bayern',
+  'team-borussia-dortmund': 'team-dortmund',
+  'borussia-dortmund': 'team-dortmund',
+  'dortmund': 'team-dortmund',
+  'team-paris-saint-germain': 'team-psg',
+  'paris-saint-germain': 'team-psg',
+  'psg': 'team-psg',
+  'team-inter-milan': 'team-inter',
+  'inter-milan': 'team-inter',
+  'inter': 'team-inter',
+  'team-ac-milan': 'team-milan',
+  'ac-milan': 'team-milan',
+  'milan': 'team-milan',
+  'team-juventus': 'team-juventus',
+  'juventus': 'team-juventus',
+  'team-atletico-madrid': 'team-atletico-madrid',
+  'atletico-madrid': 'team-atletico-madrid',
+  'atletico-de-madrid': 'team-atletico-madrid',
+  'team-fc-porto': 'team-porto',
+  'fc-porto': 'team-porto',
+  'porto': 'team-porto',
+  'team-sc-braga': 'team-braga',
+  'sc-braga': 'team-braga',
+  'braga': 'team-braga',
+  'sporting-de-braga': 'team-braga',
+  'team-benfica': 'team-benfica',
+  'sl-benfica': 'team-benfica',
+  'benfica': 'team-benfica',
+  'team-sporting-cp': 'team-sporting-cp',
+  'sporting-cp': 'team-sporting-cp',
+  'team-al-nassr': 'team-al-nassr',
+  'al-nassr': 'team-al-nassr',
   'team-los-angeles-lakers': 'team-lakers',
   'los-angeles-lakers': 'team-lakers',
   'team-golden-state-warriors': 'team-warriors',
@@ -233,13 +276,18 @@ class ProfileStorageService {
   private currentData: UserProfileData = { ...DEFAULT_PROFILE };
   private listeners: Set<Listener> = new Set();
   private isLoaded: boolean = false;
+  private initPromise: Promise<void> | null = null;
 
   constructor() {
     this.init();
   }
 
-  private async init() {
-    try {
+  public async init(): Promise<void> {
+    if (this.isLoaded) return;
+    if (this.initPromise) return this.initPromise;
+
+    this.initPromise = (async () => {
+      try {
       const fileInfo = await FileSystem.getInfoAsync(STORAGE_FILE);
       if (fileInfo.exists) {
         const raw = await FileSystem.readAsStringAsync(STORAGE_FILE);
@@ -281,12 +329,15 @@ class ProfileStorageService {
           followedLeaguesMeta: leaguesMeta,
         };
       }
-    } catch {
-      // Fallback to defaults gracefully
-    } finally {
-      this.isLoaded = true;
-      this.notifyListeners();
-    }
+      } catch {
+        // Fallback to defaults gracefully
+      } finally {
+        this.isLoaded = true;
+        this.notifyListeners();
+      }
+    })();
+
+    return this.initPromise;
   }
 
   public getProfile(): UserProfileData {

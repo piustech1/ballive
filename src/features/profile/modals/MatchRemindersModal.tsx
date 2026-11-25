@@ -69,6 +69,7 @@ export const MatchRemindersModal: React.FC<MatchRemindersModalProps> = ({
                   <View style={styles.teamSide}>
                     <TeamCrest
                       uri={matchup.homeTeam.crestUrl}
+                      teamId={matchup.homeTeam.id}
                       teamName={matchup.homeTeam.name}
                       size={36}
                       containerStyle={styles.crestFlatContainer}
@@ -87,6 +88,7 @@ export const MatchRemindersModal: React.FC<MatchRemindersModalProps> = ({
                   <View style={styles.teamSide}>
                     <TeamCrest
                       uri={matchup.awayTeam.crestUrl}
+                      teamId={matchup.awayTeam.id}
                       teamName={matchup.awayTeam.name}
                       size={36}
                       containerStyle={styles.crestFlatContainer}

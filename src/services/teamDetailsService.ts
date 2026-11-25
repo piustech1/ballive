@@ -12,6 +12,7 @@ import { popularTeamsService } from './popularTeamsService';
 export interface TeamFixtureItem {
   id: string;
   isHome: boolean;
+  opponentId?: string;
   opponentName: string;
   opponentCrest: string;
   competition: string;
@@ -414,6 +415,7 @@ class TeamDetailsService {
         pushFixture({
           id: matchup.id,
           isHome: isHomeSide,
+          opponentId: isHomeSide ? matchup.awayTeam.id : matchup.homeTeam.id,
           opponentName,
           opponentCrest,
           competition: finalCompName,
@@ -444,6 +446,7 @@ class TeamDetailsService {
         const status: 'LIVE' | 'UPCOMING' | 'FT' =
           matchup.status === 'LIVE' ? 'LIVE' : matchup.status === 'FT' ? 'FT' : 'UPCOMING';
 
+        const opponentId = isHome ? matchup.awayTeam.id : matchup.homeTeam.id;
         const opponentName = isHome ? matchup.awayTeam.name : matchup.homeTeam.name;
         const opponentCrest = isHome ? matchup.awayTeam.crestUrl : matchup.homeTeam.crestUrl;
         const myScore = isHome ? matchup.homeTeam.score ?? 0 : matchup.awayTeam.score ?? 0;
@@ -456,6 +459,7 @@ class TeamDetailsService {
         pushFixture({
           id: matchup.id,
           isHome,
+          opponentId,
           opponentName,
           opponentCrest,
           competition: matchup.competition,

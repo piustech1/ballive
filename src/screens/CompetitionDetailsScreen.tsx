@@ -1,19 +1,20 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  ImageBackground,
+  Animated,
+  StatusBar,
+  ImageSourcePropType,
 } from 'react-native';
 import {
   Check,
   Plus,
   Bookmark,
 } from 'lucide-react-native';
-import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
+import { ExtendedHeroHeader, HeroStickyTopBar } from '../components/common/ExtendedHeroHeader';
 import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import { TeamCrest } from '../components/common/TeamCrest';
 import {
@@ -21,7 +22,6 @@ import {
   PopularLeague,
   DiscoverMatchup,
 } from '../constants/discoverData';
-import { SPORT_BACKDROPS } from '../constants/crests';
 import { useProfile } from '../hooks/useProfile';
 import { useSavedMatches } from '../hooks/useSavedMatches';
 import { useAppNavigation } from '../navigation/NavigationContext';
@@ -30,6 +30,8 @@ import { normalizeLeagueId } from '../services/profileStorage';
 import { sportsApiService, resolveLeagueKey } from '../services/sportsApiService';
 import { streamingApiService } from '../services/streamingApiService';
 import { competitionResolverService } from '../services/competitionResolverService';
+import { teamEmblemService } from '../services/teamEmblemService';
+import { getLocalCompetitionHero, resolveCompetitionHeroSource } from '../utils/teamHeroResolver';
 
 interface CompetitionDetailsScreenProps {
   competition: DiscoverCompetition | PopularLeague;
@@ -65,6 +67,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
   const [activeTab, setActiveTab] = useState<CompTab>('overview');
   const [fixtures, setFixtures] = useState<DiscoverMatchup[]>([]);
   const [isLoadingFixtures, setIsLoadingFixtures] = useState(true);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   const compSport = useMemo(() => {
     if ('sport' in competition && competition.sport) return competition.sport;
@@ -78,6 +81,35 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
     if (idLower.includes('cricket') || lower.includes('cricket')) return 'cricket';
     return 'soccer';
   }, [competition]);
+
+  const [heroSource, setHeroSource] = useState<ImageSourcePropType | null>(() =>
+    getLocalCompetitionHero(competition.id, competition.name, compSport)
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    const localSync = getLocalCompetitionHero(competition.id, competition.name, compSport);
+    if (localSync) {
+      setHeroSource(localSync);
+      return;
+    }
+
+    resolveCompetitionHeroSource({
+      competitionId: competition.id,
+      competitionName: competition.name,
+      sport: compSport,
+    })
+      .then(src => {
+        if (mounted && src) {
+          setHeroSource(src);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, [competition.id, competition.name, compSport]);
 
   const isBasketball = compSport === 'basketball';
   const isHockey = compSport === 'hockey';
@@ -135,7 +167,6 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           merged.push(m);
         };
 
-        // Catalog live/upcoming matches matching this competition first (carries live status & stream URLs!)
         (liveCatalog || []).forEach(lm => {
           const matchCompCanon = normalizeCompForMatchCheck(lm.competition || lm.id);
           const nameLower = (lm.competition || '').toLowerCase();
@@ -152,11 +183,26 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           }
         });
 
-        // Merge ESPN / Football-Data fixtures (upcoming + recent completed FT)
         (apiRows || []).forEach(addUnique);
 
         if (isMounted) {
           setFixtures(merged);
+          const crestItems: Array<{ teamId?: string; teamName?: string; crestUrl?: string; priority?: 1 }> = [];
+          merged.slice(0, 10).forEach(fx => {
+            crestItems.push({
+              teamId: fx.homeTeam.id,
+              teamName: fx.homeTeam.name,
+              crestUrl: fx.homeTeam.crestUrl,
+              priority: 1,
+            });
+            crestItems.push({
+              teamId: fx.awayTeam.id,
+              teamName: fx.awayTeam.name,
+              crestUrl: fx.awayTeam.crestUrl,
+              priority: 1,
+            });
+          });
+          teamEmblemService.preloadEmblems(crestItems);
         }
       } finally {
         if (isMounted) {
@@ -199,8 +245,6 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
     competition.country || region,
     teamsCount ? `${teamsCount} ${isBasketball || isHockey ? 'Franchises' : 'Clubs'}` : sportLabel,
   ].filter(Boolean);
-
-  const backdropUri = SPORT_BACKDROPS[compSport] || SPORT_BACKDROPS.soccer;
 
   const openTeam = (teamSide: { id?: string; name: string; crestUrl?: string }) => {
     if (!teamSide?.name) return;
@@ -260,6 +304,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           >
             <TeamCrest
               uri={m.homeTeam.crestUrl}
+              teamId={m.homeTeam.id}
               teamName={m.homeTeam.name}
               size={44}
               containerStyle={{ marginBottom: 8 }}
@@ -315,6 +360,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           >
             <TeamCrest
               uri={m.awayTeam.crestUrl}
+              teamId={m.awayTeam.id}
               teamName={m.awayTeam.name}
               size={44}
               containerStyle={{ marginBottom: 8 }}
@@ -352,6 +398,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           >
             <TeamCrest
               uri={m.homeTeam.crestUrl}
+              teamId={m.homeTeam.id}
               teamName={m.homeTeam.name}
               size={30}
               containerStyle={{ marginRight: 8 }}
@@ -411,6 +458,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             </Text>
             <TeamCrest
               uri={m.awayTeam.crestUrl}
+              teamId={m.awayTeam.id}
               teamName={m.awayTeam.name}
               size={30}
               containerStyle={{ marginLeft: 8 }}
@@ -423,67 +471,65 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
 
   return (
     <View style={styles.root}>
-      {/* Compact Curved Header */}
-      <SecondaryScreenHeader
-        title={competition.name.toUpperCase()}
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+
+      {/* Pinned Transparent-to-Solid Navigation Row over Hero */}
+      <HeroStickyTopBar
+        overlineTitle={competition.name.toUpperCase()}
         subtitle={headerSubtitle}
-        sport={compSport}
+        scrollY={scrollY}
         rightAction={{
           icon: isFollowed ? Check : Plus,
           onPress: () => toggleFollowLeague(competition),
           active: isFollowed,
-          activeColor: '#7952FC',
+          activeColor: '#A58BFC',
           accessibilityLabel: isFollowed ? 'Unfollow competition' : 'Follow competition',
         }}
       />
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
       >
-        {/* Flat Dark-Mode Identity Hero Card (No white circular disc around CompetitionLogo) */}
-        <ImageBackground
-          source={{ uri: backdropUri }}
-          style={styles.heroCard}
-          imageStyle={styles.heroBgImage}
-        >
-          <View style={styles.heroOverlay} />
-
-          <CompetitionLogo
-            uri={competition.logoUrl}
-            competitionId={competition.id}
-            size={76}
-            flat={true}
-            containerStyle={{ marginBottom: 14 }}
-          />
-
-          <Text style={styles.heroTitle} numberOfLines={2}>
-            {competition.name}
-          </Text>
-
-          <Text style={styles.heroMetaText} numberOfLines={1}>
-            {heroMetaParts.join(' · ')}
-          </Text>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[styles.heroFollowBtn, isFollowed && styles.heroFollowBtnActive]}
-            onPress={() => toggleFollowLeague(competition)}
-          >
-            {isFollowed ? (
-              <>
-                <Check size={15} color="#FFFFFF" strokeWidth={2.5} />
-                <Text style={styles.heroFollowText}>Following</Text>
-              </>
-            ) : (
-              <>
-                <Plus size={15} color="#FFFFFF" strokeWidth={2.5} />
-                <Text style={styles.heroFollowText}>Follow Competition</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </ImageBackground>
+        {/* Continuous Extended Curved Hero Header */}
+        <ExtendedHeroHeader
+          heroSource={heroSource}
+          emblemComponent={
+            <CompetitionLogo
+              uri={competition.logoUrl}
+              competitionId={competition.id}
+              size={76}
+              flat={true}
+            />
+          }
+          identityTitle={competition.name}
+          identitySubtitle={heroMetaParts.join(' · ')}
+          followButtonComponent={
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[styles.heroFollowBtn, isFollowed && styles.heroFollowBtnActive]}
+              onPress={() => toggleFollowLeague(competition)}
+            >
+              {isFollowed ? (
+                <>
+                  <Check size={15} color="#FFFFFF" strokeWidth={2.5} />
+                  <Text style={styles.heroFollowText}>Following</Text>
+                </>
+              ) : (
+                <>
+                  <Plus size={15} color="#FFFFFF" strokeWidth={2.5} />
+                  <Text style={styles.heroFollowText}>Follow Competition</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          }
+        />
 
         {/* Two-Tab Segmented Control (Overview | Matches) */}
         <View style={styles.tabBar}>
@@ -596,7 +642,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             )}
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 };
@@ -611,40 +657,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: 28,
-  },
-  heroCard: {
-    marginHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 22,
-    borderRadius: 20,
-    backgroundColor: '#161224',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  heroBgImage: {
-    opacity: 0.2,
-    borderRadius: 20,
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(18, 14, 32, 0.72)',
-  },
-  heroTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 6,
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  heroMetaText: {
-    fontSize: 13.5,
-    color: '#A098B5',
-    fontWeight: '500',
-    marginBottom: 16,
-    textAlign: 'center',
   },
   heroFollowBtn: {
     flexDirection: 'row',

@@ -1,221 +1,172 @@
 /**
- * BALLIVE Team Emblem Service
- * 
- * High-performance, centralized team badge fetching, persistent disk/memory caching,
- * in-flight request deduplication, and preloading engine.
+ * BALLIVE Team Emblem & Competition Badge Preload Coordinator
+ *
+ * Delegates storage, deduplication, priority queueing, retry logic, and
+ * corrupt-file recovery to the shared `imageCacheService`.
  */
 
-import * as FileSystem from 'expo-file-system';
 import { getTeamCrest, DEFAULT_CREST } from '../utils/teamCrestResolver';
+import { imageCacheService, ImagePriority, normalizeImageUrl } from './imageCacheService';
+import { normalizeTeamId } from './profileStorage';
 
-const EMBLEM_CACHE_DIR = `${FileSystem.cacheDirectory || FileSystem.documentDirectory || ''}team_emblems/`;
-
-// Module-level in-memory cache: cacheKey -> resolved URI (local file:// or validated remote URL)
-const memoryCache = new Map<string, string>();
-
-// In-flight download deduplication: cacheKey -> Promise<string | null>
-const inFlightDownloads = new Map<string, Promise<string | null>>();
-
-// Known broken or 404 URLs to prevent repeated failing requests
-const brokenUrlSet = new Set<string>();
-
-let isDirInitialized = false;
-
-async function ensureDirectoryExists(): Promise<void> {
-  if (isDirInitialized) return;
-  try {
-    const dirInfo = await FileSystem.getInfoAsync(EMBLEM_CACHE_DIR);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(EMBLEM_CACHE_DIR, { intermediates: true });
-    }
-    isDirInitialized = true;
-  } catch {
-    // Graceful fallback if filesystem directory creation fails
-    isDirInitialized = true;
-  }
-}
-
-/**
- * Normalizes string into a safe filename/cache key.
- */
-function sanitizeKey(str: string): string {
-  return str
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9_]/g, '_')
-    .slice(0, 48);
-}
-
-/**
- * Computes a fast alphanumeric hash for arbitrary URLs.
- */
-function hashUrl(url: string): string {
-  let hash = 0;
-  for (let i = 0; i < url.length; i++) {
-    hash = (hash << 5) - hash + url.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash).toString(36);
+function isValidNonDefault(url?: string | null): string | null {
+  const norm = normalizeImageUrl(url);
+  if (!norm || norm === DEFAULT_CREST) return null;
+  return norm;
 }
 
 export class TeamEmblemService {
   /**
-   * Generates a deterministic cache key based on stable team identity or URL.
+   * Builds a stable normalized entity key for cross-screen disk lookup
+   * (especially offline launches where API URLs may be absent).
+   */
+  public getEntityKey(teamId?: string | null, teamName?: string | null): string | null {
+    if (teamName && typeof teamName === 'string' && teamName.trim().length > 0) {
+      const cleanName = teamName.trim();
+      if (!['opponent', 'tbd', 'tba', 'unknown', 'none'].includes(cleanName.toLowerCase())) {
+        return `team:${normalizeTeamId(cleanName)}`;
+      }
+    }
+    if (teamId && typeof teamId === 'string' && teamId.trim().length > 0) {
+      return `team:${normalizeTeamId(teamId.trim())}`;
+    }
+    return null;
+  }
+
+  /**
+   * Builds an ordered list of candidate emblem URLs:
+   * 1. Verified upstream API URL (`providedUri`)
+   * 2. Verified CDN badge via `teamName` (never short-circuited by opaque `teamId`)
+   * 3. Verified CDN badge via `teamId`
+   */
+  public buildCandidates(
+    teamId?: string | null,
+    teamName?: string | null,
+    providedUri?: string | null
+  ): string[] {
+    const out: string[] = [];
+    const seen = new Set<string>();
+
+    const add = (candidate?: string | null) => {
+      const clean = isValidNonDefault(candidate);
+      if (clean && !seen.has(clean)) {
+        seen.add(clean);
+        out.push(clean);
+      }
+    };
+
+    // 1. Explicit verified API URL
+    add(providedUri);
+
+    // 2. Team name CDN match (skip generic placeholders)
+    if (teamName && typeof teamName === 'string' && teamName.trim().length > 1) {
+      const nameResolved = getTeamCrest(teamName.trim());
+      if (nameResolved !== DEFAULT_CREST) {
+        add(nameResolved);
+      }
+    }
+
+    // 3. Team ID CDN match (if distinct from name)
+    if (teamId && typeof teamId === 'string' && teamId.trim().length > 1) {
+      const idResolved = getTeamCrest(teamId.trim());
+      if (idResolved !== DEFAULT_CREST) {
+        add(idResolved);
+      }
+    }
+
+    return out;
+  }
+
+  /**
+   * Preserved compatibility signature returning a deterministic key.
    */
   public getCacheKey(
     teamId?: string | null,
     teamName?: string | null,
     uri?: string | null
   ): string {
-    if (teamId && typeof teamId === 'string' && teamId.trim().length > 0) {
-      return `team_${sanitizeKey(teamId)}`;
+    const candidates = this.buildCandidates(teamId, teamName, uri);
+    if (candidates.length > 0) {
+      return imageCacheService.getUrlKey('team', candidates[0]);
     }
-    if (teamName && typeof teamName === 'string' && teamName.trim().length > 0) {
-      return `name_${sanitizeKey(teamName)}`;
-    }
-    if (uri && typeof uri === 'string' && uri.trim().length > 0) {
-      return `uri_${hashUrl(uri.trim())}`;
-    }
-    return 'universal_placeholder';
+    return this.getEntityKey(teamId, teamName) || 'universal_placeholder';
   }
 
   /**
-   * Resolves the authoritative remote emblem URL for a team,
-   * checking provided URLs, verified CDN mappings, and fallback shields.
+   * Resolves best remote CDN URL across provided URI, teamName, and teamId.
    */
   public resolveRemoteUrl(
     teamIdentifierOrName?: string | null,
-    providedUri?: string | null
+    providedUri?: string | null,
+    teamName?: string | null
   ): string {
-    if (providedUri && typeof providedUri === 'string') {
-      const trimmed = providedUri.trim();
-      if (
-        trimmed.length > 10 &&
-        trimmed !== DEFAULT_CREST &&
-        !trimmed.includes('ui-avatars.com') &&
-        !trimmed.includes('default-team-logo') &&
-        !brokenUrlSet.has(trimmed)
-      ) {
-        return trimmed;
-      }
-    }
-
-    if (teamIdentifierOrName && typeof teamIdentifierOrName === 'string') {
-      const resolved = getTeamCrest(teamIdentifierOrName);
-      if (resolved && resolved !== DEFAULT_CREST && !brokenUrlSet.has(resolved)) {
-        return resolved;
-      }
-    }
-
-    return DEFAULT_CREST;
+    const candidates = this.buildCandidates(teamIdentifierOrName, teamName || teamIdentifierOrName, providedUri);
+    return candidates[0] || DEFAULT_CREST;
   }
 
   /**
-   * Returns immediately from in-memory cache if already cached.
+   * Synchronous memory cache check.
    */
-  public getCachedUri(cacheKey: string): string | null {
-    return memoryCache.get(cacheKey) || null;
+  public getCachedUri(
+    teamId?: string | null,
+    teamName?: string | null,
+    providedUri?: string | null
+  ): string | null {
+    const candidates = this.buildCandidates(teamId, teamName, providedUri);
+    const entityKey = this.getEntityKey(teamId, teamName);
+    return imageCacheService.getImmediateCachedUri('team', candidates, entityKey);
   }
 
   /**
-   * Fetches, persists, and caches a team emblem.
-   * Deduplicates simultaneous requests and saves to local storage.
+   * Fetches, validates, deduplicates, and persistently caches a team emblem.
    */
   public async getOrFetchEmblem(
     teamId?: string | null,
     teamName?: string | null,
-    providedUri?: string | null
+    providedUri?: string | null,
+    priority: ImagePriority = 0
   ): Promise<string> {
-    const remoteUrl = this.resolveRemoteUrl(teamId || teamName, providedUri);
+    const candidates = this.buildCandidates(teamId, teamName, providedUri);
+    const entityKey = this.getEntityKey(teamId, teamName);
 
-    // If unresolved or default crest, return fallback
-    if (!remoteUrl || remoteUrl === DEFAULT_CREST || brokenUrlSet.has(remoteUrl)) {
+    if (candidates.length === 0 && !entityKey) {
       return DEFAULT_CREST;
     }
 
-    const cacheKey = this.getCacheKey(teamId, teamName, remoteUrl);
+    const resolved = await imageCacheService.resolveImage({
+      entityKey,
+      category: 'team',
+      candidates,
+      priority,
+    });
 
-    // 1. In-memory cache hit
-    const inMem = memoryCache.get(cacheKey);
-    if (inMem) {
-      return inMem;
-    }
-
-    // 2. In-flight request deduplication
-    const inFlight = inFlightDownloads.get(cacheKey);
-    if (inFlight) {
-      const result = await inFlight;
-      return result || remoteUrl;
-    }
-
-    // 3. Persistent disk check & download
-    const fetchPromise = (async (): Promise<string> => {
-      try {
-        await ensureDirectoryExists();
-        const diskFile = `${EMBLEM_CACHE_DIR}${cacheKey}.png`;
-        const fileInfo = await FileSystem.getInfoAsync(diskFile);
-
-        if (fileInfo.exists && (fileInfo as any).size > 100) {
-          memoryCache.set(cacheKey, diskFile);
-          return diskFile;
-        }
-
-        // Download image to persistent cache directory
-        const downloadResult = await FileSystem.downloadAsync(remoteUrl, diskFile);
-        if (downloadResult.status === 200) {
-          memoryCache.set(cacheKey, diskFile);
-          return diskFile;
-        } else {
-          brokenUrlSet.add(remoteUrl);
-          return remoteUrl;
-        }
-      } catch {
-        // Return remote URL on network/filesystem failure
-        return remoteUrl;
-      } finally {
-        inFlightDownloads.delete(cacheKey);
-      }
-    })();
-
-    inFlightDownloads.set(cacheKey, fetchPromise);
-    return fetchPromise;
+    return resolved || DEFAULT_CREST;
   }
 
   /**
-   * Efficient batch preloader for visible or soon-to-be-visible matches.
-   * Warms the cache in background without blocking rendering.
+   * Non-blocking prioritized batch preloader.
    */
   public preloadEmblems(
-    items: Array<{ teamId?: string; teamName?: string; crestUrl?: string }>
+    items: Array<{ teamId?: string; teamName?: string; crestUrl?: string; priority?: ImagePriority }>
   ): void {
     if (!items || items.length === 0) return;
 
-    // Run asynchronously without awaiting
-    (async () => {
-      const batch = items.slice(0, 16); // Throttled batch limit
-      for (const item of batch) {
-        if (item.crestUrl || item.teamName || item.teamId) {
-          this.getOrFetchEmblem(item.teamId, item.teamName, item.crestUrl).catch(() => {});
-        }
-      }
-    })();
+    const specs = items
+      .map(item => ({
+        entityKey: this.getEntityKey(item.teamId, item.teamName),
+        category: 'team' as const,
+        candidates: this.buildCandidates(item.teamId, item.teamName, item.crestUrl),
+        priority: item.priority ?? (2 as ImagePriority),
+      }))
+      .filter(s => s.candidates.length > 0);
+
+    imageCacheService.preload(specs);
   }
 
-  /**
-   * Records a URL failure so future requests skip network retry.
-   */
   public markBroken(url?: string | null): void {
-    if (url && typeof url === 'string') {
-      brokenUrlSet.add(url.trim());
+    if (url) {
+      imageCacheService.reportLoadError(url, 'team').catch(() => {});
     }
-  }
-
-  /**
-   * Checks if a URL is known to be broken.
-   */
-  public isBroken(url?: string | null): boolean {
-    if (!url || typeof url !== 'string') return true;
-    return brokenUrlSet.has(url.trim());
   }
 }
 

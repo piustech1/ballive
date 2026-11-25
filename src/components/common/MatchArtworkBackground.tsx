@@ -23,8 +23,9 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { isGenuineEventArtwork } from '../../utils/sportBackgroundResolver';
-import { getTeamCrest, DEFAULT_CREST } from '../../utils/teamCrestResolver';
+import { DEFAULT_CREST } from '../../utils/teamCrestResolver';
 import { resolveThumbnailBackground } from '../../utils/thumbnailBackgroundResolver';
+import { teamEmblemService } from '../../services/teamEmblemService';
 import { TeamCrest } from './TeamCrest';
 
 export interface MatchArtworkBackgroundProps {
@@ -86,11 +87,11 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
 
   // 3. Resolve team crests with stable IDs and names
   const resolvedHomeCrest = useMemo(() => {
-    return homeCrest || getTeamCrest(homeTeamId || homeTeamName) || DEFAULT_CREST;
+    return teamEmblemService.resolveRemoteUrl(homeTeamId, homeCrest, homeTeamName) || DEFAULT_CREST;
   }, [homeCrest, homeTeamId, homeTeamName]);
 
   const resolvedAwayCrest = useMemo(() => {
-    return awayCrest || getTeamCrest(awayTeamId || awayTeamName) || DEFAULT_CREST;
+    return teamEmblemService.resolveRemoteUrl(awayTeamId, awayCrest, awayTeamName) || DEFAULT_CREST;
   }, [awayCrest, awayTeamId, awayTeamName]);
 
   // Enlarge fallback emblems from 52 to 68-72 (and 76 on featured cards)

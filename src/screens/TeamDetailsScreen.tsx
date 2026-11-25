@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  ImageBackground,
+  Animated,
+  StatusBar,
+  ImageSourcePropType,
 } from 'react-native';
 import {
   Check,
@@ -15,14 +16,15 @@ import {
   Trophy,
   ChevronRight,
 } from 'lucide-react-native';
-import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
+import { ExtendedHeroHeader, HeroStickyTopBar } from '../components/common/ExtendedHeroHeader';
 import { PopularTeam } from '../constants/discoverData';
-import { SPORT_BACKDROPS } from '../constants/crests';
 import { TeamCrest } from '../components/common/TeamCrest';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { findCompetitionById, navigateToMatch } from '../navigation/navHelpers';
 import { teamDetailsService, TeamDetailsPayload, TeamFixtureItem } from '../services/teamDetailsService';
+import { teamEmblemService } from '../services/teamEmblemService';
+import { getLocalTeamHero, resolveTeamHeroSource } from '../utils/teamHeroResolver';
 
 interface TeamDetailsScreenProps {
   team: PopularTeam;
@@ -34,6 +36,7 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
   const [activeTab, setActiveTab] = useState<'overview' | 'fixtures'>('overview');
   const [details, setDetails] = useState<TeamDetailsPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let mounted = true;
@@ -43,6 +46,15 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
       .then(res => {
         if (mounted) {
           setDetails(res);
+          const allFixtures = [...(res.liveAndUpcoming || []), ...(res.recentResults || [])];
+          teamEmblemService.preloadEmblems(
+            allFixtures.slice(0, 12).map(f => ({
+              teamId: f.opponentId,
+              teamName: f.opponentName,
+              crestUrl: f.opponentCrest,
+              priority: 1,
+            }))
+          );
         }
       })
       .catch(() => {})
@@ -70,6 +82,36 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
       ? resolvedTeam.country
       : undefined);
 
+  const [heroSource, setHeroSource] = useState<ImageSourcePropType | null>(() =>
+    getLocalTeamHero(resolvedTeam.id, resolvedTeam.name)
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    const localSync = getLocalTeamHero(resolvedTeam.id, resolvedTeam.name);
+    if (localSync) {
+      setHeroSource(localSync);
+      return;
+    }
+
+    resolveTeamHeroSource({
+      teamId: resolvedTeam.id,
+      teamName: resolvedTeam.name,
+      stadium: venue,
+      sport: resolvedTeam.sport,
+    })
+      .then(src => {
+        if (mounted && src) {
+          setHeroSource(src);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, [resolvedTeam.id, resolvedTeam.name, venue, resolvedTeam.sport]);
+
   const sportLabel = useMemo(() => {
     if (details?.sportLabel) return details.sportLabel;
     const s = (resolvedTeam.sport || '').toLowerCase();
@@ -89,9 +131,6 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
 
   const heroSub = competitionName ? `${sportLabel} · ${competitionName}` : sportLabel;
   const nextMatch = liveAndUpcoming[0];
-
-  const backdropUri =
-    SPORT_BACKDROPS[(resolvedTeam.sport as string) || 'soccer'] || SPORT_BACKDROPS.soccer;
 
   const handleOpenCompetition = () => {
     if (!competitionName && !competitionId) return;
@@ -117,6 +156,7 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
       >
         <TeamCrest
           uri={item.opponentCrest}
+          teamId={item.opponentId}
           teamName={item.opponentName}
           size={36}
           containerStyle={styles.fixtureCrest}
@@ -176,84 +216,86 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
 
   return (
     <View style={styles.root}>
-      {/* Compact Curved Header */}
-      <SecondaryScreenHeader
-        title={headerOverline}
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
+
+      {/* Pinned Transparent-to-Solid Navigation Row over Hero */}
+      <HeroStickyTopBar
+        overlineTitle={headerOverline}
         subtitle={headerSubtitle}
-        sport={resolvedTeam.sport}
         onTitlePress={competitionName || competitionId ? handleOpenCompetition : undefined}
+        scrollY={scrollY}
         rightAction={{
           icon: isFollowed ? Check : Plus,
           onPress: () => toggleFollowTeam(resolvedTeam),
           active: isFollowed,
-          activeColor: '#7952FC',
+          activeColor: '#A58BFC',
           accessibilityLabel: isFollowed ? 'Unfollow team' : 'Follow team',
         }}
       />
 
-      <ScrollView
+      <Animated.ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
       >
-        {/* Atmospheric Hero Identity Card */}
-        <ImageBackground
-          source={{ uri: backdropUri }}
-          style={styles.heroCard}
-          imageStyle={styles.heroBgImage}
-        >
-          <View style={styles.heroOverlay} />
-
-          <TeamCrest
-            uri={resolvedTeam.crestUrl}
-            teamName={resolvedTeam.name}
-            size={76}
-            containerStyle={styles.crestFlatContainer}
-          />
-
-          <Text style={styles.teamHeroName} numberOfLines={2}>
-            {resolvedTeam.name}
-          </Text>
-          <Text style={styles.teamHeroSubtitle} numberOfLines={1}>
-            {heroSub}
-          </Text>
-
-          {(venue || country) ? (
-            <View style={styles.metaRow}>
-              {venue ? (
-                <View style={styles.metaItem}>
-                  <MapPin size={13} color="#A098B5" strokeWidth={2} />
-                  <Text style={styles.metaText} numberOfLines={1}>{venue}</Text>
-                </View>
-              ) : null}
-              {venue && country ? <View style={styles.metaSpacer} /> : null}
-              {country ? (
-                <View style={styles.metaItem}>
-                  <Trophy size={13} color="#A098B5" strokeWidth={2} />
-                  <Text style={styles.metaText} numberOfLines={1}>{country}</Text>
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[styles.heroFollowBtn, isFollowed && styles.heroFollowBtnActive]}
-            onPress={() => toggleFollowTeam(resolvedTeam)}
-          >
-            {isFollowed ? (
-              <>
-                <Check size={15} color="#FFFFFF" strokeWidth={2.5} />
-                <Text style={styles.heroFollowText}>Following</Text>
-              </>
-            ) : (
-              <>
-                <Plus size={15} color="#FFFFFF" strokeWidth={2.5} />
-                <Text style={styles.heroFollowText}>Follow Team</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </ImageBackground>
+        {/* Continuous Extended Curved Hero Header */}
+        <ExtendedHeroHeader
+          heroSource={heroSource}
+          emblemComponent={
+            <TeamCrest
+              uri={resolvedTeam.crestUrl}
+              teamId={resolvedTeam.id}
+              teamName={resolvedTeam.name}
+              size={76}
+              containerStyle={styles.crestFlatContainer}
+            />
+          }
+          identityTitle={resolvedTeam.name}
+          identitySubtitle={heroSub}
+          metaComponent={
+            venue || country ? (
+              <View style={styles.metaRow}>
+                {venue ? (
+                  <View style={styles.metaItem}>
+                    <MapPin size={13} color="#D5CFE6" strokeWidth={2} />
+                    <Text style={styles.metaText} numberOfLines={1}>{venue}</Text>
+                  </View>
+                ) : null}
+                {venue && country ? <View style={styles.metaSpacer} /> : null}
+                {country ? (
+                  <View style={styles.metaItem}>
+                    <Trophy size={13} color="#D5CFE6" strokeWidth={2} />
+                    <Text style={styles.metaText} numberOfLines={1}>{country}</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : null
+          }
+          followButtonComponent={
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={[styles.heroFollowBtn, isFollowed && styles.heroFollowBtnActive]}
+              onPress={() => toggleFollowTeam(resolvedTeam)}
+            >
+              {isFollowed ? (
+                <>
+                  <Check size={15} color="#FFFFFF" strokeWidth={2.5} />
+                  <Text style={styles.heroFollowText}>Following</Text>
+                </>
+              ) : (
+                <>
+                  <Plus size={15} color="#FFFFFF" strokeWidth={2.5} />
+                  <Text style={styles.heroFollowText}>Follow Team</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          }
+        />
 
         {/* Two-Tab Segmented Control (Overview | Fixtures) */}
         <View style={styles.tabBar}>
@@ -430,7 +472,7 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
             )}
           </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 };
@@ -446,47 +488,12 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 28,
   },
-  heroCard: {
-    marginHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 22,
-    borderRadius: 20,
-    backgroundColor: '#161224',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  heroBgImage: {
-    opacity: 0.2,
-    borderRadius: 20,
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(18, 14, 32, 0.72)',
-  },
   crestFlatContainer: {
     width: 76,
     height: 76,
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
-  },
-  teamHeroName: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 4,
-    textAlign: 'center',
-    letterSpacing: -0.3,
-  },
-  teamHeroSubtitle: {
-    fontSize: 13.5,
-    fontWeight: '500',
-    color: '#A098B5',
-    marginBottom: 10,
-    textAlign: 'center',
   },
   metaRow: {
     flexDirection: 'row',
@@ -504,14 +511,14 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12.5,
-    color: '#A098B5',
-    fontWeight: '500',
+    color: '#E2DDF2',
+    fontWeight: '600',
   },
   metaSpacer: {
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#5B4D82',
+    backgroundColor: '#9E92C2',
   },
   heroFollowBtn: {
     flexDirection: 'row',
@@ -607,26 +614,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   formCircleWin: {
-    backgroundColor: 'rgba(34, 197, 94, 0.16)',
+    backgroundColor: '#16A34A',
   },
   formCircleDraw: {
-    backgroundColor: 'rgba(245, 158, 11, 0.16)',
+    backgroundColor: '#D97706',
   },
   formCircleLoss: {
-    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    backgroundColor: '#DC2626',
   },
   formCircleText: {
     fontSize: 13.5,
     fontWeight: '800',
+    color: '#FFFFFF',
   },
   formTextWin: {
-    color: '#22C55E',
+    color: '#FFFFFF',
   },
   formTextDraw: {
-    color: '#F59E0B',
+    color: '#FFFFFF',
   },
   formTextLoss: {
-    color: '#EF4444',
+    color: '#FFFFFF',
   },
   infoLine: {
     flexDirection: 'row',
@@ -738,13 +746,13 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   resultTagWin: {
-    backgroundColor: 'rgba(34, 197, 94, 0.18)',
+    backgroundColor: '#16A34A',
   },
   resultTagDraw: {
-    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    backgroundColor: '#D97706',
   },
   resultTagLoss: {
-    backgroundColor: 'rgba(239, 68, 68, 0.18)',
+    backgroundColor: '#DC2626',
   },
   resultTagText: {
     fontSize: 10,

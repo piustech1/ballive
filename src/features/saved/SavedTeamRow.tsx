@@ -33,6 +33,7 @@ export const SavedTeamRow: React.FC<SavedTeamRowProps> = ({
       {/* Club Crest */}
       <TeamCrest
         uri={team.crestUrl}
+        teamId={team.id}
         teamName={team.name}
         size={44}
         containerStyle={styles.crestFlatContainer}

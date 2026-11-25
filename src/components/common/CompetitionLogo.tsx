@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { View, Image, StyleSheet, ViewStyle } from 'react-native';
 import { Trophy } from 'lucide-react-native';
 import { LEAGUE_EMBLEMS } from '../../constants/crests';
+import { imageCacheService, ImagePriority, normalizeImageUrl } from '../../services/imageCacheService';
+import { normalizeLeagueId } from '../../services/profileStorage';
 
 export interface CompetitionLogoProps {
   uri?: string;
   competitionId?: string;
   size?: number;
+  priority?: ImagePriority;
   containerStyle?: ViewStyle;
   flat?: boolean;
 }
@@ -21,22 +24,22 @@ const DARK_COMPATIBLE_ESPN_IDS = new Set([
  * Converts known ESPN 500 light-mode competition URLs to their 500-dark equivalent
  * for crisp contrast against dark card/header surfaces.
  */
-function upgradeToDarkLogoUrl(url?: string): string | undefined {
+export function upgradeToDarkLogoUrl(url?: string): string | undefined {
   if (!url || typeof url !== 'string') return undefined;
   const trimmed = url.trim();
   if (!trimmed) return undefined;
 
-  const soccerMatch = trimmed.match(/^(https:\/\/a\.espncdn\.com\/i\/leaguelogos\/soccer)\/500\/([^/.]+)\.png$/i);
+  const soccerMatch = trimmed.match(/^(https?:\/\/a\.espncdn\.com\/i\/leaguelogos\/soccer)\/500\/([^/.]+)\.png$/i);
   if (soccerMatch && DARK_COMPATIBLE_ESPN_IDS.has(soccerMatch[2].toLowerCase())) {
-    return `${soccerMatch[1]}/500-dark/${soccerMatch[2]}.png`;
+    return `${soccerMatch[1].replace(/^http:/i, 'https:')}/500-dark/${soccerMatch[2]}.png`;
   }
 
-  const leagueMatch = trimmed.match(/^(https:\/\/a\.espncdn\.com\/i\/teamlogos\/leagues)\/500\/([^/.]+)\.png$/i);
+  const leagueMatch = trimmed.match(/^(https?:\/\/a\.espncdn\.com\/i\/teamlogos\/leagues)\/500\/([^/.]+)\.png$/i);
   if (leagueMatch && DARK_COMPATIBLE_ESPN_IDS.has(leagueMatch[2].toLowerCase())) {
-    return `${leagueMatch[1]}/500-dark/${leagueMatch[2]}.png`;
+    return `${leagueMatch[1].replace(/^http:/i, 'https:')}/500-dark/${leagueMatch[2]}.png`;
   }
 
-  return trimmed;
+  return normalizeImageUrl(trimmed) || undefined;
 }
 
 /**
@@ -246,27 +249,123 @@ export function resolveCompetitionLogo(competitionIdOrName?: string): string {
   return LEAGUE_EMBLEMS['football'];
 }
 
+export function buildCompetitionLogoCandidates(uri?: string, competitionId?: string): string[] {
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+  const add = (raw?: string) => {
+    const clean = normalizeImageUrl(raw);
+    if (clean && !seen.has(clean)) {
+      seen.add(clean);
+      candidates.push(clean);
+    }
+  };
+
+  if (uri) {
+    add(upgradeToDarkLogoUrl(uri));
+    add(uri);
+  }
+  if (competitionId) {
+    const canonical = resolveCompetitionLogo(competitionId);
+    add(upgradeToDarkLogoUrl(canonical));
+    add(canonical);
+  }
+  add(LEAGUE_EMBLEMS['football']);
+  return candidates;
+}
+
 /**
  * BALLIVE Official Competition Logo
- * Renders competition emblems cleanly and flat directly on dark UI surfaces
- * without white circular containers or artificial borders.
+ * Renders competition emblems flat directly on dark UI surfaces
+ * backed by persistent disk caching, prioritized download queueing, and automatic fallback.
  */
-export const CompetitionLogo: React.FC<CompetitionLogoProps> = ({
+export const CompetitionLogo: React.FC<CompetitionLogoProps> = React.memo(({
   uri,
   competitionId,
   size = 44,
+  priority = 0,
   containerStyle,
   flat = true,
 }) => {
-  const canonicalFallback = resolveCompetitionLogo(competitionId);
-  const upgradedUri = upgradeToDarkLogoUrl(uri);
-  const resolvedSource = upgradedUri || canonicalFallback;
+  const candidates = useMemo(
+    () => buildCompetitionLogoCandidates(uri, competitionId),
+    [uri, competitionId]
+  );
+  const entityKey = useMemo(
+    () => (competitionId ? `comp:${normalizeLeagueId(competitionId)}` : null),
+    [competitionId]
+  );
+  const signature = `${entityKey || ''}|${candidates.join('|')}`;
 
-  const [hasError, setHasError] = useState(false);
+  const immediateUri = useMemo(
+    () => imageCacheService.getImmediateCachedUri('competition', candidates, entityKey),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [signature]
+  );
+
+  const [resolvedUri, setResolvedUri] = useState<string | null>(immediateUri);
+  const [fallbackIdx, setFallbackIdx] = useState<number>(-1);
+  const [exhausted, setExhausted] = useState(false);
 
   useEffect(() => {
-    setHasError(false);
-  }, [resolvedSource]);
+    let isMounted = true;
+    setFallbackIdx(-1);
+    setExhausted(false);
+
+    if (immediateUri) {
+      setResolvedUri(immediateUri);
+      return;
+    }
+
+    setResolvedUri(null);
+    if (candidates.length === 0) {
+      setExhausted(true);
+      return;
+    }
+
+    imageCacheService
+      .resolveImage({
+        entityKey,
+        category: 'competition',
+        candidates,
+        priority,
+      })
+      .then(result => {
+        if (!isMounted) return;
+        if (result) {
+          setResolvedUri(result);
+        } else {
+          setFallbackIdx(0);
+          setResolvedUri(candidates[0]);
+        }
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setFallbackIdx(0);
+        setResolvedUri(candidates[0]);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [signature, immediateUri, priority, candidates, entityKey]);
+
+  const handleImageError = () => {
+    if (resolvedUri) {
+      imageCacheService.reportLoadError(resolvedUri, 'competition').catch(() => {});
+    }
+
+    const nextIdx = fallbackIdx + 1;
+    if (nextIdx < candidates.length && candidates[nextIdx] !== resolvedUri) {
+      setFallbackIdx(nextIdx);
+      setResolvedUri(candidates[nextIdx]);
+    } else if (nextIdx + 1 < candidates.length) {
+      setFallbackIdx(nextIdx + 1);
+      setResolvedUri(candidates[nextIdx + 1]);
+    } else {
+      setExhausted(true);
+      setResolvedUri(null);
+    }
+  };
 
   const innerPadding = flat ? 0 : Math.round(size * 0.14);
 
@@ -283,19 +382,19 @@ export const CompetitionLogo: React.FC<CompetitionLogoProps> = ({
         containerStyle,
       ]}
     >
-      {hasError || !resolvedSource ? (
-        <Trophy size={Math.round(size * 0.6)} color="#A58BFC" strokeWidth={2} />
-      ) : (
+      {!exhausted && resolvedUri ? (
         <Image
-          source={{ uri: resolvedSource }}
+          source={{ uri: resolvedUri }}
           style={styles.logoImage}
           resizeMode="contain"
-          onError={() => setHasError(true)}
+          onError={handleImageError}
         />
+      ) : (
+        <Trophy size={Math.round(size * 0.6)} color="#A58BFC" strokeWidth={2} />
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   flatContainer: {

@@ -27,9 +27,14 @@ import {
   BottomNavigation,
   TabDestination,
 } from './src/components/navigation/BottomNavigation';
+import { startupPreloader } from './src/services/startupPreloader';
 
 const AppContent: React.FC = () => {
   const { currentRoute, activeTab, switchTab, isFullscreen } = useAppNavigation();
+
+  React.useEffect(() => {
+    startupPreloader.warmCoreAssetsOnStartup();
+  }, []);
 
   // Lazy tab mounting: Mount tabs on first visit, then keep them mounted in memory for 0ms switching
   const [visitedTabs, setVisitedTabs] = React.useState<Record<TabDestination, boolean>>({

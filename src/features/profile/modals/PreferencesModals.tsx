@@ -20,6 +20,7 @@ import {
 } from 'lucide-react-native';
 import Colors from '../../../theme/colors';
 import { SecondaryScreenHeader } from '../../../components/common/SecondaryScreenHeader';
+import { imageCacheService } from '../../../services/imageCacheService';
 
 // ── 1. COMPREHENSIVE SETTINGS MODAL ──
 interface NotificationSettingsModalProps {
@@ -45,6 +46,7 @@ export const NotificationSettingsModal: React.FC<NotificationSettingsModalProps>
   const [cacheCleared, setCacheCleared] = useState(false);
 
   const handleClearCache = () => {
+    imageCacheService.clearCache().catch(() => {});
     setCacheCleared(true);
     setTimeout(() => setCacheCleared(false), 3000);
   };

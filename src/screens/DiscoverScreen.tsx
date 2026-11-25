@@ -30,6 +30,7 @@ import { useAppNavigation } from '../navigation/NavigationContext';
 import { navigateToMatch, findCompetitionById } from '../navigation/navHelpers';
 import { useProfile } from '../hooks/useProfile';
 import { streamingApiService } from '../services/streamingApiService';
+import { startupPreloader } from '../services/startupPreloader';
 import { sportsApiService, GlobalSearchResult } from '../services/sportsApiService';
 import { popularTeamsService } from '../services/popularTeamsService';
 import { normalizeLeagueId, normalizeTeamId } from '../services/profileStorage';
@@ -69,6 +70,7 @@ export const DiscoverScreen: React.FC = () => {
       .then(matches => {
         if (!isMounted) return;
         if (matches && matches.length > 0) {
+          startupPreloader.preloadMatches(matches);
           const converted = matches.map(m => streamingApiService.convertLiveMatchToMatchup(m));
           setLiveHighlights(sortMatchesWithLiveFirst(converted));
 
