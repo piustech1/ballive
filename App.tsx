@@ -66,9 +66,19 @@ const AppContent: React.FC = () => {
           />
         );
       case 'TeamDetails':
-        return <TeamDetailsScreen team={currentRoute.params.team} />;
+        return (
+          <TeamDetailsScreen
+            key={currentRoute.params.team.id}
+            team={currentRoute.params.team}
+          />
+        );
       case 'CompetitionDetails':
-        return <CompetitionDetailsScreen competition={currentRoute.params.competition} />;
+        return (
+          <CompetitionDetailsScreen
+            key={currentRoute.params.competition.id}
+            competition={currentRoute.params.competition}
+          />
+        );
       case 'AllCompetitions':
         return <AllCompetitionsScreen />;
       case 'AllLeagues':

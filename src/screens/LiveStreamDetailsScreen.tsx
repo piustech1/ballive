@@ -48,7 +48,13 @@ import { WinProbabilityBar } from '../components/match/WinProbabilityBar';
 import { winProbabilityService, WinProbabilityResult } from '../services/winProbabilityService';
 import { useProfile } from '../hooks/useProfile';
 import { useSavedMatches } from '../hooks/useSavedMatches';
-import { getAllLiveStreamMatches, resolveLiveMatchToMatchup, determineMatchRoute } from '../navigation/navHelpers';
+import {
+  getAllLiveStreamMatches,
+  resolveLiveMatchToMatchup,
+  determineMatchRoute,
+  findCompetitionById,
+  findTeamById,
+} from '../navigation/navHelpers';
 import { useAppNavigation } from '../navigation/NavigationContext';
 import {
   normalizeMatchStatus,
@@ -391,6 +397,26 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     }
   };
 
+  const handleOpenCompetition = () => {
+    if (!activeMatch.competition) return;
+    const compObj = findCompetitionById(activeMatch.competition, {
+      sport: activeMatch.sport,
+      logoUrl: activeMatch.competitionLogo,
+    });
+    navigate({ name: 'CompetitionDetails', params: { competition: compObj } });
+  };
+
+  const handleOpenTeam = (teamSide: { id?: string; name: string; crestUrl?: string }, fallbackCrest?: string) => {
+    if (!teamSide?.name) return;
+    const teamObj = findTeamById(teamSide.id || teamSide.name, {
+      name: teamSide.name,
+      crestUrl: teamSide.crestUrl || fallbackCrest,
+      sport: activeMatch.sport,
+      competitionName: activeMatch.competition,
+    });
+    navigate({ name: 'TeamDetails', params: { team: teamObj } });
+  };
+
   return (
     <View style={isFullscreen ? styles.fullscreenRoot : styles.root}>
       <StatusBar hidden={isFullscreen} barStyle="light-content" />
@@ -400,6 +426,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
           title={activeMatch.competition}
           subtitle={`${activeMatch.homeTeam.name} vs ${activeMatch.awayTeam.name}`}
           sport={activeMatch.sport}
+          onTitlePress={handleOpenCompetition}
           rightAction={{
             icon: Share2,
             onPress: handleShare,
@@ -512,7 +539,16 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             <View style={styles.matchIdentityCard}>
               <View style={styles.teamsRow}>
                 {/* Home Team */}
-                <View style={styles.matchTeamSide}>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  style={styles.matchTeamSide}
+                  onPress={() =>
+                    handleOpenTeam(
+                      activeMatch.homeTeam,
+                      activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)
+                    )
+                  }
+                >
                   <TeamCrest
                     uri={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)}
                     teamName={activeMatch.homeTeam.name}
@@ -522,7 +558,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                   <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
                     {activeMatch.homeTeam.name}
                   </Text>
-                </View>
+                </TouchableOpacity>
 
                 {/* Score / Match State Center */}
                 <View style={styles.matchScoreCenter}>
@@ -548,7 +584,16 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                 </View>
 
                 {/* Away Team */}
-                <View style={styles.matchTeamSide}>
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  style={styles.matchTeamSide}
+                  onPress={() =>
+                    handleOpenTeam(
+                      activeMatch.awayTeam,
+                      activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)
+                    )
+                  }
+                >
                   <TeamCrest
                     uri={activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)}
                     teamName={activeMatch.awayTeam.name}
@@ -558,7 +603,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
                   <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
                     {activeMatch.awayTeam.name}
                   </Text>
-                </View>
+                </TouchableOpacity>
               </View>
             </View>
           )}
@@ -572,6 +617,18 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             sport={activeMatch.sport}
             probabilityData={winProb}
             isLoading={isLoadingProb}
+            onHomePress={() =>
+              handleOpenTeam(
+                activeMatch.homeTeam,
+                activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)
+              )
+            }
+            onAwayPress={() =>
+              handleOpenTeam(
+                activeMatch.awayTeam,
+                activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)
+              )
+            }
           />
 
           {/* ── 4. MORE LIVE & UPCOMING FIXTURES (VERTICAL FULL-WIDTH LIST) ── */}

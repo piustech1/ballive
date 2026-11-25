@@ -15,15 +15,15 @@ import { SavedTeamRow } from '../features/saved/SavedTeamRow';
 import { SavedCompetitionRow } from '../features/saved/SavedCompetitionRow';
 import { SavedEmptyState } from '../features/saved/SavedEmptyState';
 import {
-  POPULAR_TEAMS,
-  POPULAR_LEAGUES,
+  DiscoverCompetition,
   DiscoverMatchup,
   PopularTeam,
   PopularLeague,
 } from '../constants/discoverData';
 
 import { useAppNavigation } from '../navigation/NavigationContext';
-import { navigateToMatch } from '../navigation/navHelpers';
+import { navigateToMatch, findTeamById, findCompetitionById } from '../navigation/navHelpers';
+import { normalizeTeamId, normalizeLeagueId } from '../services/profileStorage';
 
 interface SavedScreenProps {
   onNavigateToDiscover?: () => void;
@@ -47,13 +47,31 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({ onNavigateToDiscover }
 
   const followedTeams = useMemo(() => {
     const ids = profile.followedTeamIds || [];
-    return POPULAR_TEAMS.filter(t => ids.includes(t.id));
-  }, [profile.followedTeamIds]);
+    const seen = new Set<string>();
+    const list: PopularTeam[] = [];
+    ids.forEach(rawId => {
+      const nid = normalizeTeamId(rawId);
+      if (seen.has(nid)) return;
+      seen.add(nid);
+      const team = profile.followedTeamsMeta?.[nid] || profile.followedTeamsMeta?.[rawId] || findTeamById(rawId);
+      if (team) list.push(team);
+    });
+    return list;
+  }, [profile.followedTeamIds, profile.followedTeamsMeta]);
 
   const followedCompetitions = useMemo(() => {
     const ids = profile.followedLeagueIds || [];
-    return POPULAR_LEAGUES.filter(l => ids.includes(l.id));
-  }, [profile.followedLeagueIds]);
+    const seen = new Set<string>();
+    const list: DiscoverCompetition[] = [];
+    ids.forEach(rawId => {
+      const nid = normalizeLeagueId(rawId);
+      if (seen.has(nid)) return;
+      seen.add(nid);
+      const comp = profile.followedLeaguesMeta?.[nid] || profile.followedLeaguesMeta?.[rawId] || findCompetitionById(rawId);
+      if (comp) list.push(comp);
+    });
+    return list;
+  }, [profile.followedLeagueIds, profile.followedLeaguesMeta]);
 
   // ── INTERACTION HANDLERS ──
   const handleMatchDetails = (matchup: DiscoverMatchup) => {
@@ -67,7 +85,7 @@ export const SavedScreen: React.FC<SavedScreenProps> = ({ onNavigateToDiscover }
     });
   };
 
-  const handleLeaguePress = (league: PopularLeague) => {
+  const handleLeaguePress = (league: DiscoverCompetition | PopularLeague) => {
     navigate({
       name: 'CompetitionDetails',
       params: { competition: league },

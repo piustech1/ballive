@@ -20,21 +20,31 @@ export const AllCompetitionsScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
   const [searchQuery, setSearchQuery] = useState('');
 
+  const getSportTitle = (sport?: string) => {
+    if (sport === 'basketball') return 'Basketball';
+    if (sport === 'hockey') return 'Ice Hockey';
+    if (sport === 'american_football') return 'American Football';
+    if (sport === 'tennis') return 'Tennis';
+    if (sport === 'cricket') return 'Cricket';
+    if (sport === 'motorsport') return 'Motorsport';
+    return 'Football';
+  };
+
   // Combine explore and featured competitions
   const allCompetitions: DiscoverCompetition[] = [
     ...EXPLORE_COMPETITIONS,
     ...FEATURED_COMPETITIONS.filter(
-      fc => !EXPLORE_COMPETITIONS.some(ec => ec.id === fc.id || ec.name.toLowerCase() === fc.name.toLowerCase())
+      fc => !EXPLORE_COMPETITIONS.some(ec => ec.id === fc.id || ec.id === fc.id.replace(/^comp-/, '') || ec.name.toLowerCase() === fc.name.toLowerCase())
     ).map(fc => ({
-      id: fc.id,
+      id: fc.id.replace(/^comp-/, ''),
       name: fc.name,
       shortName: fc.name.split(' ')[0],
       country: fc.country,
-      region: 'Europe',
+      region: fc.country,
       logoUrl: fc.crestUrl,
       accentColor: '#7952FC',
-      season: fc.season,
       teamsCount: fc.matchesCount * 2,
+      sport: fc.sport,
     })),
   ];
 
@@ -92,7 +102,7 @@ export const AllCompetitionsScreen: React.FC = () => {
             <CompetitionLogo
               uri={comp.logoUrl}
               competitionId={comp.id}
-              size={48}
+              size={46}
               containerStyle={{ marginRight: 14 }}
             />
 
@@ -100,10 +110,12 @@ export const AllCompetitionsScreen: React.FC = () => {
               <Text style={styles.compName} numberOfLines={1}>
                 {comp.name}
               </Text>
-              <Text style={styles.compSub}>
-                {comp.region} • {comp.season}
+              <Text style={styles.compSub} numberOfLines={1}>
+                {comp.country || comp.region} • {getSportTitle(comp.sport)}
               </Text>
-              <Text style={styles.compTeams}>{comp.teamsCount} Teams competing</Text>
+              {comp.teamsCount ? (
+                <Text style={styles.compTeams}>{comp.teamsCount} Teams competing</Text>
+              ) : null}
             </View>
 
             <View style={styles.chevronBox}>

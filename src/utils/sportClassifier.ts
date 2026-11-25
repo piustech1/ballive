@@ -18,6 +18,7 @@ export type CanonicalSport =
   | 'hockey'
   | 'motorsport'
   | 'tennis'
+  | 'cricket'
   | 'other';
 
 /**
@@ -84,30 +85,53 @@ export function getCanonicalSport(
     return 'motorsport';
   }
 
-  // 4. Basketball (NBA, EuroLeague, WNBA, NCAA Basketball)
+  // 4. Basketball (NBA, EuroLeague, EuroCup, WNBA, FIBA, NBL, NCAA Basketball)
   if (
     s === 'basketball' ||
     s === 'nba' ||
     c.includes('nba') ||
     c.includes('basketball') ||
     c.includes('euroleague') ||
-    c.includes('wnba')
+    c.includes('euro league') ||
+    c.includes('eurocup') ||
+    c.includes('wnba') ||
+    c.includes('fiba') ||
+    c === 'nbl'
   ) {
     return 'basketball';
   }
 
-  // 5. Hockey (NHL, KHL)
+  // 5. Hockey (NHL, KHL, DEL, MHL, ICEHL, HockeyAllsvenskan)
   if (
     s === 'hockey' ||
+    s === 'ice_hockey' ||
     s === 'nhl' ||
     c.includes('nhl') ||
     c.includes('hockey') ||
-    c.includes('stanley cup')
+    c.includes('stanley cup') ||
+    c.includes('icehl') ||
+    c.includes('allsvenskan') ||
+    c.includes('russia mhl') ||
+    c === 'del' ||
+    c.includes('germany del') ||
+    c.includes('khl')
   ) {
     return 'hockey';
   }
 
-  // 6. Tennis (ATP, WTA, Grand Slam)
+  // 6. Cricket (ICC, IPL, BBL, WBBL)
+  if (
+    s === 'cricket' ||
+    c.includes('cricket') ||
+    c.includes('icc') ||
+    c.includes('ipl') ||
+    c.includes('bbl') ||
+    c.includes('wbbl')
+  ) {
+    return 'cricket';
+  }
+
+  // 7. Tennis (ATP, WTA, Grand Slam)
   if (
     s === 'tennis' ||
     c.includes('tennis') ||
@@ -121,18 +145,25 @@ export function getCanonicalSport(
     return 'tennis';
   }
 
-  // 7. Association Football (Soccer)
+  // 8. Association Football (Soccer)
   if (
     s === 'soccer' ||
     s === 'football' ||
     c.includes('premier league') ||
     c.includes('la liga') ||
+    c.includes('laliga') ||
     c.includes('serie a') ||
     c.includes('bundesliga') ||
     c.includes('ligue 1') ||
     c.includes('champions league') ||
     c.includes('europa league') ||
+    c.includes('conference league') ||
     c.includes('world cup') ||
+    c.includes('liga mx') ||
+    c.includes('liga profesional') ||
+    c.includes('j1') ||
+    c.includes('j.league') ||
+    c.includes('saudi pro') ||
     c.includes('copa') ||
     c.includes('mls') ||
     c.includes('eredivisie') ||
@@ -161,11 +192,13 @@ export function getSportDisplayName(sport?: string | null, competition?: string 
     case 'basketball':
       return 'Basketball';
     case 'hockey':
-      return 'Hockey';
+      return 'Ice Hockey';
     case 'motorsport':
       return 'Formula 1';
     case 'tennis':
       return 'Tennis';
+    case 'cricket':
+      return 'Cricket';
     default:
       return 'Sports';
   }

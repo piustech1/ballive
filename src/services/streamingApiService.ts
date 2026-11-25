@@ -271,18 +271,31 @@ class StreamingApiService {
               if (genre === 'NETWORKS' || genre.includes('CHANNEL')) return;
               const cleanTitle = cleanMatchName(m.name || '');
 
-              // Strictly drop unwanted banned sports (Cricket, Tennis, College Sports)
+              // Strictly drop unwanted banned sports (Combat, College Sports, Cricket, Tennis)
               if (isBannedSport(catConfig.defaultSport, m.genres?.[0] || genre, cleanTitle, m.category)) return;
 
               // Strictly drop ended/finished matches
               if (m.releaseInfo === 'FT' || m.status === 'FT' || /ended|finished|final|postponed|cancelled/i.test(m.description || '')) return;
 
-              // Strictly exclude 'OTHER' category and non-sports / game show feeds
+              // Strictly exclude non-sports game/reality shows & broadcast promo wrappers (not real fixtures)
               if (
-                genre === 'OTHER' ||
-                m.genres?.includes('OTHER') ||
-                m.category === 'OTHER' ||
-                /kaun banega|game show|reality|lottery|bingo/i.test(cleanTitle)
+                /kaun banega|game show|reality|lottery|bingo|simulcast|goals show|watchalong|preview show|matchday \d+/i.test(cleanTitle)
+              ) {
+                return;
+              }
+
+              // Exclude mis-tagged handball/volleyball Champions League items in DAG FOOTBALL feed
+              const rawLgHint = `${extractPosterParam(m.poster, 'lg') || ''} ${m.description || ''} ${cleanTitle}`.toLowerCase();
+              if (
+                rawLgHint.includes('champions league women') ||
+                rawLgHint.includes('vero volley') ||
+                rawLgHint.includes('vakifbank') ||
+                rawLgHint.includes('budowlani') ||
+                rawLgHint.includes('asterix avo') ||
+                rawLgHint.includes('paris st-cloud') ||
+                rawLgHint.includes('magdeburg') ||
+                rawLgHint.includes('vive kielce') ||
+                rawLgHint.includes('dinamo bucuresti')
               ) {
                 return;
               }
@@ -321,10 +334,43 @@ class StreamingApiService {
                 return;
               }
 
+              // Resolve competition FIRST so genuine OTHER-genre sports like Japan J League are rescued accurately
+              const preliminarSport =
+                genre.includes('BASKETBALL') || cleanTitle.toLowerCase().includes('nba') || rawLgHint.includes('euroleague')
+                  ? 'basketball'
+                  : genre.includes('HOCKEY') || cleanTitle.toLowerCase().includes('nhl') || rawLgHint.includes('allsvenskan') || rawLgHint.includes('ice hockey') || rawLgHint.includes('mhl')
+                  ? 'hockey'
+                  : genre.includes('AMERICAN FOOTBALL') || cleanTitle.toLowerCase().includes('nfl')
+                  ? 'american_football'
+                  : genre.includes('MOTORSPORT') || cleanTitle.toLowerCase().includes('f1') || cleanTitle.toLowerCase().includes('formula')
+                  ? 'motorsport'
+                  : catConfig.defaultSport;
+
+              const resolvedComp = competitionResolverService.resolveCompetition({
+                rawId: m.id,
+                rawName: cleanTitle,
+                posterUrl: m.poster || m.background,
+                description: m.description,
+                genres: m.genres,
+                homeTeam: home,
+                awayTeam: away,
+                sport: genre === 'OTHER' || m.genres?.includes('OTHER') ? 'other' : preliminarSport,
+              });
+
+              // Drop genuinely unidentified 'OTHER' items (keep Japan J League, recognized leagues, etc.)
+              if (
+                (genre === 'OTHER' || m.genres?.includes('OTHER') || m.category === 'OTHER') &&
+                !resolvedComp.isIdentified
+              ) {
+                return;
+              }
+
               seenMatchIds.add(m.id);
 
-              // Detect specific sport
-              let sport: LiveMatch['sport'] = catConfig.defaultSport;
+              // Final authoritative sport selection
+              let sport: LiveMatch['sport'] = (resolvedComp.sport && resolvedComp.sport !== 'other'
+                ? resolvedComp.sport
+                : preliminarSport) as LiveMatch['sport'];
               const titleLower = cleanTitle.toLowerCase();
               if (genre.includes('BASKETBALL') || titleLower.includes('nba')) {
                 sport = 'basketball';
@@ -334,8 +380,6 @@ class StreamingApiService {
                 sport = 'american_football';
               } else if (genre.includes('MOTORSPORT') || titleLower.includes('f1') || titleLower.includes('formula')) {
                 sport = 'motorsport';
-              } else if (genre.includes('TENNIS') || titleLower.includes('atp') || titleLower.includes('wta')) {
-                sport = 'tennis';
               }
 
               // High-resolution authentic team crests directly from DAG event meta, poster query or resolver
@@ -346,17 +390,6 @@ class StreamingApiService {
 
               const b1 = rawLogo1 || posterLogo1 || getTeamCrest(home);
               const b2 = rawLogo2 || posterLogo2 || getTeamCrest(away);
-
-              const resolvedComp = competitionResolverService.resolveCompetition({
-                rawId: m.id,
-                rawName: cleanTitle,
-                posterUrl: m.poster || m.background,
-                description: m.description,
-                genres: m.genres,
-                homeTeam: home,
-                awayTeam: away,
-                sport,
-              });
 
               // Deduplicate against existing authentic matches (e.g. ESPN scoreboards)
               const cleanHome = cleanName(home);
@@ -386,7 +419,6 @@ class StreamingApiService {
                     existingMatch.awayTeam,
                     m.id
                   );
-                  // If DAG provided a verified event thumbnail or existing match has a generic Unsplash image, upgrade to DAG artwork
                   if (
                     isVerifiedEventImage(resolvedDagArt) ||
                     !existingMatch.imageUrl ||
@@ -405,7 +437,7 @@ class StreamingApiService {
                   existingMatch.awayBadge = b2;
                 }
 
-                // 3. If existing match still has generic "Global Football", upgrade to authentic resolved competition
+                // 3. Upgrade generic competition to canonical resolved competition
                 if (
                   (existingMatch.competition === 'Global Football' ||
                    existingMatch.competition === 'Football' ||
@@ -414,17 +446,9 @@ class StreamingApiService {
                 ) {
                   existingMatch.competition = resolvedComp.name;
                   existingMatch.competitionLogo = resolvedComp.logoUrl;
-                } else if (
-                  existingMatch.competition === 'Global Football' &&
-                  m.genres?.[0] &&
-                  m.genres[0] !== 'FOOTBALL' &&
-                  m.genres[0] !== 'SOCCER'
-                ) {
-                  existingMatch.competition = m.genres[0];
-                  existingMatch.competitionLogo = resolveCompetitionLogo(m.genres[0]);
                 }
 
-                // 4. Merge direct stream URL into the existing authentic match and discard duplicate generic card
+                // 4. Merge direct stream URL into the existing authentic match
                 const directUrl = `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`;
                 if (!existingMatch.streams) {
                   existingMatch.streams = [];
@@ -447,50 +471,51 @@ class StreamingApiService {
               const isFutureKickoff = kickoffTimestamp !== Number.MAX_SAFE_INTEGER && kickoffTimestamp > Date.now() + 5 * 60 * 1000;
               const isTimeUpcoming = typeof m.releaseInfo === 'string' && (m.releaseInfo.includes('AM') || m.releaseInfo.includes('PM') || m.releaseInfo.includes(':') || cleanTitle.startsWith('⏱️'));
 
-              // Enforce duration cutoff for past kickoffs: if past maximum play time and not confirmed live by ESPN, drop it
               const elapsedMs = kickoffTimestamp !== Number.MAX_SAFE_INTEGER ? Date.now() - kickoffTimestamp : 0;
               const maxDurationMs =
                 sport === 'basketball' || sport === 'hockey'
                   ? 180 * 60 * 1000
                   : sport === 'american_football'
                   ? 240 * 60 * 1000
-                  : 140 * 60 * 1000; // soccer default
+                  : 140 * 60 * 1000;
 
               const isPastMaxDuration = kickoffTimestamp !== Number.MAX_SAFE_INTEGER && elapsedMs > maxDurationMs;
 
               const matchedEspn = findMatchedEspn(home, away, `${m.id || ''} ${m.poster || ''}`);
               const isEspnLive = Boolean(matchedEspn && matchedEspn.isLive && (matchedEspn.minute > 0 || matchedEspn.score.home > 0 || matchedEspn.score.away > 0 || matchedEspn.playTime === 'HT'));
-              
-              // If match exceeded standard match duration and ESPN does not confirm it is live, drop it completely
+
               if (isPastMaxDuration && !isEspnLive) {
                 return;
               }
 
               const isReleaseLive = m.releaseInfo === 'LIVE' || cleanTitle.includes('🔴 LIVE') || Boolean(m.description && m.description.includes('LIVE NOW'));
-              
-              // Strictly never allow a future or concluded match to be labeled LIVE.
-              // If matchedEspn exists, its authoritative status governs.
+
               const isTrulyLive = !isFutureKickoff && !isTimeUpcoming && !isPastMaxDuration && (
                 matchedEspn ? matchedEspn.isLive : isReleaseLive
               );
 
-              // Select authentic unique artwork with multi-sport detection (never generic placeholder)
+              // Select authentic unique artwork using RESOLVED competition name!
               const backdrop = resolveSportBackground(
                 sport,
-                m.genres?.[0] || genre,
+                resolvedComp.name,
                 m.poster || m.background,
                 home,
                 away,
                 m.id
               );
 
+              const venueFallback =
+                sport === 'basketball'
+                  ? resolvedComp.id === 'nba' ? 'NBA Arena' : 'Basketball Arena'
+                  : sport === 'hockey'
+                  ? resolvedComp.id === 'nhl' ? 'NHL Ice Arena' : 'Ice Hockey Arena'
+                  : 'Stadium Arena';
+
               if (!isTrulyLive) {
-                // Strictly filter upcoming fixtures to Today and Tomorrow (48-hour window)
                 if (!isWithinTodayOrTomorrow(m.releaseInfo || kickoffTimestamp)) {
                   return;
                 }
 
-                // Route upcoming fixtures to upcoming collection with clean scheduled kickoff in EAT
                 const scheduleInfo = formatMatchSchedule(m.releaseInfo || cleanKickoff);
                 const eatKickoff = scheduleInfo.fullKickoff !== 'Upcoming' ? scheduleInfo.fullKickoff : (cleanKickoff.includes('EAT') ? cleanKickoff : formatKickoffEAT(cleanKickoff));
 
@@ -517,7 +542,7 @@ class StreamingApiService {
                   time: eatKickoff,
                   kickoffTimestamp,
                   rawDate: typeof m.releaseInfo === 'string' ? m.releaseInfo : undefined,
-                  venue: sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
+                  venue: venueFallback,
                 });
                 return;
               }
@@ -529,7 +554,6 @@ class StreamingApiService {
               let kickoffTime = 'Live In-Play';
 
               if (matchedEspn && (matchedEspn.isLive || matchedEspn.score)) {
-                // Ensure scores strictly match home and away team orientations
                 const emH = cleanName(matchedEspn.homeTeam);
                 const hClean = cleanName(home);
                 const isDirectOrder = emH.includes(hClean) || hClean.includes(emH) || hToks.some(t => emH.includes(t));
@@ -538,7 +562,6 @@ class StreamingApiService {
                   scoreHome = matchedEspn.score?.home ?? 0;
                   scoreAway = matchedEspn.score?.away ?? 0;
                 } else {
-                  // Teams were listed in reverse in DAG vs ESPN
                   scoreHome = matchedEspn.score?.away ?? 0;
                   scoreAway = matchedEspn.score?.home ?? 0;
                 }
@@ -566,15 +589,16 @@ class StreamingApiService {
                 minute,
                 playTime,
                 status: 'LIVE',
+                isLive: true,
                 imageUrl: (matchedEspn && isVerifiedEventImage(matchedEspn.imageUrl)) ? matchedEspn.imageUrl : backdrop,
                 hasLiveStream: true,
                 homeBadge: b1,
                 awayBadge: b2,
-                streamUrl: undefined,
-                streams: [],
+                streamUrl: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json`,
+                streams: [{ id: `srv-direct-${m.id}`, name: 'Server 1 (Direct Match Broadcast)', url: `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${m.id}.json` }],
                 sport,
                 kickoffTime,
-                venue: sport === 'basketball' ? 'NBA Arena' : sport === 'hockey' ? 'NHL Ice Arena' : 'Stadium Arena',
+                venue: venueFallback,
               });
             });
           } catch {

@@ -40,7 +40,7 @@ import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData'
 import { useProfile } from '../hooks/useProfile';
 import { useSavedMatches } from '../hooks/useSavedMatches';
 import { useAppNavigation } from '../navigation/NavigationContext';
-import { navigateToMatch } from '../navigation/navHelpers';
+import { navigateToMatch, findCompetitionById, findTeamById } from '../navigation/navHelpers';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
@@ -433,6 +433,26 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     .replace(/\s*EAT/i, '')
     .trim();
 
+  const handleOpenCompetition = () => {
+    if (!activeMatchup.competition) return;
+    const compObj = findCompetitionById(activeMatchup.competition, {
+      sport: activeMatchup.sport,
+      logoUrl: activeMatchup.competitionLogo,
+    });
+    navigate({ name: 'CompetitionDetails', params: { competition: compObj } });
+  };
+
+  const handleOpenTeam = (teamSide: { id?: string; name: string; crestUrl?: string }, resolvedCrest?: string) => {
+    if (!teamSide?.name) return;
+    const teamObj = findTeamById(teamSide.id || teamSide.name, {
+      name: teamSide.name,
+      crestUrl: resolvedCrest || teamSide.crestUrl,
+      sport: activeMatchup.sport,
+      competitionName: activeMatchup.competition,
+    });
+    navigate({ name: 'TeamDetails', params: { team: teamObj } });
+  };
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={Colors.headerPurple} translucent={false} />
@@ -441,6 +461,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       <SecondaryScreenHeader
         title={activeMatchup.competition}
         subtitle={`${activeMatchup.homeTeam.name} vs ${activeMatchup.awayTeam.name}`}
+        onTitlePress={handleOpenCompetition}
         rightAction={{
           icon: Share2,
           onPress: handleShare,
@@ -482,6 +503,8 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
               sport={activeMatchup.sport}
               probabilityData={winProb}
               isLoading={isLoadingProb}
+              onHomePress={() => handleOpenTeam(activeMatchup.homeTeam, homeCrest)}
+              onAwayPress={() => handleOpenTeam(activeMatchup.awayTeam, awayCrest)}
             />
 
             {/* ── 4. UPCOMING: STREAMLINED ACTION ROW (Notify Kickoff + Save Match Bookmark) ── */}
@@ -599,7 +622,11 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                 /* Combat Sport: Red Corner vs Blue Corner */
                 <View style={styles.matchupRow}>
                   {/* Red Corner Fighter */}
-                  <View style={styles.teamCol}>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.teamCol}
+                    onPress={() => handleOpenTeam(activeMatchup.homeTeam, homeCrest)}
+                  >
                     <TeamCrest
                       uri={homeCrest}
                       teamName={activeMatchup.homeTeam.name}
@@ -610,7 +637,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                       {activeMatchup.homeTeam.name}
                     </Text>
                     <Text style={styles.cornerSubLabelRed}>RED CORNER</Text>
-                  </View>
+                  </TouchableOpacity>
 
                   {/* Center Bout Status (No fake football 0 - 0) */}
                   <View style={styles.centerCol}>
@@ -641,7 +668,11 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   </View>
 
                   {/* Blue Corner Fighter */}
-                  <View style={styles.teamCol}>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.teamCol}
+                    onPress={() => handleOpenTeam(activeMatchup.awayTeam, awayCrest)}
+                  >
                     <TeamCrest
                       uri={awayCrest}
                       teamName={activeMatchup.awayTeam.name}
@@ -652,13 +683,17 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                       {activeMatchup.awayTeam.name}
                     </Text>
                     <Text style={styles.cornerSubLabelBlue}>BLUE CORNER</Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               ) : (
                 /* Standard Team Score Matchup (Football, American Football, Basketball, Hockey) */
                 <View style={styles.matchupRow}>
                   {/* Home Team */}
-                  <View style={styles.teamCol}>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.teamCol}
+                    onPress={() => handleOpenTeam(activeMatchup.homeTeam, homeCrest)}
+                  >
                     <TeamCrest
                       uri={homeCrest}
                       teamName={activeMatchup.homeTeam.name}
@@ -668,7 +703,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                     <Text style={styles.teamName} numberOfLines={2}>
                       {activeMatchup.homeTeam.name}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
 
                   {/* Center: Score / Status / VS */}
                   <View style={styles.centerCol}>
@@ -697,7 +732,11 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   </View>
 
                   {/* Away Team */}
-                  <View style={styles.teamCol}>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.teamCol}
+                    onPress={() => handleOpenTeam(activeMatchup.awayTeam, awayCrest)}
+                  >
                     <TeamCrest
                       uri={awayCrest}
                       teamName={activeMatchup.awayTeam.name}
@@ -707,7 +746,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                     <Text style={styles.teamName} numberOfLines={2}>
                       {activeMatchup.awayTeam.name}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -820,17 +859,21 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                   </View>
 
                   {/* Item 2: Competition */}
-                  <View style={styles.overviewItem}>
+                  <TouchableOpacity
+                    activeOpacity={0.75}
+                    style={styles.overviewItem}
+                    onPress={handleOpenCompetition}
+                  >
                     <View style={styles.overviewIconCircle}>
                       <Trophy size={13} color="#A58BFC" strokeWidth={2.2} />
                     </View>
                     <View style={styles.overviewTextCol}>
                       <Text style={styles.overviewLabel}>COMPETITION</Text>
-                      <Text style={styles.overviewValue} numberOfLines={1}>
+                      <Text style={[styles.overviewValue, { color: '#A58BFC' }]} numberOfLines={1}>
                         {activeMatchup.competition}
                       </Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 </View>
 
                 {/* Right Column: Kickoff & Broadcast */}

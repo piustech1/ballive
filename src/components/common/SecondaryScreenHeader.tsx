@@ -24,6 +24,7 @@ interface SecondaryScreenHeaderProps {
   title: string;
   subtitle?: string;
   onBack?: () => void;
+  onTitlePress?: () => void;
   rightAction?: HeaderAction;
   secondaryRightAction?: HeaderAction;
   rightCustomComponent?: React.ReactNode;
@@ -34,6 +35,7 @@ export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
   title,
   subtitle,
   onBack,
+  onTitlePress,
   rightAction,
   secondaryRightAction,
   rightCustomComponent,
@@ -71,9 +73,23 @@ export const SecondaryScreenHeader: React.FC<SecondaryScreenHeaderProps> = ({
         <View style={styles.titleContainer}>
           {subtitle ? (
             <>
-              <Text style={styles.competitionLabel} numberOfLines={1} ellipsizeMode="tail">
-                {title}
-              </Text>
+              {onTitlePress ? (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={onTitlePress}
+                  hitSlop={{ top: 6, bottom: 4, left: 4, right: 8 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${title} competition`}
+                >
+                  <Text style={styles.competitionLabel} numberOfLines={1} ellipsizeMode="tail">
+                    {title}
+                  </Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.competitionLabel} numberOfLines={1} ellipsizeMode="tail">
+                  {title}
+                </Text>
+              )}
               <Text style={styles.matchTitleText} numberOfLines={1} ellipsizeMode="tail">
                 {subtitle}
               </Text>

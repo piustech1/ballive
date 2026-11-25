@@ -17,6 +17,20 @@ interface ExploreCompetitionsProps {
   onCompetitionPress: (competition: DiscoverCompetition) => void;
 }
 
+const getCompetitionSubLabel = (comp: DiscoverCompetition): string => {
+  if (comp.season && !/202[0-5]/.test(comp.season)) {
+    return comp.season;
+  }
+  const s = (comp.sport || '').toLowerCase();
+  if (s === 'basketball') return 'Basketball';
+  if (s === 'hockey') return 'Ice Hockey';
+  if (s === 'american_football') return 'American Football';
+  if (s === 'tennis') return 'Tennis';
+  if (s === 'cricket') return 'Cricket';
+  if (s === 'motorsport') return 'Motorsport';
+  return 'Football';
+};
+
 export const ExploreCompetitions: React.FC<ExploreCompetitionsProps> = ({
   competitions,
   onSeeAllPress,
@@ -57,10 +71,10 @@ export const ExploreCompetitions: React.FC<ExploreCompetitionsProps> = ({
               <CompetitionLogo
                 uri={comp.logoUrl}
                 competitionId={comp.id}
-                size={40}
+                size={38}
               />
               <View style={styles.regionBadge}>
-                <Text style={styles.regionText}>{comp.country}</Text>
+                <Text style={styles.regionText} numberOfLines={1}>{comp.country}</Text>
               </View>
             </View>
 
@@ -70,7 +84,7 @@ export const ExploreCompetitions: React.FC<ExploreCompetitionsProps> = ({
                 {comp.name}
               </Text>
               <Text style={styles.seasonText} numberOfLines={1}>
-                {comp.season}
+                {getCompetitionSubLabel(comp)}
               </Text>
             </View>
           </TouchableOpacity>

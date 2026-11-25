@@ -1,33 +1,65 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal,
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Platform,
 } from 'react-native';
-import { ArrowLeft, Check, Plus, Shield } from 'lucide-react-native';
+import { Check, Plus, Shield } from 'lucide-react-native';
 import Colors from '../../../theme/colors';
 import { SecondaryScreenHeader } from '../../../components/common/SecondaryScreenHeader';
-import { POPULAR_TEAMS } from '../../../constants/discoverData';
+import { POPULAR_TEAMS, PopularTeam } from '../../../constants/discoverData';
 import { TeamCrest } from '../../../components/common/TeamCrest';
+import { popularTeamsService } from '../../../services/popularTeamsService';
+import { normalizeTeamId } from '../../../services/profileStorage';
+import { findTeamById } from '../../../navigation/navHelpers';
 
 interface FollowedTeamsModalProps {
   visible: boolean;
   followedTeamIds: string[];
-  onToggleTeam: (teamId: string) => void;
+  followedTeamsMeta?: Record<string, PopularTeam>;
+  onToggleTeam: (team: PopularTeam) => void;
+  onSelectTeam?: (team: PopularTeam) => void;
   onClose: () => void;
 }
 
 export const FollowedTeamsModal: React.FC<FollowedTeamsModalProps> = ({
   visible,
   followedTeamIds,
+  followedTeamsMeta,
   onToggleTeam,
+  onSelectTeam,
   onClose,
 }) => {
+  const { normalizedSet, teamRows } = useMemo(() => {
+    const normIds = followedTeamIds.map(normalizeTeamId).filter(Boolean);
+    const set = new Set(normIds);
+    const seen = new Set<string>();
+    const list: PopularTeam[] = [];
+
+    const addUnique = (t: PopularTeam) => {
+      const nid = normalizeTeamId(t.id);
+      if (seen.has(nid)) return;
+      seen.add(nid);
+      list.push({ ...t, id: nid });
+    };
+
+    // 1. Followed teams first (including dynamically discovered clubs)
+    followedTeamIds.forEach(rawId => {
+      const nid = normalizeTeamId(rawId);
+      const snap = followedTeamsMeta?.[nid] || followedTeamsMeta?.[rawId] || findTeamById(rawId);
+      addUnique(snap);
+    });
+
+    // 2. Remaining dynamic & popular clubs to discover
+    [...popularTeamsService.getCachedPopularTeams(), ...POPULAR_TEAMS].forEach(addUnique);
+
+    return { normalizedSet: set, teamRows: list };
+  }, [followedTeamIds, followedTeamsMeta]);
+
   return (
     <Modal
       visible={visible}
@@ -38,7 +70,7 @@ export const FollowedTeamsModal: React.FC<FollowedTeamsModalProps> = ({
       <View style={styles.container}>
         <SecondaryScreenHeader
           title="Followed Teams"
-          subtitle={`${followedTeamIds.length} ${followedTeamIds.length === 1 ? 'club' : 'clubs'} followed`}
+          subtitle={`${normalizedSet.size} ${normalizedSet.size === 1 ? 'club' : 'clubs'} followed`}
           onBack={onClose}
         />
 
@@ -48,13 +80,25 @@ export const FollowedTeamsModal: React.FC<FollowedTeamsModalProps> = ({
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.sectionHeading}>CLUBS IN YOUR RADAR</Text>
+          <Text style={styles.sectionHeading}>TEAMS & CLUBS</Text>
 
-          {POPULAR_TEAMS.map(team => {
-            const isFollowed = followedTeamIds.includes(team.id);
+          {teamRows.map(team => {
+            const isFollowed = normalizedSet.has(normalizeTeamId(team.id));
+            const sub1 = [team.country, team.stadium].filter(Boolean).join(' • ');
+            const sub2 = team.competitionName || team.domesticTitle;
 
             return (
-              <View key={team.id} style={styles.teamCard}>
+              <TouchableOpacity
+                key={team.id}
+                activeOpacity={onSelectTeam ? 0.8 : 1}
+                onPress={() => {
+                  if (onSelectTeam) {
+                    onClose();
+                    onSelectTeam(team);
+                  }
+                }}
+                style={styles.teamCard}
+              >
                 <TeamCrest
                   uri={team.crestUrl}
                   teamName={team.name}
@@ -63,16 +107,17 @@ export const FollowedTeamsModal: React.FC<FollowedTeamsModalProps> = ({
                 />
 
                 <View style={styles.infoCol}>
-                  <Text style={styles.teamName}>{team.name}</Text>
-                  <Text style={styles.teamMeta}>
-                    {team.country} • {team.stadium}
-                  </Text>
-                  <Text style={styles.teamHonors}>{team.domesticTitle}</Text>
+                  <Text style={styles.teamName} numberOfLines={1}>{team.name}</Text>
+                  <Text style={styles.teamMeta} numberOfLines={1}>{sub1}</Text>
+                  {sub2 ? <Text style={styles.teamHonors} numberOfLines={1}>{sub2}</Text> : null}
                 </View>
 
                 <TouchableOpacity
                   style={[styles.followBtn, isFollowed && styles.followBtnActive]}
-                  onPress={() => onToggleTeam(team.id)}
+                  onPress={e => {
+                    e.stopPropagation();
+                    onToggleTeam(team);
+                  }}
                   activeOpacity={0.75}
                   accessibilityRole="button"
                   accessibilityLabel={isFollowed ? `Unfollow ${team.name}` : `Follow ${team.name}`}
@@ -89,16 +134,16 @@ export const FollowedTeamsModal: React.FC<FollowedTeamsModalProps> = ({
                     </>
                   )}
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             );
           })}
 
-          {followedTeamIds.length === 0 && (
+          {normalizedSet.size === 0 && (
             <View style={styles.emptyBox}>
               <Shield size={36} color={Colors.textMuted} strokeWidth={1.8} />
-              <Text style={styles.emptyTitle}>No clubs followed yet</Text>
+              <Text style={styles.emptyTitle}>No teams followed yet</Text>
               <Text style={styles.emptySubtitle}>
-                Tap Follow on any club above to receive personalized match streams and updates.
+                Tap Follow on any team above to keep quick access in your Saved tab.
               </Text>
             </View>
           )}

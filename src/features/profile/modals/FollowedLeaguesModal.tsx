@@ -1,32 +1,62 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Modal,
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  Image,
   StyleSheet,
   Platform,
 } from 'react-native';
-import { ArrowLeft, Check, Plus, Trophy } from 'lucide-react-native';
+import { Check, Plus, Trophy } from 'lucide-react-native';
 import Colors from '../../../theme/colors';
 import { SecondaryScreenHeader } from '../../../components/common/SecondaryScreenHeader';
-import { POPULAR_LEAGUES } from '../../../constants/discoverData';
+import { CompetitionLogo } from '../../../components/common/CompetitionLogo';
+import { EXPLORE_COMPETITIONS, DiscoverCompetition } from '../../../constants/discoverData';
+import { normalizeLeagueId } from '../../../services/profileStorage';
+import { findCompetitionById } from '../../../navigation/navHelpers';
 
 interface FollowedLeaguesModalProps {
   visible: boolean;
   followedLeagueIds: string[];
-  onToggleLeague: (leagueId: string) => void;
+  followedLeaguesMeta?: Record<string, DiscoverCompetition>;
+  onToggleLeague: (comp: DiscoverCompetition) => void;
+  onSelectLeague?: (comp: DiscoverCompetition) => void;
   onClose: () => void;
 }
 
 export const FollowedLeaguesModal: React.FC<FollowedLeaguesModalProps> = ({
   visible,
   followedLeagueIds,
+  followedLeaguesMeta,
   onToggleLeague,
+  onSelectLeague,
   onClose,
 }) => {
+  const { normalizedSet, compRows } = useMemo(() => {
+    const normIds = followedLeagueIds.map(normalizeLeagueId).filter(Boolean);
+    const set = new Set(normIds);
+    const seen = new Set<string>();
+    const list: DiscoverCompetition[] = [];
+
+    const addUnique = (c: DiscoverCompetition) => {
+      const nid = normalizeLeagueId(c.id);
+      if (seen.has(nid)) return;
+      seen.add(nid);
+      list.push({ ...c, id: nid });
+    };
+
+    followedLeagueIds.forEach(rawId => {
+      const nid = normalizeLeagueId(rawId);
+      const snap = followedLeaguesMeta?.[nid] || followedLeaguesMeta?.[rawId] || findCompetitionById(rawId);
+      addUnique(snap);
+    });
+
+    EXPLORE_COMPETITIONS.forEach(addUnique);
+
+    return { normalizedSet: set, compRows: list };
+  }, [followedLeagueIds, followedLeaguesMeta]);
+
   return (
     <Modal
       visible={visible}
@@ -37,7 +67,7 @@ export const FollowedLeaguesModal: React.FC<FollowedLeaguesModalProps> = ({
       <View style={styles.container}>
         <SecondaryScreenHeader
           title="Followed Leagues"
-          subtitle={`${followedLeagueIds.length} ${followedLeagueIds.length === 1 ? 'competition' : 'competitions'} tracked`}
+          subtitle={`${normalizedSet.size} ${normalizedSet.size === 1 ? 'competition' : 'competitions'} tracked`}
           onBack={onClose}
         />
 
@@ -49,35 +79,49 @@ export const FollowedLeaguesModal: React.FC<FollowedLeaguesModalProps> = ({
         >
           <Text style={styles.sectionHeading}>GLOBAL COMPETITIONS</Text>
 
-          {POPULAR_LEAGUES.map(league => {
-            const isFollowed = followedLeagueIds.includes(league.id);
+          {compRows.map(comp => {
+            const isFollowed = normalizedSet.has(normalizeLeagueId(comp.id));
 
             return (
-              <View key={league.id} style={styles.leagueCard}>
-                <View style={styles.logoWrapper}>
-                  <Image
-                    source={{ uri: league.logoUrl }}
-                    style={styles.logoImage}
-                    resizeMode="contain"
-                  />
-                </View>
+              <TouchableOpacity
+                key={comp.id}
+                activeOpacity={onSelectLeague ? 0.8 : 1}
+                onPress={() => {
+                  if (onSelectLeague) {
+                    onClose();
+                    onSelectLeague(comp);
+                  }
+                }}
+                style={styles.leagueCard}
+              >
+                <CompetitionLogo
+                  uri={comp.logoUrl}
+                  competitionId={comp.id}
+                  size={42}
+                  containerStyle={{ marginRight: 14 }}
+                />
 
                 <View style={styles.infoCol}>
-                  <Text style={styles.leagueName}>{league.name}</Text>
-                  <Text style={styles.leagueMeta}>
-                    {league.country} • {league.currentMatchweek}
+                  <Text style={styles.leagueName} numberOfLines={1}>{comp.name}</Text>
+                  <Text style={styles.leagueMeta} numberOfLines={1}>
+                    {comp.country}{comp.region && comp.region !== comp.country ? ` • ${comp.region}` : ''}
                   </Text>
-                  <Text style={styles.leagueDesc} numberOfLines={1}>
-                    {league.description}
-                  </Text>
+                  {comp.teamsCount ? (
+                    <Text style={styles.leagueDesc} numberOfLines={1}>
+                      {comp.teamsCount} Teams competing
+                    </Text>
+                  ) : null}
                 </View>
 
                 <TouchableOpacity
                   style={[styles.followBtn, isFollowed && styles.followBtnActive]}
-                  onPress={() => onToggleLeague(league.id)}
+                  onPress={e => {
+                    e.stopPropagation();
+                    onToggleLeague(comp);
+                  }}
                   activeOpacity={0.75}
                   accessibilityRole="button"
-                  accessibilityLabel={isFollowed ? `Unfollow ${league.name}` : `Follow ${league.name}`}
+                  accessibilityLabel={isFollowed ? `Unfollow ${comp.name}` : `Follow ${comp.name}`}
                 >
                   {isFollowed ? (
                     <>
@@ -91,16 +135,16 @@ export const FollowedLeaguesModal: React.FC<FollowedLeaguesModalProps> = ({
                     </>
                   )}
                 </TouchableOpacity>
-              </View>
+              </TouchableOpacity>
             );
           })}
 
-          {followedLeagueIds.length === 0 && (
+          {normalizedSet.size === 0 && (
             <View style={styles.emptyBox}>
               <Trophy size={36} color={Colors.textMuted} strokeWidth={1.8} />
               <Text style={styles.emptyTitle}>No leagues followed yet</Text>
               <Text style={styles.emptySubtitle}>
-                Follow top divisions to get tournament standings and round schedules.
+                Follow competitions to keep them pinned in your Saved tab.
               </Text>
             </View>
           )}

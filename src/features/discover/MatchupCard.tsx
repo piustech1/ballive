@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { DiscoverMatchup } from '../../constants/discoverData';
 import { UniversalMatchCard } from '../../components/common/UniversalMatchCard';
+import { determineMatchRoute } from '../../navigation/navHelpers';
 
 export interface MatchupCardProps {
   matchup: DiscoverMatchup;
@@ -17,15 +18,8 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({
   onReminderToggle,
 }) => {
   const handlePress = () => {
-    const isLive =
-      matchup.status === 'LIVE' ||
-      Boolean(matchup.isLive) ||
-      (matchup.minute !== undefined && matchup.minute > 0) ||
-      matchup.playTime === 'HT' ||
-      Boolean(matchup.playTime && matchup.playTime.includes('LIVE')) ||
-      Boolean(matchup.hasLiveBroadcast || matchup.streamUrl);
-
-    if (isLive && onWatchPress) {
+    const route = determineMatchRoute(matchup);
+    if (route.name === 'LiveStreamDetails' && onWatchPress) {
       onWatchPress(matchup);
     } else {
       onMatchDetailsPress(matchup);

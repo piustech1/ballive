@@ -8,20 +8,23 @@ import {
   POPULAR_TEAMS,
   UPCOMING_HIGHLIGHTS,
 } from '../constants/discoverData';
-import { LIVE_MATCHES, LiveMatch, FEATURED_COMPETITIONS, FeaturedCompetition } from '../constants/mockData';
-import { CLUB_CRESTS, LEAGUE_EMBLEMS } from '../constants/crests';
+import { LIVE_MATCHES, LiveMatch, FEATURED_COMPETITIONS, SportType } from '../constants/mockData';
+import { LEAGUE_EMBLEMS } from '../constants/crests';
+import { resolveCompetitionLogo } from '../components/common/CompetitionLogo';
 import { getTeamCrest } from '../utils/teamCrestResolver';
 import { API_CONFIG, getBroadcastChannelId, isUnsupportedStreamingCompetition } from '../config/api';
 import { resolveSportBackground } from '../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../utils/matchStatus';
 import { calculateMatchAnticipationScore } from '../services/matchOfTheDayService';
+import { competitionResolverService } from '../services/competitionResolverService';
+import { popularTeamsService } from '../services/popularTeamsService';
+import { normalizeLeagueId, normalizeTeamId } from '../services/profileStorage';
 import { ScreenRoute } from './NavigationContext';
 
 /**
  * Resolves any LiveMatch from the Home screen into a full DiscoverMatchup.
  */
 export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
-  // Check if an existing matchup matches this id or title
   const existing = UPCOMING_HIGHLIGHTS.find(
     m => m.id === live.id || (m.homeTeam.name.toLowerCase() === live.homeTeam.toLowerCase() && m.awayTeam.name.toLowerCase() === live.awayTeam.toLowerCase())
   );
@@ -53,59 +56,42 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     };
   }
 
-  // Derive club crests
   const homeCrest = live.homeBadge || getTeamCrest(live.homeTeam);
   const awayCrest = live.awayBadge || getTeamCrest(live.awayTeam);
 
-  // Derive competition emblem
-  const compLower = live.competition.toLowerCase();
-  let compLogo = LEAGUE_EMBLEMS['ucl'];
-  if (compLower.includes('premier')) compLogo = LEAGUE_EMBLEMS['premier-league'];
-  else if (compLower.includes('laliga')) compLogo = LEAGUE_EMBLEMS['laliga'];
-  else if (compLower.includes('serie')) compLogo = LEAGUE_EMBLEMS['serie-a'];
-  else if (compLower.includes('bundesliga')) compLogo = LEAGUE_EMBLEMS['bundesliga'];
-  else if (compLower.includes('nba') || compLower.includes('basketball')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png';
-  else if (compLower.includes('nhl') || compLower.includes('hockey')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png';
-  else if (compLower.includes('nfl') || compLower.includes('american football')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png';
-  else if (compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png';
-  else if (compLower.includes('tennis')) compLogo = 'https://a.espncdn.com/i/teamlogos/leagues/500/tennis.png';
+  const resolvedComp = competitionResolverService.resolveCompetition({
+    rawId: live.id,
+    competition: live.competition,
+    rawName: live.title,
+    homeTeam: live.homeTeam,
+    awayTeam: live.awayTeam,
+    sport: live.sport,
+  });
 
-  const isExplicitSoccer =
-    compLower.includes('soccer') ||
-    compLower.includes('premier') ||
-    compLower.includes('efl') ||
-    compLower.includes('championship') ||
-    compLower.includes('league one') ||
-    compLower.includes('league two') ||
-    compLower.includes('la liga') ||
-    compLower.includes('laliga') ||
-    compLower.includes('serie') ||
-    compLower.includes('bundesliga') ||
-    compLower.includes('ligue') ||
-    compLower.includes('copa') ||
-    compLower.includes('fa cup') ||
-    compLower.includes('carabao') ||
-    compLower.includes('uefa') ||
-    compLower.includes('champions') ||
-    compLower.includes('europa') ||
-    compLower.includes('conference') ||
-    compLower.includes('fifa') ||
-    compLower.includes('friendly');
+  const effectiveCompetition =
+    resolvedComp.isIdentified && (!live.competition || live.competition === 'Global Football' || live.competition === 'Football')
+      ? resolvedComp.name
+      : live.competition;
 
-  const liveSportLower = ((live.sport as any) || '').toLowerCase();
-  const isLiveSoccer = liveSportLower === 'soccer' || liveSportLower === 'football';
+  const compLogo =
+    live.competitionLogo ||
+    (resolvedComp.isIdentified ? resolvedComp.logoUrl : resolveCompetitionLogo(effectiveCompetition));
 
-  const sport: any = (isExplicitSoccer || isLiveSoccer) && !compLower.includes('nhl') && !compLower.includes('nba') && !compLower.includes('nfl')
-    ? 'soccer'
+  const compLower = (effectiveCompetition || '').toLowerCase();
+  const sport: any = resolvedComp.isIdentified
+    ? resolvedComp.sport === 'racing'
+      ? 'motorsport'
+      : resolvedComp.sport
     : live.sport || (
-      compLower.includes('nba') || compLower.includes('basketball') ? 'basketball' :
-      compLower.includes('nhl') || compLower.includes('hockey') ? 'hockey' :
-      compLower.includes('nfl') || compLower.includes('american football') ? 'american_football' :
-      compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport') ? 'motorsport' :
-      compLower.includes('tennis') ? 'tennis' : 'soccer'
-    );
+        compLower.includes('nba') || compLower.includes('euroleague') || compLower.includes('basketball') ? 'basketball' :
+        compLower.includes('nhl') || compLower.includes('hockey') || compLower.includes('allsvenskan') || compLower.includes('icehl') ? 'hockey' :
+        compLower.includes('nfl') || compLower.includes('american football') ? 'american_football' :
+        compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport') ? 'motorsport' :
+        compLower.includes('tennis') ? 'tennis' :
+        compLower.includes('cricket') ? 'cricket' : 'soccer'
+      );
 
-  const venue = compLower.includes('nba') ? 'NBA Arena' : compLower.includes('nhl') ? 'NHL Ice Arena' : 'Premier Sports Stadium';
+  const venue = live.venue || '';
 
   const statusInfo = normalizeMatchStatus({
     rawStatus: live.status,
@@ -125,8 +111,8 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     ? 'Full Time'
     : (rawKickoff.includes('EAT') ? rawKickoff : formatKickoffEAT(rawKickoff));
 
-  const isUnsupported = isUnsupportedStreamingCompetition(live.competition, live.title);
-  const compChannel = isUnsupported ? '' : getBroadcastChannelId(live.competition, live.sport);
+  const isUnsupported = isUnsupportedStreamingCompetition(effectiveCompetition, live.title);
+  const compChannel = isUnsupported ? '' : getBroadcastChannelId(effectiveCompetition, sport);
   const resolvedStreamUrl = isUnsupported ? undefined : (live.streamUrl || (isLive ? `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${compChannel}.json` : undefined));
   const resolvedStreams = isUnsupported
     ? undefined
@@ -138,7 +124,7 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
 
   const poster = resolveSportBackground(
     sport,
-    live.competition,
+    effectiveCompetition,
     live.imageUrl,
     live.homeTeam,
     live.awayTeam,
@@ -149,7 +135,7 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
 
   return {
     id: live.id,
-    competition: live.competition,
+    competition: effectiveCompetition,
     competitionLogo: compLogo,
     status,
     isLive,
@@ -180,7 +166,6 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
 
 /**
  * Returns the marquee Match of the Day dynamically derived from active live matches or marquee fixtures.
- * Strictly uses authentic match data and never fabricates scores or in-play clocks.
  */
 export function getMarqueeMatchOfTheDay(liveMatches?: LiveMatch[]): DiscoverMatchup | null {
   if (liveMatches && liveMatches.length > 0) {
@@ -200,13 +185,20 @@ export function getMarqueeMatchOfTheDay(liveMatches?: LiveMatch[]): DiscoverMatc
 }
 
 /**
- * Finds a competition by id, slug, or name from either explore competitions, popular leagues, or featured competitions.
+ * Finds or constructs an authentic competition object by id, slug, or name.
+ * Never silently defaults an unknown tournament to Premier League.
  */
-export function findCompetitionById(id: string): DiscoverCompetition {
-  if (!id) return EXPLORE_COMPETITIONS[0];
-  const clean = id.toLowerCase().trim();
+export function findCompetitionById(
+  idOrName: string,
+  optionalMeta?: { sport?: SportType; logoUrl?: string; country?: string }
+): DiscoverCompetition {
+  const raw = (idOrName || '').trim();
+  if (!raw) return EXPLORE_COMPETITIONS[0];
 
-  // Category & Sport Aliases
+  const clean = raw.toLowerCase();
+  const normalizedId = normalizeLeagueId(clean);
+
+  // Sport & Category Aliases
   if (clean === 'all') {
     return {
       id: 'all',
@@ -216,12 +208,10 @@ export function findCompetitionById(id: string): DiscoverCompetition {
       region: 'International',
       logoUrl: LEAGUE_EMBLEMS['all'],
       accentColor: '#7952FC',
-      season: '2025 Season',
-      teamsCount: 100,
       sport: 'other',
     };
   }
-  if (clean === 'football' || clean === 'soccer') {
+  if (clean === 'football' || clean === 'soccer' || clean === 'world football' || clean === 'global football') {
     return {
       id: 'football',
       name: 'World Football',
@@ -230,39 +220,26 @@ export function findCompetitionById(id: string): DiscoverCompetition {
       region: 'International',
       logoUrl: LEAGUE_EMBLEMS['football'],
       accentColor: '#10B981',
-      season: '2024/25 Season',
-      teamsCount: 200,
       sport: 'soccer',
     };
   }
-  if (clean === 'motorsport' || clean === 'f1' || clean === 'formula-1' || clean === 'formula1') {
-    const f1 = EXPLORE_COMPETITIONS.find(c => c.id === 'f1');
-    if (f1) return f1;
-  }
-  if (clean === 'nfl' || clean === 'american_football' || clean === 'american-football') {
-    const nfl = EXPLORE_COMPETITIONS.find(c => c.id === 'nfl');
-    if (nfl) return nfl;
-  }
-  if (clean === 'tennis') {
-    const tennis = EXPLORE_COMPETITIONS.find(c => c.id === 'tennis');
-    if (tennis) return tennis;
-  }
-  if (clean === 'cricket') {
-    const cricket = EXPLORE_COMPETITIONS.find(c => c.id === 'cricket');
-    if (cricket) return cricket;
-  }
-  if (clean === 'wc' || clean === 'world-cup') {
-    const wc = EXPLORE_COMPETITIONS.find(c => c.id === 'wc');
-    if (wc) return wc;
-  }
 
   const foundExplore = EXPLORE_COMPETITIONS.find(
-    c => c.id === clean || c.id === `comp-${clean}` || c.shortName.toLowerCase() === clean || c.name.toLowerCase() === clean
+    c =>
+      c.id === normalizedId ||
+      c.id === clean ||
+      c.id === `comp-${clean}` ||
+      c.shortName.toLowerCase() === clean ||
+      c.name.toLowerCase() === clean
   );
   if (foundExplore) return foundExplore;
 
   const foundLeague = POPULAR_LEAGUES.find(
-    l => l.id === clean || l.id === `league-${clean}` || l.name.toLowerCase() === clean
+    l =>
+      l.id === normalizedId ||
+      l.id === clean ||
+      l.id === `league-${clean}` ||
+      l.name.toLowerCase() === clean
   );
   if (foundLeague) {
     return {
@@ -270,47 +247,135 @@ export function findCompetitionById(id: string): DiscoverCompetition {
       name: foundLeague.name,
       shortName: foundLeague.name.split(' ')[0],
       country: foundLeague.country,
-      region: 'Europe',
+      region: foundLeague.country,
       logoUrl: foundLeague.logoUrl,
       accentColor: '#7952FC',
-      season: '2024/25 Season',
-      teamsCount: 20,
       sport: foundLeague.sport || 'soccer',
     };
   }
 
   const foundFeatured = FEATURED_COMPETITIONS.find(
-    f => f.id === clean || f.id === `comp-${clean}` || f.name.toLowerCase() === clean
+    f =>
+      f.id === normalizedId ||
+      normalizeLeagueId(f.id) === normalizedId ||
+      f.id === clean ||
+      f.id === `comp-${clean}` ||
+      f.name.toLowerCase() === clean
   );
   if (foundFeatured) {
     return {
-      id: foundFeatured.id,
+      id: normalizeLeagueId(foundFeatured.id),
       name: foundFeatured.name,
       shortName: foundFeatured.name.split(' ')[0],
       country: foundFeatured.country,
-      region: 'Europe',
+      region: foundFeatured.country,
       logoUrl: foundFeatured.crestUrl,
       accentColor: '#08B3E5',
-      season: foundFeatured.season,
-      teamsCount: foundFeatured.matchesCount * 2,
       sport: foundFeatured.sport || 'soccer',
     };
   }
 
-  // Fallback default
-  return EXPLORE_COMPETITIONS[0];
+  const resolved = competitionResolverService.resolveCompetition({
+    rawId: normalizedId || clean,
+    competition: raw,
+    sport: optionalMeta?.sport,
+  });
+
+  if (resolved.isIdentified) {
+    const canonId = normalizeLeagueId(resolved.id);
+    const exploreHit = EXPLORE_COMPETITIONS.find(c => c.id === canonId || c.id === resolved.id);
+    if (exploreHit) return exploreHit;
+
+    return {
+      id: canonId || resolved.id,
+      name: resolved.name,
+      shortName: resolved.shortName,
+      country: optionalMeta?.country || resolved.country,
+      region: resolved.region,
+      logoUrl: optionalMeta?.logoUrl || resolved.logoUrl,
+      accentColor: resolved.accentColor,
+      sport: (resolved.sport === 'racing' ? 'motorsport' : resolved.sport) as SportType,
+    };
+  }
+
+  const slug = normalizedId || clean.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return {
+    id: slug || 'competition',
+    name: raw,
+    shortName: raw.split(' ').slice(0, 2).join(' '),
+    country: optionalMeta?.country || 'International',
+    region: optionalMeta?.country || 'International',
+    logoUrl: optionalMeta?.logoUrl || resolveCompetitionLogo(raw),
+    accentColor: '#7952FC',
+    sport: optionalMeta?.sport || 'soccer',
+  };
 }
 
 /**
- * Finds a team by id or name from POPULAR_TEAMS.
+ * Finds or constructs an authentic PopularTeam object by id or name.
+ * Never silently falls back an unknown team to Real Madrid.
  */
-export function findTeamById(idOrName: string): PopularTeam {
-  const normalized = idOrName.toLowerCase();
-  const found = POPULAR_TEAMS.find(t => t.id === normalized || t.name.toLowerCase() === normalized || t.shortName.toLowerCase() === normalized);
-  if (found) return found;
+export function findTeamById(
+  idOrName: string,
+  optionalMeta?: {
+    name?: string;
+    crestUrl?: string;
+    sport?: SportType;
+    country?: string;
+    stadium?: string;
+    competitionId?: string;
+    competitionName?: string;
+  }
+): PopularTeam {
+  const query = (optionalMeta?.name || idOrName || '').trim();
+  const normId = normalizeTeamId(idOrName);
+  const nameLower = query.toLowerCase();
 
-  // Fallback team
-  return POPULAR_TEAMS[0];
+  const pool = [...POPULAR_TEAMS, ...popularTeamsService.getCachedPopularTeams()];
+  const found = pool.find(
+    t =>
+      t.id === idOrName ||
+      normalizeTeamId(t.id) === normId ||
+      t.name.toLowerCase() === nameLower ||
+      t.shortName.toLowerCase() === nameLower
+  );
+  if (found) {
+    return {
+      ...found,
+      crestUrl:
+        found.crestUrl || optionalMeta?.crestUrl || getTeamCrest(found.name),
+      competitionName: found.competitionName || optionalMeta?.competitionName,
+      competitionId: found.competitionId || optionalMeta?.competitionId,
+    };
+  }
+
+  const displayName =
+    optionalMeta?.name ||
+    (idOrName.startsWith('team-')
+      ? idOrName
+          .replace(/^team-/, '')
+          .split('-')
+          .map(w => (w ? w[0].toUpperCase() + w.slice(1) : ''))
+          .join(' ')
+      : idOrName);
+
+  const words = displayName.trim().split(/\s+/);
+  const shortName =
+    words.length >= 2
+      ? words.slice(0, 3).map(w => w[0]).join('').toUpperCase()
+      : displayName.slice(0, 3).toUpperCase();
+
+  return {
+    id: normId || `team-${displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+    name: displayName,
+    shortName: shortName || 'CLUB',
+    country: optionalMeta?.country || 'International',
+    crestUrl: optionalMeta?.crestUrl || getTeamCrest(displayName),
+    stadium: optionalMeta?.stadium,
+    competitionId: optionalMeta?.competitionId,
+    competitionName: optionalMeta?.competitionName,
+    sport: optionalMeta?.sport || 'soccer',
+  };
 }
 
 /**

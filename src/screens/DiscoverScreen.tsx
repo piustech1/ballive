@@ -27,10 +27,12 @@ import {
 } from '../constants/discoverData';
 
 import { useAppNavigation } from '../navigation/NavigationContext';
-import { navigateToMatch } from '../navigation/navHelpers';
+import { navigateToMatch, findCompetitionById } from '../navigation/navHelpers';
 import { useProfile } from '../hooks/useProfile';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService, GlobalSearchResult } from '../services/sportsApiService';
+import { popularTeamsService } from '../services/popularTeamsService';
+import { normalizeLeagueId, normalizeTeamId } from '../services/profileStorage';
 import { sortMatchesWithLiveFirst, sortUpcomingChronologically } from '../utils/matchStatus';
 import { DiscoverSkeleton } from '../components/common/SkeletonLoader';
 
@@ -38,6 +40,9 @@ export const DiscoverScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
   const { toggleMatchReminder } = useProfile();
   const [searchQuery, setSearchQuery] = useState('');
+  const [dynamicPopularTeams, setDynamicPopularTeams] = useState<PopularTeam[]>(() =>
+    popularTeamsService.getCachedPopularTeams()
+  );
   const [liveHighlights, setLiveHighlights] = useState<DiscoverMatchup[]>(() => {
     const cached = streamingApiService.getCachedLiveMatches();
     return cached && cached.length > 0
@@ -80,6 +85,15 @@ export const DiscoverScreen: React.FC = () => {
         if (isMounted) setIsLoading(false);
       });
 
+    popularTeamsService
+      .getPopularTeams()
+      .then(teams => {
+        if (isMounted && teams && teams.length > 0) {
+          setDynamicPopularTeams(teams);
+        }
+      })
+      .catch(() => {});
+
     return () => { isMounted = false; };
   }, []);
 
@@ -113,25 +127,26 @@ export const DiscoverScreen: React.FC = () => {
             c.shortName.toLowerCase().includes(query)
         );
 
-    // Merge dynamically discovered global leagues (e.g. MLS, Saudi Pro League)
+    // Merge dynamically discovered global leagues (e.g. MLS, Scottish Premiership, Saudi Pro League)
     const dynamicComps: DiscoverCompetition[] = globalSearchResults
       .filter(r => r.type === 'competition')
-      .map(r => ({
-        id: r.id,
-        name: r.name,
-        shortName: r.name.split(' ').map(w => w[0]).join('').substring(0, 4).toUpperCase(),
-        country: r.category || 'Global',
-        region: 'International',
-        logoUrl: r.logo,
-        accentColor: '#7952FC',
-        season: '2025/2026',
-        teamsCount: 20,
-        sport: (r.sport as any) || 'soccer',
-      }));
+      .map(r => {
+        const canonical = findCompetitionById(r.leagueKey || r.name, {
+          logoUrl: r.logo,
+          sport: (r.sport as any) || 'soccer',
+          country: r.country || r.category,
+        });
+        return {
+          ...canonical,
+          id: r.leagueKey ? normalizeLeagueId(r.leagueKey) : canonical.id,
+          name: r.name,
+          logoUrl: r.logo || canonical.logoUrl,
+        };
+      });
 
     const combined = [...base];
     dynamicComps.forEach(dc => {
-      if (!combined.some(existing => existing.name.toLowerCase() === dc.name.toLowerCase())) {
+      if (!combined.some(existing => existing.name.toLowerCase() === dc.name.toLowerCase() || existing.id === dc.id)) {
         combined.push(dc);
       }
     });
@@ -152,12 +167,11 @@ export const DiscoverScreen: React.FC = () => {
     const dynamicLeagues: PopularLeague[] = globalSearchResults
       .filter(r => r.type === 'competition')
       .map(r => ({
-        id: r.id,
+        id: r.leagueKey || normalizeLeagueId(r.id),
         name: r.name,
-        country: r.category || 'Global',
-        description: `${r.name} Championship`,
+        country: r.category || 'International',
+        description: `${r.name} Competition`,
         logoUrl: r.logo,
-        currentMatchweek: 'Season 2025/26',
         sport: (r.sport as any) || 'soccer',
       }));
 
@@ -172,39 +186,43 @@ export const DiscoverScreen: React.FC = () => {
   }, [query, globalSearchResults]);
 
   const filteredTeams = useMemo(() => {
+    const pool = dynamicPopularTeams.length > 0 ? dynamicPopularTeams : POPULAR_TEAMS;
     const base = !query
-      ? POPULAR_TEAMS
-      : POPULAR_TEAMS.filter(
+      ? pool
+      : pool.filter(
           t =>
             t.name.toLowerCase().includes(query) ||
             t.country.toLowerCase().includes(query) ||
             t.shortName.toLowerCase().includes(query) ||
-            t.domesticTitle.toLowerCase().includes(query)
+            (t.competitionName || '').toLowerCase().includes(query)
         );
 
     // Merge dynamically discovered global teams (e.g. Al Nassr, Inter Miami, Boca Juniors)
     const dynamicTeams: PopularTeam[] = globalSearchResults
       .filter(r => r.type === 'team')
       .map(r => ({
-        id: r.id,
+        id: normalizeTeamId(`team-${r.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`),
         name: r.name,
         shortName: r.name.substring(0, 3).toUpperCase(),
-        country: r.category || 'Global',
+        country: r.category || (r.sport ? r.sport.toUpperCase() : 'International'),
         crestUrl: r.logo,
-        stadium: `${r.name} Stadium`,
-        domesticTitle: r.category || 'Professional Club',
+        competitionId: r.leagueKey,
+        competitionName: r.category,
+        espnId: r.espnId,
+        espnSport: r.espnSport,
+        espnLeague: r.espnLeague,
         sport: (r.sport as any) || 'soccer',
       }));
 
     const combined = [...base];
     dynamicTeams.forEach(dt => {
-      if (!combined.some(existing => existing.name.toLowerCase() === dt.name.toLowerCase())) {
+      if (!combined.some(existing => existing.name.toLowerCase() === dt.name.toLowerCase() || existing.id === dt.id)) {
         combined.push(dt);
       }
     });
 
     return combined;
-  }, [query, globalSearchResults]);
+  }, [dynamicPopularTeams, query, globalSearchResults]);
 
   const filteredMatchups = useMemo(() => {
     const list = liveHighlights.length > 0 ? liveHighlights : UPCOMING_HIGHLIGHTS;
@@ -290,7 +308,7 @@ export const DiscoverScreen: React.FC = () => {
             <View style={styles.emptyIconCircle}>
               <SearchX size={38} color={Colors.textMuted} strokeWidth={1.8} />
             </View>
-            <Text style={styles.emptyTitle}>No football results found</Text>
+            <Text style={styles.emptyTitle}>No results found</Text>
             <Text style={styles.emptySubtitle}>
               We couldn't find any teams, competitions, or matches matching "{searchQuery}".
             </Text>
@@ -333,16 +351,11 @@ export const DiscoverScreen: React.FC = () => {
               />
             )}
 
-            {/* ── E. UPCOMING HIGHLIGHTS (Football Matchup Cards) ── */}
+            {/* ── E. UPCOMING HIGHLIGHTS (Matchup Cards) ── */}
             {filteredMatchups.length > 0 && (
               <UpcomingHighlights
                 matchups={filteredMatchups}
-                onViewAllPress={() =>
-                  navigate({
-                    name: 'MatchDetails',
-                    params: { matchup: UPCOMING_HIGHLIGHTS[0] },
-                  })
-                }
+                onViewAllPress={() => navigate({ name: 'AllLiveStreams' })}
                 onMatchDetailsPress={handleMatchDetailsPress}
                 onWatchPress={handleWatchPress}
                 onReminderToggle={handleReminderToggle}

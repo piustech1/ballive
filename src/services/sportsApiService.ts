@@ -60,32 +60,51 @@ export interface GlobalSearchResult {
   category: string;
   logo: string;
   sport?: string;
+  espnId?: string;
+  espnSport?: string;
+  espnLeague?: string;
+  leagueKey?: string;
+  country?: string;
 }
 
 export function resolveLeagueKey(rawKey?: string | null): string {
   if (!rawKey) return '';
   const clean = rawKey.toLowerCase().replace(/^(comp-|league-)/, '').trim();
   if (isUnsupportedStreamingCompetition(clean)) return '';
-  if (clean === 'motorsport' || clean === 'formula1' || clean === 'formula-1') return 'f1';
+  if (clean === 'motorsport' || clean === 'formula1' || clean === 'formula-1' || clean.includes('formula 1')) return 'f1';
   if (clean === 'mma' || clean === 'wwe' || clean === 'boxing' || clean === 'combat') return '';
   if (clean === 'american_football' || clean === 'american-football' || clean === 'gridiron') return 'nfl';
   if (clean === 'basketball') return 'nba';
   if (clean === 'hockey') return 'nhl';
-  if (clean === 'premier-league' || clean === 'premier' || clean === 'epl') return 'pl';
-  if (clean === 'champions-league' || clean === 'champions') return 'ucl';
-  if (clean === 'europa-league' || clean === 'europa') return 'uel';
-  if (clean === 'la-liga' || clean === 'primera-division') return 'laliga';
-  if (clean === 'serie-a') return 'seriea';
-  if (clean === 'ligue-1') return 'ligue1';
+  if (clean === 'premier-league' || clean === 'premier_league' || clean === 'english premier league' || clean === 'premier league' || clean === 'premier' || clean === 'epl' || clean === 'eng.1') return 'pl';
+  if (clean === 'champions-league' || clean === 'champions_league' || clean === 'uefa champions league' || clean === 'champions' || clean === 'uefa.champions') return 'ucl';
+  if (clean === 'europa-league' || clean === 'europa_league' || clean === 'uefa europa league' || clean === 'europa' || clean === 'uefa.europa') return 'uel';
+  if (clean === 'uecl' || clean === 'conference-league' || clean === 'conference_league' || clean === 'uefa conference league' || clean === 'uefa.europa.conf') return 'uecl';
+  if (clean === 'la-liga' || clean === 'la liga' || clean === 'laliga ea sports' || clean === 'esp.1') return 'laliga';
+  if (clean === 'serie-a' || clean === 'serie_a' || clean === 'serie a' || clean === 'serie a enilive' || clean === 'ita.1') return 'seriea';
+  if (clean === 'ger.1' || clean === 'german bundesliga') return 'bundesliga';
+  if (clean === 'ligue-1' || clean === 'ligue_1' || clean === 'ligue 1' || clean === 'fra.1' || clean.includes('ligue 1')) return 'ligue1';
+  if (clean === 'liga-mx' || clean === 'liga_mx' || clean === 'liga mx' || clean === 'mex.1') return 'liga_mx';
+  if (clean === 'argentina-primera' || clean === 'argentina_primera' || clean === 'liga profesional argentina' || clean === 'argentina primera' || clean === 'arg.1') return 'argentina_primera';
+  if (clean === 'afc-champions-league' || clean === 'afc_champions_league' || clean === 'afc champions league elite' || clean === 'afc.champions') return 'afc_champions_league';
+  if (clean === 'ukrainian-premier' || clean === 'ukrainian_premier' || clean === 'ukrainian premier league' || clean === 'ukr.1') return 'ukrainian_premier';
+  if (clean === 'euroleague-basketball' || clean === 'euroleague basketball') return 'euroleague';
+  if (clean === 'germany-del' || clean === 'germany del') return 'del';
+  if (clean === 'austrian-ice-hockey-league' || clean === 'austrian ice hockey league') return 'icehl';
+  if (clean === 'hockey-allsvenskan' || clean === 'hockeyallsvenskan') return 'hockey_allsvenskan';
+  if (clean === 'russia-mhl' || clean === 'russia mhl') return 'russia_mhl';
+  if (clean === 'world-cup' || clean === 'world_cup' || clean === 'fifa world cup' || clean === 'fifa.world') return 'wc';
   if (clean === 'fifa-friendly' || clean === 'friendly' || clean === 'friendlies') return 'fifa_friendly';
-  if (clean === 'j1' || clean === 'j1-league' || clean === 'j-league' || clean === 'meiji-yasuda-j1-league') return 'j1';
-  if (clean === 'saudi-first' || clean === 'saudi-first-division' || clean === 'yelo-league' || clean === 'yelo') return 'saudi_first';
-  if (clean === 'fifa-u17' || clean === 'fifa-u-17' || clean === 'u17') return 'fifa_u17';
-  if (clean === 'csl' || clean === 'chinese-super-league') return 'csl';
-  if (clean === 'egyptian-premier' || clean === 'egyptian-premier-league') return 'egyptian_premier';
-  if (clean === 'saudi-pro' || clean === 'saudi-pro-league' || clean === 'spl' || clean === 'roshn') return 'saudi_pro';
-  if (clean === 'isl' || clean === 'indian-super-league') return 'isl';
-  if (clean === 'kenyan-premier' || clean === 'kenyan-premier-league' || clean === 'fkf' || clean === 'fkf-premier-league') return 'kenyan_premier';
+  if (clean === 'j1' || clean === 'j1-league' || clean === 'j1_league' || clean === 'j-league' || clean === 'meiji-yasuda-j1-league' || clean === 'jpn.1') return 'j1_league';
+  if (clean === 'saudi-first' || clean === 'saudi-first-division' || clean === 'saudi_first_division' || clean === 'yelo-league' || clean === 'yelo' || clean === 'ksa.2') return 'saudi_first_division';
+  if (clean === 'fifa-u17' || clean === 'fifa-u-17' || clean === 'u17' || clean === 'fifa.world.u17') return 'fifa_u17';
+  if (clean === 'csl' || clean === 'chinese-super-league' || clean === 'chn.1') return 'csl';
+  if (clean === 'egyptian-premier' || clean === 'egyptian-premier-league' || clean === 'egy.1') return 'egyptian_premier';
+  if (clean === 'saudi-pro' || clean === 'saudi-pro-league' || clean === 'spl' || clean === 'roshn' || clean === 'ksa.1') return 'saudi_pro';
+  if (clean === 'isl' || clean === 'indian-super-league' || clean === 'ind.1') return 'isl';
+  if (clean === 'kenyan-premier' || clean === 'kenyan-premier-league' || clean === 'fkf' || clean === 'fkf-premier-league' || clean === 'ken.1') return 'kenyan_premier';
+  if (clean === 'usa.1' || clean === 'major-league-soccer') return 'mls';
+  if (clean === 'fifa-world-cup') return 'wc';
   return clean;
 }
 
@@ -111,7 +130,15 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'uefa.europa',
     name: 'UEFA Europa League',
     shortName: 'UEL',
-    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/uefa.europa.png',
+    logo: LEAGUE_EMBLEMS['uel'],
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.UCL,
+  },
+  'uecl': {
+    sport: 'soccer',
+    league: 'uefa.europa.conf',
+    name: 'UEFA Conference League',
+    shortName: 'UECL',
+    logo: LEAGUE_EMBLEMS['uecl'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.UCL,
   },
   'laliga': {
@@ -125,7 +152,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
   'seriea': {
     sport: 'soccer',
     league: 'ita.1',
-    name: 'Serie A',
+    name: 'Serie A Enilive',
     shortName: 'Serie A',
     logo: LEAGUE_EMBLEMS['serie-a'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.DAZN,
@@ -146,20 +173,68 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     logo: LEAGUE_EMBLEMS['ligue-1'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
   },
+  'liga_mx': {
+    sport: 'soccer',
+    league: 'mex.1',
+    name: 'Liga MX',
+    shortName: 'Liga MX',
+    logo: LEAGUE_EMBLEMS['liga-mx'],
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.GOLAZO,
+  },
+  'argentina_primera': {
+    sport: 'soccer',
+    league: 'arg.1',
+    name: 'Liga Profesional Argentina',
+    shortName: 'LPF',
+    logo: LEAGUE_EMBLEMS['argentina-primera'],
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.GOLAZO,
+  },
+  'afc_champions_league': {
+    sport: 'soccer',
+    league: 'afc.champions',
+    name: 'AFC Champions League Elite',
+    shortName: 'ACL Elite',
+    logo: LEAGUE_EMBLEMS['afc-champions-league'],
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.BEIN,
+  },
+  'wc': {
+    sport: 'soccer',
+    league: 'fifa.world',
+    name: 'FIFA World Cup',
+    shortName: 'World Cup',
+    logo: LEAGUE_EMBLEMS['world-cup'],
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
+  'j1_league': {
+    sport: 'soccer',
+    league: 'jpn.1',
+    name: 'Meiji Yasuda J1 League',
+    shortName: 'J1 League',
+    logo: LEAGUE_EMBLEMS['j1-league'],
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
   'j1': {
     sport: 'soccer',
     league: 'jpn.1',
     name: 'Meiji Yasuda J1 League',
     shortName: 'J1 League',
-    logo: 'https://media.api-sports.io/football/leagues/98.png',
+    logo: LEAGUE_EMBLEMS['j1-league'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+  },
+  'saudi_first_division': {
+    sport: 'soccer',
+    league: 'ksa.2',
+    name: 'Saudi First Division League',
+    shortName: 'Saudi 1st Div',
+    logo: LEAGUE_EMBLEMS['saudi-first-division'],
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.BEIN,
   },
   'saudi_first': {
     sport: 'soccer',
     league: 'ksa.2',
     name: 'Saudi First Division League',
     shortName: 'Saudi 1st Div',
-    logo: 'https://media.api-sports.io/football/leagues/308.png',
+    logo: LEAGUE_EMBLEMS['saudi-first-division'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.BEIN,
   },
   'fifa_u17': {
@@ -167,7 +242,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'fifa.world.u17',
     name: 'FIFA U-17 World Cup',
     shortName: 'FIFA U-17',
-    logo: 'https://media.api-sports.io/football/leagues/17.png',
+    logo: LEAGUE_EMBLEMS['fifa-u-17'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
   },
   'csl': {
@@ -175,7 +250,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'chn.1',
     name: 'Chinese Super League',
     shortName: 'CSL',
-    logo: 'https://media.api-sports.io/football/leagues/169.png',
+    logo: LEAGUE_EMBLEMS['csl'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
   },
   'egyptian_premier': {
@@ -183,7 +258,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'egy.1',
     name: 'Egyptian Premier League',
     shortName: 'Egyptian Premier',
-    logo: 'https://media.api-sports.io/football/leagues/233.png',
+    logo: LEAGUE_EMBLEMS['egyptian-premier'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.BEIN,
   },
   'saudi_pro': {
@@ -191,7 +266,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'ksa.1',
     name: 'Saudi Pro League',
     shortName: 'Saudi Pro League',
-    logo: 'https://media.api-sports.io/football/leagues/307.png',
+    logo: LEAGUE_EMBLEMS['saudi-pro-league'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.BEIN,
   },
   'isl': {
@@ -199,7 +274,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'ind.1',
     name: 'Indian Super League',
     shortName: 'ISL',
-    logo: 'https://media.api-sports.io/football/leagues/323.png',
+    logo: LEAGUE_EMBLEMS['isl'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
   },
   'kenyan_premier': {
@@ -207,7 +282,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'ken.1',
     name: 'Kenyan Premier League',
     shortName: 'FKF Premier League',
-    logo: 'https://media.api-sports.io/football/leagues/279.png',
+    logo: LEAGUE_EMBLEMS['kenyan-premier'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.SUPERSPORT,
   },
   'fifa_friendly': {
@@ -223,7 +298,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'usa.1',
     name: 'Major League Soccer',
     shortName: 'MLS',
-    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/mls.png',
+    logo: LEAGUE_EMBLEMS['mls'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
   },
   'nba': {
@@ -231,7 +306,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'nba',
     name: 'NBA Basketball',
     shortName: 'NBA',
-    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
+    logo: LEAGUE_EMBLEMS['nba'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.NBA,
   },
   'nbl': {
@@ -239,7 +314,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'nbl',
     name: 'National Basketball League',
     shortName: 'NBL',
-    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/nbl.png',
+    logo: LEAGUE_EMBLEMS['nbl'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.NBA,
   },
   'ncaa-m': {
@@ -247,7 +322,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'mens-college-basketball',
     name: "NCAA Men's Basketball",
     shortName: 'NCAA',
-    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/ncaa.png',
+    logo: LEAGUE_EMBLEMS['ncaa'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.NBA,
   },
   'wnba': {
@@ -255,7 +330,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'wnba',
     name: 'WNBA Basketball',
     shortName: 'WNBA',
-    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png',
+    logo: LEAGUE_EMBLEMS['wnba'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.NBA,
   },
   'fiba': {
@@ -263,7 +338,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'fiba',
     name: 'FIBA Basketball',
     shortName: 'FIBA',
-    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/fiba.png',
+    logo: LEAGUE_EMBLEMS['fiba'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.NBA,
   },
   'nhl': {
@@ -271,7 +346,7 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'nhl',
     name: 'NHL Hockey',
     shortName: 'NHL',
-    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
+    logo: LEAGUE_EMBLEMS['nhl'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.NHL,
   },
   'nfl': {
@@ -279,16 +354,24 @@ export const SUPPORTED_LEAGUES: Record<string, SportLeagueConfig> = {
     league: 'nfl',
     name: 'NFL Football',
     shortName: 'NFL',
-    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png',
+    logo: LEAGUE_EMBLEMS['nfl'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
   },
   'f1': {
     sport: 'racing',
     league: 'f1',
-    name: 'Formula 1',
+    name: 'Formula 1 World Championship',
     shortName: 'F1',
-    logo: 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
+    logo: LEAGUE_EMBLEMS['f1'],
     fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.F1,
+  },
+  'tennis': {
+    sport: 'tennis',
+    league: 'atp',
+    name: 'ATP & WTA Tennis Tour',
+    shortName: 'Tennis',
+    logo: LEAGUE_EMBLEMS['tennis'],
+    fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.TENNIS,
   },
 };
 
@@ -627,6 +710,8 @@ class SportsApiService {
             for (const item of group.contents) {
               const name = item.displayName || item.name;
               if (!name) continue;
+              const espnIdMatch = typeof item.uid === 'string' ? item.uid.match(/~t:(\d+)/) : null;
+              const espnLeague = item.defaultLeagueSlug || undefined;
               const logo = item.image?.default || item.images?.[0]?.url || getTeamCrest(name);
               results.push({
                 id: item.uid || item.id || `team-${name.toLowerCase().replace(/\s+/g, '-')}`,
@@ -635,13 +720,25 @@ class SportsApiService {
                 category: item.subtitle || (item.sport ? item.sport.toUpperCase() : 'CLUB'),
                 logo: logo,
                 sport: item.sport || 'soccer',
+                espnId: espnIdMatch?.[1],
+                espnSport: item.sport || 'soccer',
+                espnLeague,
+                leagueKey: espnLeague ? resolveLeagueKey(espnLeague) : undefined,
               });
             }
           } else if (group.type === 'league' && Array.isArray(group.contents)) {
             for (const item of group.contents) {
               const name = item.displayName || item.name;
               if (!name) continue;
-              const logo = item.image?.default || item.images?.[0]?.url || LEAGUE_EMBLEMS[name.toLowerCase()] || '';
+              const espnIdMatch = typeof item.uid === 'string' ? item.uid.match(/~l:(\d+)/) : null;
+              const espnLeague = item.defaultLeagueSlug || undefined;
+              const resolvedLogo = espnLeague
+                ? resolveCompetitionLogo(espnLeague)
+                : resolveCompetitionLogo(name);
+              const logo =
+                resolvedLogo && resolvedLogo !== LEAGUE_EMBLEMS['football']
+                  ? resolvedLogo
+                  : item.image?.default || item.images?.[0]?.url || LEAGUE_EMBLEMS['football'];
               results.push({
                 id: item.uid || item.id || `comp-${name.toLowerCase().replace(/\s+/g, '-')}`,
                 name: name,
@@ -649,6 +746,10 @@ class SportsApiService {
                 category: item.subtitle || 'COMPETITION',
                 logo: logo,
                 sport: item.sport || 'soccer',
+                espnId: espnIdMatch?.[1],
+                espnSport: item.sport || 'soccer',
+                espnLeague,
+                leagueKey: espnLeague ? resolveLeagueKey(espnLeague) : resolveLeagueKey(name),
               });
             }
           }
@@ -676,9 +777,15 @@ class SportsApiService {
       { url: `${API_CONFIG.ESPN_BASE}/soccer/fra.1/scoreboard`, sport: 'soccer', league: 'fra.1' },
       { url: `${API_CONFIG.ESPN_BASE}/soccer/uefa.champions/scoreboard`, sport: 'soccer', league: 'uefa.champions' },
       { url: `${API_CONFIG.ESPN_BASE}/soccer/uefa.europa/scoreboard`, sport: 'soccer', league: 'uefa.europa' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/uefa.europa.conf/scoreboard`, sport: 'soccer', league: 'uefa.europa.conf' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/afc.champions/scoreboard`, sport: 'soccer', league: 'afc.champions' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/arg.1/scoreboard`, sport: 'soccer', league: 'arg.1' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/ksa.1/scoreboard`, sport: 'soccer', league: 'ksa.1' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/jpn.1/scoreboard`, sport: 'soccer', league: 'jpn.1' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/chn.1/scoreboard`, sport: 'soccer', league: 'chn.1' },
+      { url: `${API_CONFIG.ESPN_BASE}/soccer/ind.1/scoreboard`, sport: 'soccer', league: 'ind.1' },
       { url: `${API_CONFIG.ESPN_BASE}/soccer/fifa.friendly/scoreboard`, sport: 'soccer', league: 'fifa.friendly' },
       { url: `${API_CONFIG.ESPN_BASE}/soccer/fifa.world.u17/scoreboard`, sport: 'soccer', league: 'fifa.world.u17' },
-      { url: `${API_CONFIG.ESPN_BASE}/soccer/uefa.europa.conf/scoreboard`, sport: 'soccer', league: 'uefa.europa.conf' },
       { url: `${API_CONFIG.ESPN_BASE}/soccer/conmebol.libertadores/scoreboard`, sport: 'soccer', league: 'conmebol.libertadores' },
       { url: `${API_CONFIG.ESPN_BASE}/soccer/usa.1/scoreboard`, sport: 'soccer', league: 'usa.1' },
       { url: `${API_CONFIG.ESPN_BASE}/soccer/mex.1/scoreboard`, sport: 'soccer', league: 'mex.1' },
@@ -1027,13 +1134,159 @@ class SportsApiService {
   }
 
   /**
-   * Fetches real upcoming fixtures for any competition from Football-Data.org or ESPN.
+   * Fetches real live, upcoming, and recent completed fixtures for any competition
+   * from Football-Data.org and/or ESPN.
    */
-  async getCompetitionFixtures(competitionId: string): Promise<DiscoverMatchup[]> {
-    const cleanId = resolveLeagueKey(competitionId);
+  async getCompetitionFixtures(
+    competitionId: string,
+    hint?: { name?: string; sport?: string; espnLeague?: string }
+  ): Promise<DiscoverMatchup[]> {
+    const cleanId = resolveLeagueKey(competitionId) || resolveLeagueKey(hint?.name);
     const matchups: DiscoverMatchup[] = [];
+    const seenKeys = new Set<string>();
 
-    // Map to Football-Data competition code
+    const pushUnique = (m: DiscoverMatchup) => {
+      const datePart = (m.rawDate || m.kickoffDate || '').slice(0, 10);
+      const dedupKey = `${m.homeTeam.name.toLowerCase().trim()}_${m.awayTeam.name.toLowerCase().trim()}_${datePart}`;
+      const revKey = `${m.awayTeam.name.toLowerCase().trim()}_${m.homeTeam.name.toLowerCase().trim()}_${datePart}`;
+      if (seenKeys.has(dedupKey) || seenKeys.has(revKey)) return;
+      seenKeys.add(dedupKey);
+      matchups.push(m);
+    };
+
+    const extractScore = (raw: any): number => {
+      if (raw === undefined || raw === null) return 0;
+      if (typeof raw === 'object') {
+        if (typeof raw.value === 'number' && !isNaN(raw.value)) return raw.value;
+        if (raw.displayValue !== undefined) return parseInt(String(raw.displayValue), 10) || 0;
+        return 0;
+      }
+      return parseInt(String(raw), 10) || 0;
+    };
+
+    // 1. ESPN Config (known league or dynamic hint from global search)
+    let espnCfg: SportLeagueConfig | undefined = SUPPORTED_LEAGUES[cleanId];
+    if (!espnCfg && hint?.espnLeague) {
+      const sRaw = (hint.sport || 'soccer').toLowerCase();
+      const sType: SportLeagueConfig['sport'] =
+        sRaw === 'basketball'
+          ? 'basketball'
+          : sRaw === 'hockey'
+          ? 'hockey'
+          : sRaw === 'football' || sRaw === 'american_football'
+          ? 'football'
+          : sRaw === 'racing' || sRaw === 'motorsport'
+          ? 'racing'
+          : sRaw === 'tennis'
+          ? 'tennis'
+          : 'soccer';
+      espnCfg = {
+        sport: sType,
+        league: hint.espnLeague,
+        name: hint.name || competitionId,
+        shortName: hint.name || competitionId,
+        logo: resolveCompetitionLogo(hint.name || hint.espnLeague),
+        fallbackChannel: API_CONFIG.PRIORITY_CHANNELS.PL,
+      };
+    }
+
+    if (espnCfg && espnCfg.sport !== 'mma') {
+      const canonicalSport =
+        espnCfg.sport === 'football'
+          ? 'american_football'
+          : espnCfg.sport === 'racing'
+          ? 'motorsport'
+          : espnCfg.sport;
+
+      const yesterday = new Date(Date.now() - 86400000);
+      const ymd = `${yesterday.getUTCFullYear()}${String(yesterday.getUTCMonth() + 1).padStart(2, '0')}${String(yesterday.getUTCDate()).padStart(2, '0')}`;
+      const urls = [
+        `${API_CONFIG.ESPN_BASE}/${espnCfg.sport}/${espnCfg.league}/scoreboard`,
+        `${API_CONFIG.ESPN_BASE}/${espnCfg.sport}/${espnCfg.league}/scoreboard?dates=${ymd}`,
+      ];
+
+      const espnResults = await Promise.allSettled(
+        urls.map(async u => {
+          const r = await fetch(u);
+          if (!r.ok) return [];
+          const d = await r.json();
+          return Array.isArray(d.events) ? d.events : [];
+        })
+      );
+
+      espnResults.forEach(res => {
+        if (res.status !== 'fulfilled') return;
+        res.value.forEach((ev: any) => {
+          const comp = ev.competitions?.[0];
+          const home = comp?.competitors?.find((c: any) => c.homeAway === 'home') || comp?.competitors?.[0];
+          const away = comp?.competitors?.find((c: any) => c.homeAway === 'away') || comp?.competitors?.[1];
+          const homeName = home?.team?.displayName || home?.athlete?.displayName || '';
+          const awayName = away?.team?.displayName || away?.athlete?.displayName || '';
+          if (!homeName || !awayName) return;
+
+          const clockInfo = parseClockAndStatus(ev, espnCfg!.sport);
+          const homeLogo = home?.team?.logo || getTeamCrest(homeName);
+          const awayLogo = away?.team?.logo || getTeamCrest(awayName);
+          const compInfo = parseCompetitionInfo(ev, espnCfg!);
+
+          const kickoffTimestamp = parseKickoffTimestamp(ev.date);
+          const scheduleInfo = formatMatchSchedule(ev.date);
+          const isLive = clockInfo.status === 'LIVE';
+          const isFinished = clockInfo.status === 'FT';
+          const channel = espnCfg!.fallbackChannel || getBroadcastChannelId(compInfo.name, canonicalSport);
+          const streamUrl = isLive ? `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${channel}.json` : undefined;
+
+          pushUnique({
+            id: `sched-espn-${ev.id}`,
+            competition: compInfo.name || espnCfg!.name,
+            competitionLogo: compInfo.logo || espnCfg!.logo,
+            status: clockInfo.status,
+            isLive,
+            kickoffDate: scheduleInfo.dateLabel,
+            kickoffTime: isLive
+              ? (clockInfo.playTime ? `${clockInfo.playTime} Live` : 'Live')
+              : isFinished
+              ? 'Full Time'
+              : scheduleInfo.timeEAT,
+            kickoffTimestamp,
+            rawDate: ev.date,
+            minute: clockInfo.minute,
+            playTime: clockInfo.playTime,
+            sport: canonicalSport as any,
+            homeTeam: {
+              id: `team-${homeName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+              name: homeName,
+              crestUrl: homeLogo,
+              score: isLive || isFinished ? extractScore(home?.score) : 0,
+            },
+            awayTeam: {
+              id: `team-${awayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+              name: awayName,
+              crestUrl: awayLogo,
+              score: isLive || isFinished ? extractScore(away?.score) : 0,
+            },
+            venue: comp?.venue?.fullName || '',
+            hasLiveBroadcast: isLive,
+            streamUrl,
+            streams: isLive && streamUrl
+              ? [{ id: `srv-${channel}`, name: 'Server 1 (Live HD Broadcast)', url: streamUrl }]
+              : undefined,
+            poster: resolveSportBackground(
+              canonicalSport,
+              compInfo.name || espnCfg!.name,
+              comp?.venue?.images?.[0]?.href,
+              homeName,
+              awayName,
+              String(ev.id),
+              homeLogo,
+              awayLogo
+            ),
+          });
+        });
+      });
+    }
+
+    // 2. Football-Data.org (Scheduled + Recent Finished for top European football leagues)
     const codeMap: Record<string, string> = {
       pl: 'PL',
       premier: 'PL',
@@ -1042,130 +1295,75 @@ class SportsApiService {
       laliga: 'PD',
       seriea: 'SA',
       bundesliga: 'BL1',
+      ligue1: 'FL1',
     };
 
     const fdCode = codeMap[cleanId];
     if (fdCode) {
-      try {
-        const res = await fetch(`${API_CONFIG.FOOTBALL_DATA_BASE_URL}/competitions/${fdCode}/matches?status=SCHEDULED`, {
+      const fdResults = await Promise.allSettled([
+        fetch(`${API_CONFIG.FOOTBALL_DATA_BASE_URL}/competitions/${fdCode}/matches?status=SCHEDULED`, {
           headers: { 'X-Auth-Token': API_CONFIG.FOOTBALL_DATA_API_KEY },
+        }).then(r => (r.ok ? r.json() : null)),
+        fetch(`${API_CONFIG.FOOTBALL_DATA_BASE_URL}/competitions/${fdCode}/matches?status=FINISHED`, {
+          headers: { 'X-Auth-Token': API_CONFIG.FOOTBALL_DATA_API_KEY },
+        }).then(r => (r.ok ? r.json() : null)),
+      ]);
+
+      fdResults.forEach((res, idx) => {
+        if (res.status !== 'fulfilled' || !res.value?.matches) return;
+        const isFinished = idx === 1;
+        const list = isFinished
+          ? res.value.matches.slice(-10).reverse()
+          : res.value.matches.slice(0, 15);
+
+        list.forEach((m: any) => {
+          const homeName = m.homeTeam?.shortName || m.homeTeam?.name || 'Home Club';
+          const awayName = m.awayTeam?.shortName || m.awayTeam?.name || 'Away Club';
+          const kickoffTimestamp = parseKickoffTimestamp(m.utcDate);
+          const scheduleInfo = formatMatchSchedule(m.utcDate);
+          const compName = m.competition?.name || SUPPORTED_LEAGUES[cleanId]?.name || hint?.name || cleanId.toUpperCase();
+          const compLogo = LEAGUE_EMBLEMS[cleanId] || resolveCompetitionLogo(compName);
+          const homeCrest = m.homeTeam?.crest || getTeamCrest(m.homeTeam?.name || homeName);
+          const awayCrest = m.awayTeam?.crest || getTeamCrest(m.awayTeam?.name || awayName);
+
+          pushUnique({
+            id: `sched-fd-${m.id}`,
+            competition: compName,
+            competitionLogo: compLogo,
+            status: isFinished ? 'FT' : 'UPCOMING',
+            isLive: false,
+            kickoffDate: scheduleInfo.dateLabel,
+            kickoffTime: isFinished ? 'Full Time' : scheduleInfo.timeEAT,
+            kickoffTimestamp,
+            rawDate: m.utcDate,
+            sport: 'soccer',
+            homeTeam: {
+              id: `team-${homeName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+              name: homeName,
+              crestUrl: homeCrest,
+              score: isFinished ? (m.score?.fullTime?.home ?? 0) : 0,
+            },
+            awayTeam: {
+              id: `team-${awayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+              name: awayName,
+              crestUrl: awayCrest,
+              score: isFinished ? (m.score?.fullTime?.away ?? 0) : 0,
+            },
+            venue: m.venue || '',
+            hasLiveBroadcast: false,
+            poster: resolveSportBackground(
+              'soccer',
+              compName,
+              null,
+              homeName,
+              awayName,
+              String(m.id),
+              homeCrest,
+              awayCrest
+            ),
+          });
         });
-        if (res.ok) {
-          const data = await res.json();
-          const matches = data.matches || [];
-          matches.slice(0, 15).forEach((m: any) => {
-            const homeName = m.homeTeam?.name || 'Home Club';
-            const awayName = m.awayTeam?.name || 'Away Club';
-            const kickoffTimestamp = parseKickoffTimestamp(m.utcDate);
-            const scheduleInfo = formatMatchSchedule(m.utcDate);
-
-            matchups.push({
-              id: `sched-fd-${m.id}`,
-              competition: m.competition?.name || cleanId.toUpperCase(),
-              competitionLogo: LEAGUE_EMBLEMS[cleanId] || resolveCompetitionLogo(m.competition?.name || cleanId),
-              status: 'UPCOMING',
-              kickoffDate: scheduleInfo.dateLabel,
-              kickoffTime: scheduleInfo.timeEAT,
-              kickoffTimestamp,
-              rawDate: m.utcDate,
-              homeTeam: {
-                id: `team-${homeName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-                name: homeName,
-                crestUrl: m.homeTeam?.crest || getTeamCrest(homeName),
-                score: 0,
-              },
-              awayTeam: {
-                id: `team-${awayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-                name: awayName,
-                crestUrl: m.awayTeam?.crest || getTeamCrest(awayName),
-                score: 0,
-              },
-              venue: 'Stadium Arena',
-              hasLiveBroadcast: false,
-              poster: resolveSportBackground(
-                'soccer',
-                m.competition?.name || cleanId,
-                null,
-                homeName,
-                awayName,
-                String(m.id),
-                m.homeTeam?.crest || getTeamCrest(homeName),
-                m.awayTeam?.crest || getTeamCrest(awayName)
-              ),
-            });
-          });
-          if (matchups.length > 0) return sortMatchesWithLiveFirst(matchups);
-        }
-      } catch (err) {
-        console.warn('[SportsApiService] Error fetching FD upcoming fixtures:', err);
-      }
-    }
-
-    // Fallback or NBA/NHL via ESPN
-    const espnCfg = SUPPORTED_LEAGUES[cleanId];
-    if (espnCfg) {
-      try {
-        const res = await fetch(`${API_CONFIG.ESPN_BASE}/${espnCfg.sport}/${espnCfg.league}/scoreboard`);
-        if (res.ok) {
-          const data = await res.json();
-          const events = data.events || [];
-          events.slice(0, 12).forEach((ev: any) => {
-            const comp = ev.competitions?.[0];
-            const home = comp?.competitors?.find((c: any) => c.homeAway === 'home') || comp?.competitors?.[0];
-            const away = comp?.competitors?.find((c: any) => c.homeAway === 'away') || comp?.competitors?.[1];
-
-            const homeName = home?.team?.displayName || 'Home Team';
-            const awayName = away?.team?.displayName || 'Away Team';
-            const homeLogo = home?.team?.logo || getTeamCrest(homeName);
-            const awayLogo = away?.team?.logo || getTeamCrest(awayName);
-
-            const isLive = ev.status?.type?.state === 'in';
-            const isCompleted = Boolean(ev.status?.type?.completed || ev.status?.type?.state === 'post');
-            const matchStatus = isLive ? 'LIVE' : (isCompleted ? 'FT' : 'UPCOMING');
-
-            const kickoffTimestamp = parseKickoffTimestamp(ev.date);
-            const scheduleInfo = formatMatchSchedule(ev.date);
-
-            matchups.push({
-              id: `sched-espn-${ev.id}`,
-              competition: espnCfg.name,
-              competitionLogo: espnCfg.logo,
-              status: matchStatus,
-              kickoffDate: scheduleInfo.dateLabel,
-              kickoffTime: isLive ? `${ev.status?.period * 15}' Live` : scheduleInfo.timeEAT,
-              kickoffTimestamp,
-              rawDate: ev.date,
-              minute: isLive ? 45 : 0,
-              homeTeam: {
-                id: `team-${homeName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-                name: homeName,
-                crestUrl: homeLogo,
-                score: isLive || isCompleted ? (parseInt(home?.score || '0', 10) || 0) : 0,
-              },
-              awayTeam: {
-                id: `team-${awayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-                name: awayName,
-                crestUrl: awayLogo,
-                score: isLive || isCompleted ? (parseInt(away?.score || '0', 10) || 0) : 0,
-              },
-              venue: comp?.venue?.fullName || 'Arena',
-              hasLiveBroadcast: isLive,
-              poster: resolveSportBackground(
-                espnCfg.sport,
-                espnCfg.name,
-                comp?.venue?.images?.[0]?.href,
-                homeName,
-                awayName,
-                String(ev.id),
-                homeLogo,
-                awayLogo
-              ),
-            });
-          });
-        }
-      } catch (err) {
-        console.warn('[SportsApiService] Error fetching ESPN fixtures:', err);
-      }
+      });
     }
 
     if (matchups.length > 0) {

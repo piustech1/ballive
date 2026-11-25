@@ -3,16 +3,16 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   StyleSheet,
 } from 'react-native';
 import { Check, ChevronRight } from 'lucide-react-native';
 import Colors from '../../theme/colors';
-import { PopularLeague } from '../../constants/discoverData';
+import { DiscoverCompetition, PopularLeague } from '../../constants/discoverData';
+import { CompetitionLogo } from '../../components/common/CompetitionLogo';
 
 interface SavedCompetitionRowProps {
-  league: PopularLeague;
-  onPress: (league: PopularLeague) => void;
+  league: DiscoverCompetition | PopularLeague;
+  onPress: (league: DiscoverCompetition | PopularLeague) => void;
   onUnfollowPress: (leagueId: string) => void;
 }
 
@@ -21,6 +21,17 @@ export const SavedCompetitionRow: React.FC<SavedCompetitionRowProps> = ({
   onPress,
   onUnfollowPress,
 }) => {
+  const subtitle =
+    'currentMatchweek' in league && league.currentMatchweek
+      ? `${league.country} • ${league.currentMatchweek}`
+      : 'region' in league && league.region && league.region !== league.country
+      ? `${league.country} • ${league.region}`
+      : league.country;
+  const desc =
+    'description' in league && league.description
+      ? league.description
+      : `${league.name} Tournament`;
+
   return (
     <TouchableOpacity
       style={styles.card}
@@ -29,22 +40,21 @@ export const SavedCompetitionRow: React.FC<SavedCompetitionRowProps> = ({
       accessibilityRole="button"
       accessibilityLabel={`${league.name}, ${league.country}`}
     >
-      {/* Competition Logo */}
-      <View style={styles.logoWrapper}>
-        <Image
-          source={{ uri: league.logoUrl }}
-          style={styles.logoImage}
-          resizeMode="contain"
-        />
-      </View>
+      {/* Flat Dark-Mode Competition Logo */}
+      <CompetitionLogo
+        uri={league.logoUrl}
+        competitionId={league.id}
+        size={42}
+        containerStyle={{ marginRight: 14 }}
+      />
 
       {/* Meta Info */}
       <View style={styles.infoCol}>
         <Text style={styles.leagueName} numberOfLines={1}>{league.name}</Text>
         <Text style={styles.leagueMeta} numberOfLines={1}>
-          {league.country} • {league.currentMatchweek}
+          {subtitle}
         </Text>
-        <Text style={styles.leagueDesc} numberOfLines={1}>{league.description}</Text>
+        <Text style={styles.leagueDesc} numberOfLines={1}>{desc}</Text>
       </View>
 
       {/* Following Action Button */}

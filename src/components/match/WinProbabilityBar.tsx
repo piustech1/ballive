@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, TouchableOpacity } from 'react-native';
 import { ActivityIndicator } from 'react-native';
-import { BarChart3, AlertCircle } from 'lucide-react-native';
+import { BarChart3 } from 'lucide-react-native';
 import Colors from '../../theme/colors';
 import { TeamCrest } from '../common/TeamCrest';
 import { getMatchupColors } from '../../utils/teamColorResolver';
@@ -16,6 +16,8 @@ export interface WinProbabilityBarProps {
   sport?: string;
   probabilityData?: WinProbabilityResult | null;
   isLoading?: boolean;
+  onHomePress?: () => void;
+  onAwayPress?: () => void;
 }
 
 export const WinProbabilityBar: React.FC<WinProbabilityBarProps> = ({
@@ -26,6 +28,8 @@ export const WinProbabilityBar: React.FC<WinProbabilityBarProps> = ({
   sport = 'soccer',
   probabilityData,
   isLoading = false,
+  onHomePress,
+  onAwayPress,
 }) => {
   const homeAbbr = getTeamAbbreviation(homeTeamName);
   const awayAbbr = getTeamAbbreviation(awayTeamName);
@@ -71,7 +75,10 @@ export const WinProbabilityBar: React.FC<WinProbabilityBarProps> = ({
         <View style={styles.barOuterWrapper}>
           <View style={styles.barContainer}>
             {/* Home Segment */}
-            <View
+            <TouchableOpacity
+              activeOpacity={onHomePress ? 0.8 : 1}
+              disabled={!onHomePress}
+              onPress={onHomePress}
               style={[
                 styles.segment,
                 styles.homeSegment,
@@ -89,7 +96,7 @@ export const WinProbabilityBar: React.FC<WinProbabilityBarProps> = ({
               <Text style={styles.segmentText} numberOfLines={1}>
                 {homeAbbr} {homePercent.toFixed(1)}%
               </Text>
-            </View>
+            </TouchableOpacity>
 
             {/* Draw Segment (Omitted for 2-way sports like Basketball) */}
             {!isTwoWay && drawPercent !== undefined && (
@@ -107,7 +114,10 @@ export const WinProbabilityBar: React.FC<WinProbabilityBarProps> = ({
             )}
 
             {/* Away Segment */}
-            <View
+            <TouchableOpacity
+              activeOpacity={onAwayPress ? 0.8 : 1}
+              disabled={!onAwayPress}
+              onPress={onAwayPress}
               style={[
                 styles.segment,
                 styles.awaySegment,
@@ -125,7 +135,7 @@ export const WinProbabilityBar: React.FC<WinProbabilityBarProps> = ({
                   containerStyle={styles.crestContainer}
                 />
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
       ) : (

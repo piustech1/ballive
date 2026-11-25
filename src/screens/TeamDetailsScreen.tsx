@@ -1,31 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
+  ActivityIndicator,
+  ImageBackground,
 } from 'react-native';
 import {
-  ArrowLeft,
   Check,
   Plus,
   MapPin,
   Trophy,
-  Calendar,
-  Users,
   ChevronRight,
-  Shield,
 } from 'lucide-react-native';
-import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
-import { PopularTeam, UPCOMING_HIGHLIGHTS } from '../constants/discoverData';
+import { PopularTeam } from '../constants/discoverData';
+import { SPORT_BACKDROPS } from '../constants/crests';
 import { TeamCrest } from '../components/common/TeamCrest';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
-import { navigateToMatch } from '../navigation/navHelpers';
-import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
+import { findCompetitionById, navigateToMatch } from '../navigation/navHelpers';
+import { teamDetailsService, TeamDetailsPayload, TeamFixtureItem } from '../services/teamDetailsService';
 
 interface TeamDetailsScreenProps {
   team: PopularTeam;
@@ -33,46 +30,164 @@ interface TeamDetailsScreenProps {
 
 export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) => {
   const { navigate } = useAppNavigation();
-  const { profile, toggleFollowTeam } = useProfile();
-  const [activeTab, setActiveTab] = useState<'overview' | 'fixtures' | 'squad'>('overview');
+  const { isTeamFollowed, toggleFollowTeam } = useProfile();
+  const [activeTab, setActiveTab] = useState<'overview' | 'fixtures'>('overview');
+  const [details, setDetails] = useState<TeamDetailsPayload | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const isFollowed = profile.followedTeamIds.includes(team.id);
+  useEffect(() => {
+    let mounted = true;
+    setIsLoading(true);
+    teamDetailsService
+      .getTeamDetails(team)
+      .then(res => {
+        if (mounted) {
+          setDetails(res);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setIsLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [team.id, team.name]);
 
-  // Filter fixtures involving this team
-  const teamFixtures = UPCOMING_HIGHLIGHTS.filter(
-    m =>
-      m.homeTeam.id === team.id ||
-      m.awayTeam.id === team.id ||
-      m.homeTeam.name.toLowerCase().includes(team.name.toLowerCase()) ||
-      m.awayTeam.name.toLowerCase().includes(team.name.toLowerCase())
-  );
+  const resolvedTeam = details?.resolvedTeam || team;
+  const isFollowed = isTeamFollowed(resolvedTeam);
 
-  const fallbackFixtures = teamFixtures.length > 0 ? teamFixtures : UPCOMING_HIGHLIGHTS.slice(0, 3);
+  const competitionName = details?.competitionName || resolvedTeam.competitionName;
+  const competitionId = details?.competitionId || resolvedTeam.competitionId;
+  const venue =
+    details?.venue ||
+    (resolvedTeam.stadium && resolvedTeam.stadium !== `${resolvedTeam.name} Stadium`
+      ? resolvedTeam.stadium
+      : undefined);
+  const country =
+    details?.country ||
+    (resolvedTeam.country && resolvedTeam.country !== 'Global' && resolvedTeam.country !== 'CLUB'
+      ? resolvedTeam.country
+      : undefined);
 
-  // Sample squad
-  const squadPlayers = [
-    { num: 1, name: 'First Choice GK', pos: 'Goalkeeper', nat: team.country },
-    { num: 4, name: 'Star Centre Back (C)', pos: 'Defender', nat: 'Netherlands' },
-    { num: 6, name: 'Defensive Anchor', pos: 'Defender', nat: 'Brazil' },
-    { num: 8, name: 'Playmaker Maestro', pos: 'Midfielder', nat: 'Norway' },
-    { num: 10, name: 'Creative Number 10', pos: 'Midfielder', nat: 'Argentina' },
-    { num: 7, name: 'Lightning Winger', pos: 'Forward', nat: 'England' },
-    { num: 9, name: 'Lethal Striker', pos: 'Forward', nat: 'France' },
-    { num: 11, name: 'Inverted Forward', pos: 'Forward', nat: 'Egypt' },
-  ];
+  const sportLabel = useMemo(() => {
+    if (details?.sportLabel) return details.sportLabel;
+    const s = (resolvedTeam.sport || '').toLowerCase();
+    if (s === 'basketball') return 'Basketball';
+    if (s === 'hockey') return 'Ice Hockey';
+    if (s === 'american_football') return 'American Football';
+    return 'Football';
+  }, [details?.sportLabel, resolvedTeam.sport]);
+
+  const liveAndUpcoming = details?.liveAndUpcoming || [];
+  const recentResults = details?.recentResults || [];
+  const recentForm = details?.recentForm || [];
+  const totalFixtures = liveAndUpcoming.length + recentResults.length;
+
+  const headerOverline = (competitionName || `${sportLabel} · ${resolvedTeam.shortName || resolvedTeam.name}`).toUpperCase();
+  const headerSubtitle = [venue, country].filter(Boolean).join(' · ') || resolvedTeam.name;
+
+  const heroSub = competitionName ? `${sportLabel} · ${competitionName}` : sportLabel;
+  const nextMatch = liveAndUpcoming[0];
+
+  const backdropUri =
+    SPORT_BACKDROPS[(resolvedTeam.sport as string) || 'soccer'] || SPORT_BACKDROPS.soccer;
+
+  const handleOpenCompetition = () => {
+    if (!competitionName && !competitionId) return;
+    const compObj = findCompetitionById(competitionId || competitionName!, {
+      sport: resolvedTeam.sport,
+      logoUrl: details?.competitionLogo,
+      country,
+    });
+    navigate({ name: 'CompetitionDetails', params: { competition: compObj } });
+  };
+
+  const renderFixtureRow = (item: TeamFixtureItem) => {
+    const isLive = item.status === 'LIVE';
+    const isFinished = item.status === 'FT';
+    const metaSub = `${item.isHome ? 'Home' : 'Away'} · ${item.competition} · ${item.dateLabel}`;
+
+    return (
+      <TouchableOpacity
+        key={item.id}
+        activeOpacity={0.8}
+        style={styles.fixtureRowCard}
+        onPress={() => navigateToMatch(navigate, item.matchup)}
+      >
+        <TeamCrest
+          uri={item.opponentCrest}
+          teamName={item.opponentName}
+          size={36}
+          containerStyle={styles.fixtureCrest}
+        />
+
+        <View style={styles.fixtureInfoCol}>
+          <Text style={styles.fixtureOpponentName} numberOfLines={1}>
+            {item.opponentName}
+          </Text>
+          <Text style={styles.fixtureMetaText} numberOfLines={1}>
+            {metaSub}
+          </Text>
+        </View>
+
+        <View style={styles.fixtureRightCol}>
+          {isLive ? (
+            <>
+              <Text style={styles.liveScoreText}>
+                {item.teamScore} - {item.opponentScore}
+              </Text>
+              <View style={styles.liveStatusPill}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveStatusText}>
+                  LIVE{item.playTime ? ` ${item.playTime.replace(/live/i, '').trim()}` : ''}
+                </Text>
+              </View>
+            </>
+          ) : isFinished ? (
+            <>
+              <Text style={styles.ftScoreText}>
+                {item.teamScore} - {item.opponentScore}
+              </Text>
+              <View
+                style={[
+                  styles.resultTag,
+                  item.resultCode === 'W'
+                    ? styles.resultTagWin
+                    : item.resultCode === 'D'
+                    ? styles.resultTagDraw
+                    : styles.resultTagLoss,
+                ]}
+              >
+                <Text style={styles.resultTagText}>{item.resultCode || 'FT'}</Text>
+              </View>
+            </>
+          ) : (
+            <View style={styles.timeBadge}>
+              <Text style={styles.timeBadgeText} numberOfLines={1}>
+                {item.timeLabel}
+              </Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.root}>
-      {/* Top App Bar */}
+      {/* Compact Curved Header */}
       <SecondaryScreenHeader
-        title={team.name}
-        subtitle={`${team.stadium} • ${team.country}`}
+        title={headerOverline}
+        subtitle={headerSubtitle}
+        sport={resolvedTeam.sport}
+        onTitlePress={competitionName || competitionId ? handleOpenCompetition : undefined}
         rightAction={{
           icon: isFollowed ? Check : Plus,
-          onPress: () => toggleFollowTeam(team.id),
+          onPress: () => toggleFollowTeam(resolvedTeam),
           active: isFollowed,
           activeColor: '#7952FC',
-          accessibilityLabel: isFollowed ? 'Unfollow' : 'Follow',
+          accessibilityLabel: isFollowed ? 'Unfollow team' : 'Follow team',
         }}
       />
 
@@ -81,33 +196,69 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Team Hero Card */}
-        <View style={styles.heroCard}>
+        {/* Atmospheric Hero Identity Card */}
+        <ImageBackground
+          source={{ uri: backdropUri }}
+          style={styles.heroCard}
+          imageStyle={styles.heroBgImage}
+        >
+          <View style={styles.heroOverlay} />
+
           <TeamCrest
-            uri={team.crestUrl}
-            teamName={team.name}
-            size={72}
+            uri={resolvedTeam.crestUrl}
+            teamName={resolvedTeam.name}
+            size={76}
             containerStyle={styles.crestFlatContainer}
           />
-          <Text style={styles.teamHeroName}>{team.name}</Text>
-          <Text style={styles.teamHeroSubtitle}>{team.domesticTitle}</Text>
 
-          <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <MapPin size={13} color="#A098B5" strokeWidth={2} />
-              <Text style={styles.metaText}>{team.stadium}</Text>
-            </View>
-            <View style={styles.metaDot} />
-            <View style={styles.metaItem}>
-              <Shield size={13} color="#A098B5" strokeWidth={2} />
-              <Text style={styles.metaText}>{team.country}</Text>
-            </View>
-          </View>
-        </View>
+          <Text style={styles.teamHeroName} numberOfLines={2}>
+            {resolvedTeam.name}
+          </Text>
+          <Text style={styles.teamHeroSubtitle} numberOfLines={1}>
+            {heroSub}
+          </Text>
 
-        {/* Tab Controls */}
+          {(venue || country) ? (
+            <View style={styles.metaRow}>
+              {venue ? (
+                <View style={styles.metaItem}>
+                  <MapPin size={13} color="#A098B5" strokeWidth={2} />
+                  <Text style={styles.metaText} numberOfLines={1}>{venue}</Text>
+                </View>
+              ) : null}
+              {venue && country ? <View style={styles.metaSpacer} /> : null}
+              {country ? (
+                <View style={styles.metaItem}>
+                  <Trophy size={13} color="#A098B5" strokeWidth={2} />
+                  <Text style={styles.metaText} numberOfLines={1}>{country}</Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={[styles.heroFollowBtn, isFollowed && styles.heroFollowBtnActive]}
+            onPress={() => toggleFollowTeam(resolvedTeam)}
+          >
+            {isFollowed ? (
+              <>
+                <Check size={15} color="#FFFFFF" strokeWidth={2.5} />
+                <Text style={styles.heroFollowText}>Following</Text>
+              </>
+            ) : (
+              <>
+                <Plus size={15} color="#FFFFFF" strokeWidth={2.5} />
+                <Text style={styles.heroFollowText}>Follow Team</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </ImageBackground>
+
+        {/* Two-Tab Segmented Control (Overview | Fixtures) */}
         <View style={styles.tabBar}>
           <TouchableOpacity
+            activeOpacity={0.85}
             style={[styles.tabButton, activeTab === 'overview' && styles.tabButtonActive]}
             onPress={() => setActiveTab('overview')}
           >
@@ -115,106 +266,168 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
               Overview
             </Text>
           </TouchableOpacity>
+
           <TouchableOpacity
+            activeOpacity={0.85}
             style={[styles.tabButton, activeTab === 'fixtures' && styles.tabButtonActive]}
             onPress={() => setActiveTab('fixtures')}
           >
             <Text style={[styles.tabText, activeTab === 'fixtures' && styles.tabTextActive]}>
-              Fixtures
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'squad' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('squad')}
-          >
-            <Text style={[styles.tabText, activeTab === 'squad' && styles.tabTextActive]}>
-              Squad
+              Fixtures ({totalFixtures})
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Overview Tab */}
+        {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <View style={styles.tabSection}>
-            {/* Form Guide */}
-            <View style={styles.sectionCard}>
-              <Text style={styles.cardHeaderTitle}>Recent Form</Text>
-              <View style={styles.formGuideRow}>
-                {['W', 'W', 'D', 'W', 'L'].map((result, idx) => (
-                  <View
-                    key={idx}
-                    style={[
-                      styles.formBadge,
-                      result === 'W' && styles.formBadgeWin,
-                      result === 'D' && styles.formBadgeDraw,
-                      result === 'L' && styles.formBadgeLoss,
-                    ]}
-                  >
-                    <Text style={styles.formBadgeText}>{result}</Text>
-                  </View>
-                ))}
+            {isLoading && recentForm.length === 0 && totalFixtures === 0 ? (
+              <View style={styles.loadingCard}>
+                <ActivityIndicator size="small" color="#7952FC" />
+                <Text style={styles.loadingText}>Loading live team profile & schedule...</Text>
               </View>
-            </View>
+            ) : null}
 
-            {/* Club Facts */}
+            {/* Recent Form (Genuine completed results only) */}
+            {recentForm.length > 0 && (
+              <View style={styles.sectionCard}>
+                <View style={styles.formHeaderRow}>
+                  <Text style={styles.cardHeaderTitleNoMargin}>Recent Form</Text>
+                  <Text style={styles.formSubLabel}>
+                    Last {recentForm.length} {recentForm.length === 1 ? 'match' : 'matches'}
+                  </Text>
+                </View>
+
+                <View style={styles.formGuideRow}>
+                  {recentForm.map((result, idx) => (
+                    <View
+                      key={`${result}-${idx}`}
+                      style={[
+                        styles.formCircle,
+                        result === 'W' && styles.formCircleWin,
+                        result === 'D' && styles.formCircleDraw,
+                        result === 'L' && styles.formCircleLoss,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.formCircleText,
+                          result === 'W' && styles.formTextWin,
+                          result === 'D' && styles.formTextDraw,
+                          result === 'L' && styles.formTextLoss,
+                        ]}
+                      >
+                        {result}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Next Match Quick Card (When an upcoming or live fixture is available) */}
+            {nextMatch && (
+              <View style={styles.sectionCard}>
+                <View style={styles.formHeaderRow}>
+                  <Text style={styles.cardHeaderTitleNoMargin}>
+                    {nextMatch.status === 'LIVE' ? 'Live Match' : 'Next Match'}
+                  </Text>
+                  <TouchableOpacity onPress={() => setActiveTab('fixtures')} activeOpacity={0.7}>
+                    <Text style={styles.viewFixturesLink}>All fixtures</Text>
+                  </TouchableOpacity>
+                </View>
+                {renderFixtureRow(nextMatch)}
+              </View>
+            )}
+
+            {/* Club / Franchise Information (Real metadata only) */}
             <View style={styles.sectionCard}>
               <Text style={styles.cardHeaderTitle}>Club Information</Text>
-              <View style={styles.infoLine}>
-                <Text style={styles.infoKey}>Home Stadium</Text>
-                <Text style={styles.infoVal}>{team.stadium}</Text>
-              </View>
-              <View style={styles.infoLine}>
-                <Text style={styles.infoKey}>Country / Federation</Text>
-                <Text style={styles.infoVal}>{team.country}</Text>
-              </View>
-              <View style={styles.infoLine}>
-                <Text style={styles.infoKey}>Short Abbreviation</Text>
-                <Text style={styles.infoVal}>{team.shortName}</Text>
-              </View>
-              <View style={styles.infoLine}>
-                <Text style={styles.infoKey}>Status</Text>
-                <Text style={styles.infoVal}>Active European Contender</Text>
+
+              {venue ? (
+                <View style={styles.infoLine}>
+                  <Text style={styles.infoKey}>Home Stadium</Text>
+                  <Text style={styles.infoVal} numberOfLines={1}>{venue}</Text>
+                </View>
+              ) : null}
+
+              {country ? (
+                <View style={styles.infoLine}>
+                  <Text style={styles.infoKey}>Country / Federation</Text>
+                  <Text style={styles.infoVal} numberOfLines={1}>{country}</Text>
+                </View>
+              ) : null}
+
+              {competitionName ? (
+                <TouchableOpacity
+                  activeOpacity={0.75}
+                  style={styles.infoLine}
+                  onPress={handleOpenCompetition}
+                >
+                  <Text style={styles.infoKey}>Competition</Text>
+                  <View style={styles.infoLinkWrap}>
+                    <Text style={[styles.infoVal, { color: '#A58BFC' }]} numberOfLines={1}>
+                      {competitionName}
+                    </Text>
+                    <ChevronRight size={14} color="#A58BFC" />
+                  </View>
+                </TouchableOpacity>
+              ) : null}
+
+              {details?.standingSummary ? (
+                <View style={styles.infoLine}>
+                  <Text style={styles.infoKey}>League Standing</Text>
+                  <Text style={styles.infoVal} numberOfLines={1}>{details.standingSummary}</Text>
+                </View>
+              ) : null}
+
+              {details?.recordSummary ? (
+                <View style={styles.infoLine}>
+                  <Text style={styles.infoKey}>Record</Text>
+                  <Text style={styles.infoVal} numberOfLines={1}>{details.recordSummary}</Text>
+                </View>
+              ) : null}
+
+              <View style={[styles.infoLine, styles.infoLineLast]}>
+                <Text style={styles.infoKey}>Sport</Text>
+                <Text style={styles.infoVal}>{sportLabel}</Text>
               </View>
             </View>
           </View>
         )}
 
-        {/* Fixtures Tab */}
+        {/* TAB 2: FIXTURES */}
         {activeTab === 'fixtures' && (
           <View style={styles.tabSection}>
-            <View style={styles.sectionCard}>
-              <Text style={styles.cardHeaderTitle}>Upcoming & Live Fixtures</Text>
-              {fallbackFixtures.map(fixture => (
-                <View key={fixture.id} style={{ marginBottom: 12 }}>
-                  <UniversalMatchCard
-                    match={fixture}
-                    layout="full"
-                    onPress={() => navigateToMatch(navigate, fixture)}
-                  />
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+            {isLoading && totalFixtures === 0 ? (
+              <View style={styles.loadingCard}>
+                <ActivityIndicator size="small" color="#7952FC" />
+                <Text style={styles.loadingText}>Fetching fixtures & results...</Text>
+              </View>
+            ) : totalFixtures === 0 ? (
+              <View style={styles.sectionCard}>
+                <Text style={styles.emptyStateTitle}>No fixtures available right now</Text>
+                <Text style={styles.emptyStateDesc}>
+                  Upcoming schedule entries and recent results for {resolvedTeam.name} will appear here once published.
+                </Text>
+              </View>
+            ) : (
+              <>
+                {liveAndUpcoming.length > 0 && (
+                  <View style={styles.fixturesGroup}>
+                    <Text style={styles.groupHeading}>Live & Upcoming</Text>
+                    {liveAndUpcoming.map(renderFixtureRow)}
+                  </View>
+                )}
 
-        {/* Squad Tab */}
-        {activeTab === 'squad' && (
-          <View style={styles.tabSection}>
-            <View style={styles.sectionCard}>
-              <Text style={styles.cardHeaderTitle}>First Team Roster</Text>
-              {squadPlayers.map(player => (
-                <View key={player.num} style={styles.squadRow}>
-                  <View style={styles.squadNumPill}>
-                    <Text style={styles.squadNumText}>{player.num}</Text>
+                {recentResults.length > 0 && (
+                  <View style={styles.fixturesGroup}>
+                    <Text style={styles.groupHeading}>Recent Results</Text>
+                    {recentResults.map(renderFixtureRow)}
                   </View>
-                  <View style={styles.squadInfo}>
-                    <Text style={styles.squadPlayerName}>{player.name}</Text>
-                    <Text style={styles.squadPlayerNat}>{player.nat}</Text>
-                  </View>
-                  <Text style={styles.squadPosPill}>{player.pos}</Text>
-                </View>
-              ))}
-            </View>
+                )}
+              </>
+            )}
           </View>
         )}
       </ScrollView>
@@ -227,59 +440,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0E0D14',
   },
-  header: {
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    backgroundColor: '#1E1730',
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2A2045',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  headerTitleBox: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  followBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: '#7952FC',
-  },
-  followBtnActive: {
-    backgroundColor: '#382565',
-  },
-  followBtnText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 24,
+    paddingBottom: 28,
   },
   heroCard: {
-    margin: 16,
-    padding: 20,
-    borderRadius: 18,
-    backgroundColor: '#1E1730',
+    marginHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 22,
+    borderRadius: 20,
+    backgroundColor: '#161224',
     alignItems: 'center',
+    overflow: 'hidden',
+  },
+  heroBgImage: {
+    opacity: 0.2,
+    borderRadius: 20,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(18, 14, 32, 0.72)',
   },
   crestFlatContainer: {
     width: 76,
@@ -290,188 +474,321 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   teamHeroName: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#FFFFFF',
     marginBottom: 4,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
   teamHeroSubtitle: {
-    fontSize: 12.5,
+    fontSize: 13.5,
     fontWeight: '500',
     color: '#A098B5',
-    marginBottom: 12,
+    marginBottom: 10,
     textAlign: 'center',
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
   },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
+    maxWidth: 180,
   },
   metaText: {
-    fontSize: 12,
+    fontSize: 12.5,
     color: '#A098B5',
     fontWeight: '500',
   },
-  metaDot: {
+  metaSpacer: {
     width: 4,
     height: 4,
     borderRadius: 2,
+    backgroundColor: '#5B4D82',
+  },
+  heroFollowBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    borderRadius: 24,
     backgroundColor: '#7952FC',
+    minWidth: 154,
+  },
+  heroFollowBtnActive: {
+    backgroundColor: '#352558',
+  },
+  heroFollowText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginBottom: 14,
-    backgroundColor: '#181524',
-    borderRadius: 12,
+    marginBottom: 16,
+    backgroundColor: '#161224',
+    borderRadius: 16,
     padding: 4,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 11,
     alignItems: 'center',
-    borderRadius: 9,
+    borderRadius: 12,
   },
   tabButtonActive: {
-    backgroundColor: '#2A2045',
+    backgroundColor: '#251E38',
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 13.5,
     fontWeight: '600',
-    color: '#A098B5',
+    color: '#8E86A8',
   },
   tabTextActive: {
     color: '#FFFFFF',
+    fontWeight: '700',
   },
   tabSection: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 14,
   },
   sectionCard: {
-    backgroundColor: '#1E1730',
-    borderRadius: 16,
+    backgroundColor: '#161224',
+    borderRadius: 18,
     padding: 16,
   },
   cardHeaderTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 12,
   },
+  cardHeaderTitleNoMargin: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  formHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  formSubLabel: {
+    fontSize: 12,
+    color: '#8E86A8',
+    fontWeight: '500',
+  },
+  viewFixturesLink: {
+    fontSize: 12.5,
+    color: '#A58BFC',
+    fontWeight: '600',
+  },
   formGuideRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
   },
-  formBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+  formCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  formBadgeWin: {
-    backgroundColor: '#22C55E',
+  formCircleWin: {
+    backgroundColor: 'rgba(34, 197, 94, 0.16)',
   },
-  formBadgeDraw: {
-    backgroundColor: '#F8BE38',
+  formCircleDraw: {
+    backgroundColor: 'rgba(245, 158, 11, 0.16)',
   },
-  formBadgeLoss: {
-    backgroundColor: '#EF4444',
+  formCircleLoss: {
+    backgroundColor: 'rgba(239, 68, 68, 0.16)',
   },
-  formBadgeText: {
-    fontSize: 13,
+  formCircleText: {
+    fontSize: 13.5,
     fontWeight: '800',
-    color: '#FFFFFF',
+  },
+  formTextWin: {
+    color: '#22C55E',
+  },
+  formTextDraw: {
+    color: '#F59E0B',
+  },
+  formTextLoss: {
+    color: '#EF4444',
   },
   infoLine: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    alignItems: 'center',
+    paddingVertical: 11,
     borderBottomWidth: 1,
-    borderBottomColor: '#181524',
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    gap: 12,
+  },
+  infoLineLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 2,
   },
   infoKey: {
-    fontSize: 12.5,
-    color: '#A098B5',
+    fontSize: 13,
+    color: '#8E86A8',
+    fontWeight: '500',
   },
   infoVal: {
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  fixtureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#181524',
-  },
-  fixtureMetaLeft: {
-    flex: 1,
-  },
-  fixtureCompName: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#7952FC',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  fixtureVersusText: {
     fontSize: 13.5,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 2,
+    textAlign: 'right',
+    flexShrink: 1,
   },
-  fixtureDateText: {
-    fontSize: 11,
-    color: '#A098B5',
-  },
-  fixtureRightArrow: {
-    paddingLeft: 8,
-  },
-  squadRow: {
+  infoLinkWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#181524',
+    gap: 4,
+    flexShrink: 1,
   },
-  squadNumPill: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    backgroundColor: '#2A2045',
+  fixturesGroup: {
+    marginBottom: 8,
+  },
+  groupHeading: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 10,
+  },
+  fixtureRowCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: '#161224',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    marginBottom: 10,
+  },
+  fixtureCrest: {
+    marginRight: 12,
+  },
+  fixtureInfoCol: {
+    flex: 1,
     marginRight: 10,
   },
-  squadNumText: {
-    fontSize: 11,
+  fixtureOpponentName: {
+    fontSize: 14.5,
     fontWeight: '700',
-    color: '#7952FC',
+    color: '#FFFFFF',
+    marginBottom: 3,
   },
-  squadInfo: {
-    flex: 1,
+  fixtureMetaText: {
+    fontSize: 12,
+    color: '#8E86A8',
+    fontWeight: '500',
   },
-  squadPlayerName: {
-    fontSize: 13,
-    fontWeight: '600',
+  fixtureRightCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minWidth: 62,
+  },
+  liveScoreText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#EF4444',
+    marginBottom: 4,
+  },
+  liveStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 4,
+  },
+  liveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#EF4444',
+  },
+  liveStatusText: {
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#EF4444',
+  },
+  ftScoreText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  resultTag: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  resultTagWin: {
+    backgroundColor: 'rgba(34, 197, 94, 0.18)',
+  },
+  resultTagDraw: {
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+  },
+  resultTagLoss: {
+    backgroundColor: 'rgba(239, 68, 68, 0.18)',
+  },
+  resultTagText: {
+    fontSize: 10,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
-  squadPlayerNat: {
-    fontSize: 11,
-    color: '#A098B5',
+  timeBadge: {
+    backgroundColor: '#221C35',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
-  squadPosPill: {
-    fontSize: 11,
+  timeBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#B8B0CF',
+  },
+  loadingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#161224',
+    borderRadius: 16,
+    paddingVertical: 22,
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 13,
     color: '#A098B5',
     fontWeight: '600',
   },
+  emptyStateTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  emptyStateDesc: {
+    fontSize: 12.5,
+    color: '#8E86A8',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 });
+
+export default TeamDetailsScreen;

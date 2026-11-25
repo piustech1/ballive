@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,35 +6,53 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Image,
 } from 'react-native';
 import { Search, Plus, Check } from 'lucide-react-native';
-import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
 import { POPULAR_TEAMS, PopularTeam } from '../constants/discoverData';
 import { TeamCrest } from '../components/common/TeamCrest';
 import { useProfile } from '../hooks/useProfile';
 import { useAppNavigation } from '../navigation/NavigationContext';
+import { popularTeamsService } from '../services/popularTeamsService';
 
 export const AllTeamsScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
-  const { profile, toggleFollowTeam } = useProfile();
+  const { isTeamFollowed, toggleFollowTeam } = useProfile();
   const [searchQuery, setSearchQuery] = useState('');
+  const [teams, setTeams] = useState<PopularTeam[]>(() =>
+    popularTeamsService.getCachedPopularTeams()
+  );
 
-  const filtered = POPULAR_TEAMS.filter(
+  useEffect(() => {
+    let mounted = true;
+    popularTeamsService
+      .getPopularTeams()
+      .then(res => {
+        if (mounted && res && res.length > 0) setTeams(res);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const pool = teams.length > 0 ? teams : POPULAR_TEAMS;
+  const q = searchQuery.toLowerCase();
+  const filtered = pool.filter(
     t =>
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.country.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.stadium.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.domesticTitle.toLowerCase().includes(searchQuery.toLowerCase())
+      t.name.toLowerCase().includes(q) ||
+      t.country.toLowerCase().includes(q) ||
+      (t.stadium || '').toLowerCase().includes(q) ||
+      (t.competitionName || '').toLowerCase().includes(q) ||
+      (t.domesticTitle || '').toLowerCase().includes(q)
   );
 
   return (
     <View style={styles.root}>
       {/* Top App Bar */}
       <SecondaryScreenHeader
-        title="Popular Clubs"
-        subtitle={`${POPULAR_TEAMS.length} Elite Football Teams`}
+        title="Popular Teams"
+        subtitle={`${pool.length} Featured Teams & Clubs`}
       />
 
       {/* Search Input Box */}
@@ -43,7 +61,7 @@ export const AllTeamsScreen: React.FC = () => {
           <Search size={16} color="#A098B5" strokeWidth={2.2} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search football clubs..."
+            placeholder="Search teams, clubs or leagues..."
             placeholderTextColor="#6D6582"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -59,11 +77,19 @@ export const AllTeamsScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <Text style={styles.resultsCount}>
-          {filtered.length} World-Class {filtered.length === 1 ? 'Club' : 'Clubs'}
+          {filtered.length} {filtered.length === 1 ? 'Team' : 'Teams'}
         </Text>
 
         {filtered.map(team => {
-          const isFollowed = profile.followedTeamIds.includes(team.id);
+          const isFollowed = isTeamFollowed(team);
+          const primarySub = team.stadium
+            ? `${team.stadium} • ${team.country}`
+            : team.competitionName
+            ? `${team.competitionName} • ${team.country}`
+            : team.country;
+          const secondarySub = team.competitionName && team.stadium
+            ? team.competitionName
+            : team.domesticTitle;
 
           return (
             <TouchableOpacity
@@ -89,11 +115,13 @@ export const AllTeamsScreen: React.FC = () => {
                   {team.name}
                 </Text>
                 <Text style={styles.teamStadium} numberOfLines={1}>
-                  {team.stadium} • {team.country}
+                  {primarySub}
                 </Text>
-                <Text style={styles.teamTitle} numberOfLines={1}>
-                  {team.domesticTitle}
-                </Text>
+                {secondarySub ? (
+                  <Text style={styles.teamTitle} numberOfLines={1}>
+                    {secondarySub}
+                  </Text>
+                ) : null}
               </View>
 
               <TouchableOpacity
@@ -101,7 +129,7 @@ export const AllTeamsScreen: React.FC = () => {
                 style={[styles.followBtn, isFollowed && styles.followBtnActive]}
                 onPress={e => {
                   e.stopPropagation();
-                  toggleFollowTeam(team.id);
+                  toggleFollowTeam(team);
                 }}
               >
                 {isFollowed ? (

@@ -175,126 +175,19 @@ function formatKickoffTime(rawTime?: string): string {
     .trim();
 }
 
+import { competitionResolverService } from '../../services/competitionResolverService';
+
 function getShortCompetition(comp?: string, sport?: string): string {
   if (!comp) return 'MATCH';
-  const canonical = getCanonicalSport(sport, comp);
-  if (canonical === 'american_football') {
-    if (comp.includes('Super Bowl') || comp.includes('Superbowl')) {
-      return comp;
-    }
-    return 'American Football';
-  }
-  if (canonical === 'hockey') return 'NHL';
-  if (canonical === 'basketball') return 'NBA';
-  if (canonical === 'motorsport') return 'Formula 1';
-  if (canonical === 'soccer') {
-    const c = comp.toUpperCase();
-    if (c.includes('CHAMPIONS LEAGUE')) return 'UCL';
-    if (c.includes('PREMIER LEAGUE')) return 'Premier League';
-    if (c.includes('LA LIGA')) return 'La Liga';
-    if (c.includes('SERIE A')) return 'Serie A';
-    if (c.includes('BUNDESLIGA')) return 'Bundesliga';
-    return 'Football';
+  const resolved = competitionResolverService.resolveCompetition({ competition: comp, sport });
+  if (resolved.isIdentified && resolved.shortName) {
+    return resolved.shortName.length <= 16 ? resolved.shortName : resolved.shortName.slice(0, 16);
   }
   if (comp.length <= 14) return comp;
   return comp.split('•')[0].trim().substring(0, 14);
 }
 
-// Fallback multi-sport authentic upcoming matches if network is unavailable
-const FALLBACK_TIMELINE_MATCHES: DiscoverMatchup[] = [
-  {
-    id: 'tl-nfl-superbowl',
-    competition: 'NFL • Super Bowl LVIII',
-    competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png',
-    status: 'UPCOMING',
-    kickoffDate: 'Today',
-    kickoffTime: '6:00 PM',
-    sport: 'american_football',
-    homeTeam: {
-      id: 'team-chiefs',
-      name: 'Kansas City Chiefs',
-      crestUrl: 'https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/kc.png',
-      score: 0,
-    },
-    awayTeam: {
-      id: 'team-bengals',
-      name: 'Cincinnati Bengals',
-      crestUrl: 'https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/cin.png',
-      score: 0,
-    },
-    venue: 'Allegiant Stadium',
-    hasLiveBroadcast: false,
-  },
-  {
-    id: 'tl-nhl-rangers',
-    competition: 'NHL',
-    competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png',
-    status: 'UPCOMING',
-    kickoffDate: 'Today',
-    kickoffTime: '8:00 PM',
-    sport: 'hockey',
-    homeTeam: {
-      id: 'team-nyr',
-      name: 'New York Rangers',
-      crestUrl: 'https://a.espncdn.com/i/teamlogos/nhl/500/scoreboard/nyr.png',
-      score: 0,
-    },
-    awayTeam: {
-      id: 'team-tor',
-      name: 'Toronto Maple Leafs',
-      crestUrl: 'https://a.espncdn.com/i/teamlogos/nhl/500/scoreboard/tor.png',
-      score: 0,
-    },
-    venue: 'Madison Square Garden',
-    hasLiveBroadcast: false,
-  },
-  {
-    id: 'tl-nba-celtics',
-    competition: 'NBA',
-    competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/nba.png',
-    status: 'UPCOMING',
-    kickoffDate: 'Today',
-    kickoffTime: '8:15 PM',
-    sport: 'basketball',
-    homeTeam: {
-      id: 'team-bos',
-      name: 'Boston Celtics',
-      crestUrl: 'https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/bos.png',
-      score: 0,
-    },
-    awayTeam: {
-      id: 'team-mia',
-      name: 'Miami Heat',
-      crestUrl: 'https://a.espncdn.com/i/teamlogos/nba/500/scoreboard/mia.png',
-      score: 0,
-    },
-    venue: 'TD Garden',
-    hasLiveBroadcast: false,
-  },
-  {
-    id: 'tl-ucl-madrid',
-    competition: 'UEFA Champions League',
-    competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/uefa.champions.png',
-    status: 'UPCOMING',
-    kickoffDate: 'Today',
-    kickoffTime: '10:00 PM',
-    sport: 'soccer',
-    homeTeam: {
-      id: 'team-real-madrid',
-      name: 'Real Madrid',
-      crestUrl: 'https://crests.football-data.org/86.png',
-      score: 0,
-    },
-    awayTeam: {
-      id: 'team-man-city',
-      name: 'Manchester City',
-      crestUrl: 'https://crests.football-data.org/65.png',
-      score: 0,
-    },
-    venue: 'Santiago Bernabéu',
-    hasLiveBroadcast: false,
-  },
-];
+const FALLBACK_TIMELINE_MATCHES: DiscoverMatchup[] = [];
 
 export interface SportsScheduleTimelineProps {
   onMatchPress: (matchup: DiscoverMatchup) => void;
@@ -339,11 +232,11 @@ export const SportsScheduleTimeline: React.FC<SportsScheduleTimelineProps> = ({
             return;
           }
         }
-        setInternalMatches(FALLBACK_TIMELINE_MATCHES);
+        setInternalMatches([]);
       })
       .catch(() => {
         if (isMounted) {
-          setInternalMatches(FALLBACK_TIMELINE_MATCHES);
+          setInternalMatches([]);
         }
       });
 

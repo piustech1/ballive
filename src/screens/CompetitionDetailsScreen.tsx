@@ -1,237 +1,439 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
+  ActivityIndicator,
+  ImageBackground,
 } from 'react-native';
 import {
   Check,
   Plus,
-  Trophy,
-  Globe,
-  Calendar,
-  ChevronRight,
-  Shield,
-  Clock,
-  Sparkles,
+  Bookmark,
 } from 'lucide-react-native';
-import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
 import { CompetitionLogo } from '../components/common/CompetitionLogo';
-import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
 import { TeamCrest } from '../components/common/TeamCrest';
 import {
   DiscoverCompetition,
   PopularLeague,
   DiscoverMatchup,
-  UPCOMING_HIGHLIGHTS,
 } from '../constants/discoverData';
-import { getCompetitionStandings, StandingsRow } from '../constants/standingsData';
-import { getTeamCrest } from '../utils/teamCrestResolver';
+import { SPORT_BACKDROPS } from '../constants/crests';
 import { useProfile } from '../hooks/useProfile';
+import { useSavedMatches } from '../hooks/useSavedMatches';
 import { useAppNavigation } from '../navigation/NavigationContext';
-import { navigateToMatch } from '../navigation/navHelpers';
-
-import {
-  sportsApiService,
-  NbaStandingsRow,
-  NbaStandingsResult,
-} from '../services/sportsApiService';
+import { findTeamById, navigateToMatch } from '../navigation/navHelpers';
+import { normalizeLeagueId } from '../services/profileStorage';
+import { sportsApiService, resolveLeagueKey } from '../services/sportsApiService';
+import { streamingApiService } from '../services/streamingApiService';
+import { competitionResolverService } from '../services/competitionResolverService';
 
 interface CompetitionDetailsScreenProps {
   competition: DiscoverCompetition | PopularLeague;
 }
 
-type CompTab = 'overview' | 'matches' | 'standings';
+type CompTab = 'overview' | 'matches';
+
+function normalizeCompForMatchCheck(nameOrId: string): string {
+  const res = competitionResolverService.resolveCompetition({
+    rawId: nameOrId,
+    competition: nameOrId,
+  });
+  return res.isIdentified ? res.id : normalizeLeagueId(nameOrId);
+}
+
+function getSportLabel(sport?: string): string {
+  const s = (sport || '').toLowerCase();
+  if (s === 'basketball') return 'Basketball';
+  if (s === 'hockey') return 'Ice Hockey';
+  if (s === 'american_football') return 'American Football';
+  if (s === 'tennis') return 'Tennis';
+  if (s === 'cricket') return 'Cricket';
+  if (s === 'motorsport') return 'Motorsport';
+  return 'Football';
+}
 
 export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> = ({
   competition,
 }) => {
   const { navigate } = useAppNavigation();
-  const { profile, toggleFollowLeague } = useProfile();
+  const { isLeagueFollowed, toggleFollowLeague } = useProfile();
+  const { isSaved, toggleSave } = useSavedMatches();
   const [activeTab, setActiveTab] = useState<CompTab>('overview');
+  const [fixtures, setFixtures] = useState<DiscoverMatchup[]>([]);
+  const [isLoadingFixtures, setIsLoadingFixtures] = useState(true);
 
-  const isFollowed = profile.followedLeagueIds.includes(competition.id);
-
-  // Derive sport type
-  const compSport = ('sport' in competition ? competition.sport : undefined) || (
-    competition.id.includes('nba') || competition.name.toLowerCase().includes('nba') ? 'basketball' :
-    competition.id.includes('nhl') || competition.name.toLowerCase().includes('nhl') ? 'hockey' :
-    competition.id.includes('nfl') || competition.name.toLowerCase().includes('nfl') ? 'american_football' :
-    competition.id.includes('f1') || competition.id.includes('motorsport') || competition.name.toLowerCase().includes('formula') ? 'motorsport' :
-    competition.id.includes('tennis') || competition.name.toLowerCase().includes('tennis') ? 'tennis' :
-    competition.id.includes('cricket') || competition.name.toLowerCase().includes('cricket') ? 'cricket' :
-    'soccer'
-  );
+  const compSport = useMemo(() => {
+    if ('sport' in competition && competition.sport) return competition.sport;
+    const lower = competition.name.toLowerCase();
+    const idLower = competition.id.toLowerCase();
+    if (idLower.includes('nba') || lower.includes('nba') || lower.includes('euroleague') || lower.includes('basketball')) return 'basketball';
+    if (idLower.includes('nhl') || lower.includes('nhl') || lower.includes('hockey') || lower.includes('allsvenskan') || idLower === 'del' || idLower === 'icehl') return 'hockey';
+    if (idLower.includes('nfl') || lower.includes('nfl')) return 'american_football';
+    if (idLower.includes('f1') || idLower.includes('motorsport') || lower.includes('formula')) return 'motorsport';
+    if (idLower.includes('tennis') || lower.includes('tennis') || lower.includes('atp') || lower.includes('wta')) return 'tennis';
+    if (idLower.includes('cricket') || lower.includes('cricket')) return 'cricket';
+    return 'soccer';
+  }, [competition]);
 
   const isBasketball = compSport === 'basketball';
   const isHockey = compSport === 'hockey';
-  const isAmericanFootball = compSport === 'american_football';
-  const isMotorsport = compSport === 'motorsport';
-  const isTennis = compSport === 'tennis';
+  const sportLabel = getSportLabel(compSport);
 
-  // F1 Drivers Championship
-  const f1Drivers = [
-    { pos: 1, driver: 'Max Verstappen', team: 'Red Bull Racing', points: 437, wins: 9, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/4665.png&w=120&h=120' },
-    { pos: 2, driver: 'Lando Norris', team: 'McLaren', points: 374, wins: 4, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/5548.png&w=120&h=120' },
-    { pos: 3, driver: 'Charles Leclerc', team: 'Ferrari', points: 356, wins: 3, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/4699.png&w=120&h=120' },
-    { pos: 4, driver: 'Oscar Piastri', team: 'McLaren', points: 292, wins: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/5745.png&w=120&h=120' },
-    { pos: 5, driver: 'Carlos Sainz', team: 'Ferrari', points: 290, wins: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/4698.png&w=120&h=120' },
-    { pos: 6, driver: 'George Russell', team: 'Mercedes', points: 245, wins: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/5547.png&w=120&h=120' },
-    { pos: 7, driver: 'Lewis Hamilton', team: 'Ferrari', points: 223, wins: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/868.png&w=120&h=120' },
-    { pos: 8, driver: 'Sergio Perez', team: 'Red Bull Racing', points: 152, wins: 0, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/rpm/players/full/4472.png&w=120&h=120' },
-  ];
-
-  // F1 Constructors Championship
-  const f1Constructors = [
-    { pos: 1, team: 'McLaren', engine: 'Mercedes', points: 666, wins: 6, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/mclaren.png' },
-    { pos: 2, team: 'Ferrari', engine: 'Ferrari', points: 652, wins: 5, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/ferrari.png' },
-    { pos: 3, team: 'Red Bull Racing', engine: 'Honda RBPT', points: 589, wins: 9, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/red_bull.png' },
-    { pos: 4, team: 'Mercedes-AMG', engine: 'Mercedes', points: 468, wins: 4, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/mercedes.png' },
-    { pos: 5, team: 'Aston Martin', engine: 'Mercedes', points: 94, wins: 0, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/aston_martin.png' },
-    { pos: 6, team: 'Alpine', engine: 'Renault', points: 65, wins: 0, logo: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/alpine.png' },
-  ];
-
-  // Tennis Rankings
-  const tennisRankings = [
-    { pos: 1, player: 'Jannik Sinner', country: 'Italy', points: '11,830 pts', titles: 8, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/5123.png&w=120&h=120' },
-    { pos: 2, player: 'Alexander Zverev', country: 'Germany', points: '7,915 pts', titles: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/4143.png&w=120&h=120' },
-    { pos: 3, player: 'Carlos Alcaraz', country: 'Spain', points: '7,010 pts', titles: 4, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/5258.png&w=120&h=120' },
-    { pos: 4, player: 'Taylor Fritz', country: 'USA', points: '5,100 pts', titles: 2, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/4541.png&w=120&h=120' },
-    { pos: 5, player: 'Daniil Medvedev', country: 'Global', points: '5,030 pts', titles: 0, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/4351.png&w=120&h=120' },
-    { pos: 6, player: 'Novak Djokovic', country: 'Serbia', points: '3,910 pts', titles: 1, avatar: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/299.png&w=120&h=120' },
-  ];
-
-  // Region / Season fields
   const region = 'region' in competition ? competition.region : competition.country;
-  const season = 'season' in competition ? competition.season : '2024/25 Season';
-  const teamsCount = 'teamsCount' in competition ? competition.teamsCount : 20;
+  const reliableCountry =
+    competition.country && competition.country !== 'Global' && competition.country !== 'International'
+      ? competition.country
+      : region && region !== 'Global' && region !== 'International'
+      ? region
+      : undefined;
+  const teamsCount =
+    'teamsCount' in competition && competition.teamsCount && competition.teamsCount > 0
+      ? competition.teamsCount
+      : undefined;
 
-  // Filter fallback fixtures
-  const compFixtures = useMemo((): DiscoverMatchup[] => {
-    if (isMotorsport) {
-      return [
-        {
-          id: 'f1-bahrain',
-          competition: 'Formula 1',
-          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
-          status: 'UPCOMING',
-          kickoffDate: 'Sun, 2 Mar',
-          kickoffTime: '15:00 GMT',
-          homeTeam: { id: 'team-f1-verstappen', name: 'Max Verstappen (Red Bull)', crestUrl: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/red_bull.png', score: 0 },
-          awayTeam: { id: 'team-f1-norris', name: 'Lando Norris (McLaren)', crestUrl: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/mclaren.png', score: 0 },
-          venue: 'Bahrain International Circuit, Sakhir',
-          hasLiveBroadcast: true,
-          sport: 'motorsport',
-        },
-        {
-          id: 'f1-saudi',
-          competition: 'Formula 1',
-          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/f1.png',
-          status: 'UPCOMING',
-          kickoffDate: 'Sun, 9 Mar',
-          kickoffTime: '17:00 GMT',
-          homeTeam: { id: 'team-f1-leclerc', name: 'Charles Leclerc (Ferrari)', crestUrl: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/ferrari.png', score: 0 },
-          awayTeam: { id: 'team-f1-hamilton', name: 'Lewis Hamilton (Ferrari)', crestUrl: 'https://a.espncdn.com/i/teamlogos/rpm/500/scoreboard/ferrari.png', score: 0 },
-          venue: 'Jeddah Corniche Circuit, Saudi Arabia',
-          hasLiveBroadcast: true,
-          sport: 'motorsport',
-        },
-      ];
-    }
-    if (isTennis) {
-      return [
-        {
-          id: 'tennis-final-1',
-          competition: 'ATP Masters 1000',
-          competitionLogo: 'https://a.espncdn.com/i/teamlogos/leagues/500/tennis.png',
-          status: 'UPCOMING',
-          kickoffDate: 'Sun, 23 Mar',
-          kickoffTime: '19:00 GMT',
-          homeTeam: { id: 'team-sinner', name: 'Jannik Sinner (#1)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/5123.png&w=120&h=120', score: 0 },
-          awayTeam: { id: 'team-alcaraz', name: 'Carlos Alcaraz (#3)', crestUrl: 'https://a.espncdn.com/combiner/i?img=/i/headshots/tennis/players/full/5258.png&w=120&h=120', score: 0 },
-          venue: 'Indian Wells Tennis Garden',
-          hasLiveBroadcast: true,
-          sport: 'tennis',
-        },
-      ];
-    }
-    return UPCOMING_HIGHLIGHTS.filter(
-      m =>
-        (m.competition.toLowerCase().includes(competition.name.toLowerCase()) ||
-        competition.name.toLowerCase().includes(m.competition.toLowerCase())) &&
-        (m.sport === compSport || (!m.sport && compSport === 'soccer'))
-    );
-  }, [isMotorsport, isTennis, compSport, competition.name]);
+  const isFollowed = isLeagueFollowed(competition);
 
-  // Dynamic Real Competition Fixtures via sportsApiService
-  const [fixtures, setFixtures] = useState<DiscoverMatchup[]>([]);
-  const [isLoadingFixtures, setIsLoadingFixtures] = useState(false);
+  const targetCanonId = useMemo(
+    () => normalizeCompForMatchCheck(competition.id || competition.name),
+    [competition.id, competition.name]
+  );
 
-  React.useEffect(() => {
+  useEffect(() => {
     let isMounted = true;
     setIsLoadingFixtures(true);
-    sportsApiService.getCompetitionFixtures(competition.id).then(rows => {
-      if (isMounted && rows && rows.length > 0) {
-        setFixtures(rows);
+
+    const loadAllMatches = async () => {
+      try {
+        const leagueKey = resolveLeagueKey(competition.id) || competition.id;
+        const [apiRows, liveCatalog] = await Promise.all([
+          sportsApiService
+            .getCompetitionFixtures(leagueKey, {
+              name: competition.name,
+              sport: compSport,
+            })
+            .catch(() => [] as DiscoverMatchup[]),
+          Promise.resolve(streamingApiService.getCachedLiveMatches()).then(cached =>
+            cached.length > 0 ? cached : streamingApiService.getLiveMatches().catch(() => [])
+          ),
+        ]);
+
+        const merged: DiscoverMatchup[] = [];
+        const seen = new Set<string>();
+
+        const addUnique = (m: DiscoverMatchup) => {
+          const datePart = (m.rawDate || m.kickoffDate || '').slice(0, 10);
+          const k1 = `${m.homeTeam.name.toLowerCase().trim()}_${m.awayTeam.name.toLowerCase().trim()}_${datePart}`;
+          const k2 = `${m.awayTeam.name.toLowerCase().trim()}_${m.homeTeam.name.toLowerCase().trim()}_${datePart}`;
+          if (seen.has(m.id) || seen.has(k1) || seen.has(k2)) return;
+          seen.add(m.id);
+          seen.add(k1);
+          seen.add(k2);
+          merged.push(m);
+        };
+
+        // Catalog live/upcoming matches matching this competition first (carries live status & stream URLs!)
+        (liveCatalog || []).forEach(lm => {
+          const matchCompCanon = normalizeCompForMatchCheck(lm.competition || lm.id);
+          const nameLower = (lm.competition || '').toLowerCase();
+          const compLower = competition.name.toLowerCase();
+          const isMatch =
+            matchCompCanon === targetCanonId ||
+            normalizeLeagueId(lm.competition) === normalizeLeagueId(competition.id) ||
+            (targetCanonId === 'football' && lm.sport === 'soccer') ||
+            (targetCanonId === 'all') ||
+            (nameLower && compLower && (nameLower === compLower || nameLower.includes(compLower) || compLower.includes(nameLower)));
+
+          if (isMatch) {
+            addUnique(streamingApiService.convertLiveMatchToMatchup(lm));
+          }
+        });
+
+        // Merge ESPN / Football-Data fixtures (upcoming + recent completed FT)
+        (apiRows || []).forEach(addUnique);
+
+        if (isMounted) {
+          setFixtures(merged);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingFixtures(false);
+        }
       }
-    }).catch(() => {}).finally(() => {
-      if (isMounted) setIsLoadingFixtures(false);
+    };
+
+    loadAllMatches();
+    return () => {
+      isMounted = false;
+    };
+  }, [competition.id, competition.name, compSport, targetCanonId]);
+
+  const { liveAndUpcoming, recentResults, featuredMatch } = useMemo(() => {
+    const liveUp = fixtures
+      .filter(f => f.status === 'LIVE' || f.status === 'UPCOMING')
+      .sort((a, b) => {
+        if (a.status === 'LIVE' && b.status !== 'LIVE') return -1;
+        if (b.status === 'LIVE' && a.status !== 'LIVE') return 1;
+        return (a.kickoffTimestamp || 0) - (b.kickoffTimestamp || 0);
+      });
+
+    const finished = fixtures
+      .filter(f => f.status === 'FT')
+      .sort((a, b) => (b.kickoffTimestamp || 0) - (a.kickoffTimestamp || 0));
+
+    return {
+      liveAndUpcoming: liveUp,
+      recentResults: finished,
+      featuredMatch: liveUp[0] || finished[0] || null,
+    };
+  }, [fixtures]);
+
+  const headerSubtitle = reliableCountry
+    ? `${reliableCountry} · ${sportLabel}`
+    : `${region || 'International'} · ${sportLabel}`;
+
+  const heroMetaParts = [
+    competition.country || region,
+    teamsCount ? `${teamsCount} ${isBasketball || isHockey ? 'Franchises' : 'Clubs'}` : sportLabel,
+  ].filter(Boolean);
+
+  const backdropUri = SPORT_BACKDROPS[compSport] || SPORT_BACKDROPS.soccer;
+
+  const openTeam = (teamSide: { id?: string; name: string; crestUrl?: string }) => {
+    if (!teamSide?.name) return;
+    const resolved = findTeamById(teamSide.id || teamSide.name, {
+      name: teamSide.name,
+      crestUrl: teamSide.crestUrl,
+      sport: compSport as any,
+      country: reliableCountry,
+      competitionId: normalizeLeagueId(competition.id),
+      competitionName: competition.name,
     });
-    return () => { isMounted = false; };
-  }, [competition.id]);
+    navigate({ name: 'TeamDetails', params: { team: resolved } });
+  };
 
-  const displayFixtures = fixtures.length > 0 ? fixtures : compFixtures;
+  const renderFeaturedMatchCard = (m: DiscoverMatchup) => {
+    const isLive = m.status === 'LIVE' || Boolean(m.isLive);
+    const isFinished = m.status === 'FT';
+    const timeText = (m.kickoffTime || 'Today').replace(/\s*\(EAT\)/i, '').replace(/\s*Live/i, '').trim();
+    const bookmarked = isSaved(m.id);
 
-  // Dynamic League Standings with crests, W, D, L, GD, PTS
-  const [standings, setStandings] = useState<StandingsRow[]>(() => getCompetitionStandings(competition.id));
+    return (
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={styles.featuredCard}
+        onPress={() => navigateToMatch(navigate, m)}
+      >
+        <View style={styles.featuredTopRow}>
+          <Text style={styles.cardHeaderTitleNoMargin}>Featured Match</Text>
+          <TouchableOpacity
+            activeOpacity={0.75}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={e => {
+              e.stopPropagation();
+              toggleSave(m);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={bookmarked ? 'Remove match bookmark' : 'Bookmark match'}
+          >
+            <Bookmark
+              size={19}
+              color={bookmarked ? '#7952FC' : '#A098B5'}
+              fill={bookmarked ? '#7952FC' : 'transparent'}
+              strokeWidth={2}
+            />
+          </TouchableOpacity>
+        </View>
 
-  React.useEffect(() => {
-    let isMounted = true;
-    sportsApiService.getStandings(competition.id).then(liveRows => {
-      if (isMounted && liveRows && liveRows.length > 0) {
-        setStandings(liveRows);
-      }
-    }).catch(() => {});
-    return () => { isMounted = false; };
-  }, [competition.id]);
+        <View style={styles.featuredMatchupRow}>
+          {/* Home Team */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            style={styles.featuredTeamCol}
+            onPress={e => {
+              e.stopPropagation();
+              openTeam(m.homeTeam);
+            }}
+          >
+            <TeamCrest
+              uri={m.homeTeam.crestUrl}
+              teamName={m.homeTeam.name}
+              size={44}
+              containerStyle={{ marginBottom: 8 }}
+            />
+            <Text style={styles.featuredTeamName} numberOfLines={2}>
+              {m.homeTeam.name}
+            </Text>
+          </TouchableOpacity>
 
-  // Dynamic NBA Conference Standings
-  const [nbaStandings, setNbaStandings] = useState<NbaStandingsResult>({ eastern: [], western: [] });
-  const [selectedConference, setSelectedConference] = useState<'Eastern' | 'Western'>('Eastern');
-  const [isLoadingNba, setIsLoadingNba] = useState(false);
+          {/* Center Score / Time Pill */}
+          <View style={styles.featuredCenterCol}>
+            {isLive ? (
+              <>
+                <Text style={styles.matchScoreRed}>
+                  {m.homeTeam.score ?? 0} - {m.awayTeam.score ?? 0}
+                </Text>
+                <View style={styles.livePill}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.livePillText}>
+                    LIVE{m.playTime ? ` ${m.playTime.replace(/live/i, '').trim()}` : ''}
+                  </Text>
+                </View>
+                <Text style={styles.featuredDateText}>{m.kickoffDate || 'Today'}</Text>
+              </>
+            ) : isFinished ? (
+              <>
+                <Text style={styles.matchScoreWhite}>
+                  {m.homeTeam.score ?? 0} - {m.awayTeam.score ?? 0}
+                </Text>
+                <View style={styles.ftPill}>
+                  <Text style={styles.ftPillText}>FT</Text>
+                </View>
+                <Text style={styles.featuredDateText}>{m.kickoffDate || 'Recent'}</Text>
+              </>
+            ) : (
+              <>
+                <View style={styles.upcomingTimePill}>
+                  <Text style={styles.upcomingTimeText}>{timeText}</Text>
+                </View>
+                <Text style={styles.featuredDateText}>{m.kickoffDate || 'Today'}</Text>
+              </>
+            )}
+          </View>
 
-  React.useEffect(() => {
-    if (!isBasketball) return;
-    let isMounted = true;
-    setIsLoadingNba(true);
-    sportsApiService.getNbaStandings().then(res => {
-      if (isMounted && (res.eastern.length > 0 || res.western.length > 0)) {
-        setNbaStandings(res);
-      }
-    }).catch(() => {}).finally(() => {
-      if (isMounted) setIsLoadingNba(false);
-    });
-    return () => { isMounted = false; };
-  }, [isBasketball]);
+          {/* Away Team */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            style={styles.featuredTeamCol}
+            onPress={e => {
+              e.stopPropagation();
+              openTeam(m.awayTeam);
+            }}
+          >
+            <TeamCrest
+              uri={m.awayTeam.crestUrl}
+              teamName={m.awayTeam.name}
+              size={44}
+              containerStyle={{ marginBottom: 8 }}
+            />
+            <Text style={styles.featuredTeamName} numberOfLines={2}>
+              {m.awayTeam.name}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
+  const renderMatchRow = (m: DiscoverMatchup) => {
+    const isLive = m.status === 'LIVE' || Boolean(m.isLive);
+    const isFinished = m.status === 'FT';
+    const timeText = (m.kickoffTime || 'TBD').replace(/\s*\(EAT\)/i, '').replace(/\s*Live/i, '').trim();
 
+    return (
+      <TouchableOpacity
+        key={m.id}
+        activeOpacity={0.82}
+        style={styles.matchRowCard}
+        onPress={() => navigateToMatch(navigate, m)}
+      >
+        <View style={styles.matchRowTeams}>
+          {/* Home Side */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            style={styles.matchTeamLeft}
+            onPress={e => {
+              e.stopPropagation();
+              openTeam(m.homeTeam);
+            }}
+          >
+            <TeamCrest
+              uri={m.homeTeam.crestUrl}
+              teamName={m.homeTeam.name}
+              size={30}
+              containerStyle={{ marginRight: 8 }}
+            />
+            <Text style={styles.matchTeamNameLeft} numberOfLines={2}>
+              {m.homeTeam.name}
+            </Text>
+          </TouchableOpacity>
+
+          {/* Center Status */}
+          <View style={styles.matchRowCenter}>
+            {isLive ? (
+              <>
+                <Text style={styles.matchScoreRed}>
+                  {m.homeTeam.score ?? 0} - {m.awayTeam.score ?? 0}
+                </Text>
+                <View style={styles.livePill}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.livePillText}>
+                    LIVE {m.playTime ? m.playTime.replace(/live/i, '').trim() : ''}
+                  </Text>
+                </View>
+                <Text style={styles.matchRowDateText}>{m.kickoffDate || 'Today'}</Text>
+              </>
+            ) : isFinished ? (
+              <>
+                <Text style={styles.matchScoreWhite}>
+                  {m.homeTeam.score ?? 0} - {m.awayTeam.score ?? 0}
+                </Text>
+                <View style={styles.ftPill}>
+                  <Text style={styles.ftPillText}>Full Time</Text>
+                </View>
+                <Text style={styles.matchRowDateText}>{m.kickoffDate || 'Final'}</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.vsLabel}>vs</Text>
+                <View style={styles.rowTimePill}>
+                  <Text style={styles.rowTimeText} numberOfLines={1}>{timeText}</Text>
+                </View>
+                <Text style={styles.matchRowDateText}>{m.kickoffDate || 'Upcoming'}</Text>
+              </>
+            )}
+          </View>
+
+          {/* Away Side */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            style={styles.matchTeamRight}
+            onPress={e => {
+              e.stopPropagation();
+              openTeam(m.awayTeam);
+            }}
+          >
+            <Text style={styles.matchTeamNameRight} numberOfLines={2}>
+              {m.awayTeam.name}
+            </Text>
+            <TeamCrest
+              uri={m.awayTeam.crestUrl}
+              teamName={m.awayTeam.name}
+              size={30}
+              containerStyle={{ marginLeft: 8 }}
+            />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.root}>
-      {/* ── TOP APP BAR ── */}
+      {/* Compact Curved Header */}
       <SecondaryScreenHeader
-        title={competition.name}
-        subtitle={`${region} • ${season}`}
+        title={competition.name.toUpperCase()}
+        subtitle={headerSubtitle}
+        sport={compSport}
         rightAction={{
           icon: isFollowed ? Check : Plus,
-          onPress: () => toggleFollowLeague(competition.id),
+          onPress: () => toggleFollowLeague(competition),
           active: isFollowed,
           activeColor: '#7952FC',
-          accessibilityLabel: isFollowed ? 'Unfollow' : 'Follow',
+          accessibilityLabel: isFollowed ? 'Unfollow competition' : 'Follow competition',
         }}
       />
 
@@ -240,54 +442,53 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── TOURNAMENT IDENTITY HERO CARD ── */}
-        <View style={styles.heroCard}>
+        {/* Flat Dark-Mode Identity Hero Card (No white circular disc around CompetitionLogo) */}
+        <ImageBackground
+          source={{ uri: backdropUri }}
+          style={styles.heroCard}
+          imageStyle={styles.heroBgImage}
+        >
+          <View style={styles.heroOverlay} />
+
           <CompetitionLogo
             uri={competition.logoUrl}
             competitionId={competition.id}
-            size={72}
+            size={76}
+            flat={true}
             containerStyle={{ marginBottom: 14 }}
           />
 
-          <Text style={styles.heroTitle}>{competition.name}</Text>
-          <Text style={styles.heroSubtitle}>{season}</Text>
+          <Text style={styles.heroTitle} numberOfLines={2}>
+            {competition.name}
+          </Text>
 
-          <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Globe size={13} color="#A098B5" strokeWidth={2} />
-              <Text style={styles.metaText}>{region}</Text>
-            </View>
-            <View style={styles.metaDot} />
-            <View style={styles.metaItem}>
-              <Trophy size={13} color="#A098B5" strokeWidth={2} />
-              <Text style={styles.metaText}>
-                {isBasketball || isHockey ? `${teamsCount} Franchises` : `${teamsCount} Clubs`}
-              </Text>
-            </View>
-          </View>
+          <Text style={styles.heroMetaText} numberOfLines={1}>
+            {heroMetaParts.join(' · ')}
+          </Text>
 
           <TouchableOpacity
             activeOpacity={0.85}
-            style={[styles.followBtn, isFollowed && styles.followBtnActive]}
-            onPress={() => toggleFollowLeague(competition.id)}
+            style={[styles.heroFollowBtn, isFollowed && styles.heroFollowBtnActive]}
+            onPress={() => toggleFollowLeague(competition)}
           >
             {isFollowed ? (
               <>
-                <Check size={14} color="#FFFFFF" strokeWidth={2.5} />
-                <Text style={styles.followBtnText}>Following Competition</Text>
+                <Check size={15} color="#FFFFFF" strokeWidth={2.5} />
+                <Text style={styles.heroFollowText}>Following</Text>
               </>
             ) : (
               <>
-                <Plus size={14} color="#FFFFFF" strokeWidth={2.5} />
-                <Text style={styles.followBtnText}>Follow Competition</Text>
+                <Plus size={15} color="#FFFFFF" strokeWidth={2.5} />
+                <Text style={styles.heroFollowText}>Follow Competition</Text>
               </>
             )}
           </TouchableOpacity>
-        </View>
+        </ImageBackground>
 
-        {/* ── TABS BAR ── */}
+        {/* Two-Tab Segmented Control (Overview | Matches) */}
         <View style={styles.tabBar}>
           <TouchableOpacity
+            activeOpacity={0.85}
             style={[styles.tabButton, activeTab === 'overview' && styles.tabButtonActive]}
             onPress={() => setActiveTab('overview')}
           >
@@ -297,435 +498,102 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           </TouchableOpacity>
 
           <TouchableOpacity
+            activeOpacity={0.85}
             style={[styles.tabButton, activeTab === 'matches' && styles.tabButtonActive]}
             onPress={() => setActiveTab('matches')}
           >
             <Text style={[styles.tabText, activeTab === 'matches' && styles.tabTextActive]}>
-              {isMotorsport ? `Grand Prix (${displayFixtures.length})` : isTennis ? `Draws (${displayFixtures.length})` : `Matches (${displayFixtures.length})`}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'standings' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('standings')}
-          >
-            <Text style={[styles.tabText, activeTab === 'standings' && styles.tabTextActive]}>
-              {isMotorsport ? 'Championship' : isTennis ? 'Rankings' : isBasketball ? 'Conference' : isHockey ? 'Divisions' : isAmericanFootball ? 'Divisions' : 'Standings'}
+              Matches ({fixtures.length})
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* ── TAB 1: OVERVIEW ── */}
+        {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <View style={styles.tabSection}>
-            {/* Upcoming Marquee Fixture */}
-            <View style={styles.sectionCard}>
-              <Text style={styles.cardHeaderTitle}>Featured Match</Text>
-              {displayFixtures[0] && (
-                <UniversalMatchCard
-                  match={displayFixtures[0]}
-                  layout="featured"
-                  onPress={() => navigateToMatch(navigate, displayFixtures[0])}
-                />
-              )}
-            </View>
+            {isLoadingFixtures && fixtures.length === 0 ? (
+              <View style={styles.loadingCard}>
+                <ActivityIndicator size="small" color="#7952FC" />
+                <Text style={styles.loadingText}>Loading competition schedule...</Text>
+              </View>
+            ) : featuredMatch ? (
+              renderFeaturedMatchCard(featuredMatch)
+            ) : null}
 
-            {/* Tournament Specs */}
+            {/* Tournament Information Card (Authentic fields only) */}
             <View style={styles.sectionCard}>
               <Text style={styles.cardHeaderTitle}>Tournament Information</Text>
+
               <View style={styles.infoLine}>
                 <Text style={styles.infoKey}>Official Tournament</Text>
-                <Text style={styles.infoVal}>{competition.name}</Text>
+                <Text style={styles.infoVal} numberOfLines={1}>{competition.name}</Text>
               </View>
+
               <View style={styles.infoLine}>
                 <Text style={styles.infoKey}>Territory / Country</Text>
-                <Text style={styles.infoVal}>{competition.country}</Text>
+                <Text style={styles.infoVal} numberOfLines={1}>
+                  {competition.country || region || 'International'}
+                </Text>
               </View>
-              <View style={styles.infoLine}>
-                <Text style={styles.infoKey}>Current Season</Text>
-                <Text style={styles.infoVal}>{season}</Text>
-              </View>
-              <View style={styles.infoLine}>
-                <Text style={styles.infoKey}>Active Clubs</Text>
-                <Text style={styles.infoVal}>{teamsCount} Participating Clubs</Text>
-              </View>
-              <View style={styles.infoLine}>
-                <Text style={styles.infoKey}>Authorized Broadcast</Text>
-                <Text style={styles.infoVal}>BALLIVE Full HD Satellite</Text>
-              </View>
-            </View>
-          </View>
-        )}
 
-        {/* ── TAB 2: MATCHES ── */}
-        {activeTab === 'matches' && (
-          <View style={styles.tabSection}>
-            <View style={styles.sectionCard}>
-              <Text style={styles.cardHeaderTitle}>
-                {isMotorsport ? 'Grand Prix Schedule' : isTennis ? 'Tournament Draws' : 'Fixtures & Matchdays'}
-              </Text>
-              <View style={styles.fixturesList}>
-                {displayFixtures.length === 0 ? (
-                  <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-                    <Text style={{ color: '#A098B5', fontSize: 13, fontWeight: '600' }}>
-                      {isLoadingFixtures ? 'Loading upcoming fixtures...' : 'No upcoming fixtures scheduled right now'}
-                    </Text>
-                  </View>
-                ) : (
-                  displayFixtures.map(fixture => (
-                    <View key={fixture.id} style={{ marginBottom: 12 }}>
-                      <UniversalMatchCard
-                        match={fixture}
-                        layout="full"
-                        onPress={() => navigateToMatch(navigate, fixture)}
-                      />
-                    </View>
-                  ))
-                )}
-              </View>
-            </View>
-          </View>
-        )}
+              {region && region !== competition.country ? (
+                <View style={styles.infoLine}>
+                  <Text style={styles.infoKey}>Region</Text>
+                  <Text style={styles.infoVal} numberOfLines={1}>{region}</Text>
+                </View>
+              ) : null}
 
-        {/* ── TAB 3: STANDINGS / RANKINGS ── */}
-        {activeTab === 'standings' && (
-          <View style={styles.tabSection}>
-            <View style={styles.sectionCard}>
-              {isBasketball ? (
-                <>
-                  <View style={styles.tableHeaderSection}>
-                    <Text style={styles.cardHeaderTitle}>NBA Conference Standings</Text>
-                    <Text style={styles.seasonBadgeLabel}>2024/25 Regular Season</Text>
-                  </View>
-
-                  {/* Conference Selector */}
-                  <View style={styles.nbaConfToggleBar}>
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      style={[styles.nbaConfButton, selectedConference === 'Eastern' && styles.nbaConfButtonActive]}
-                      onPress={() => setSelectedConference('Eastern')}
-                    >
-                      <Text style={[styles.nbaConfButtonText, selectedConference === 'Eastern' && styles.nbaConfButtonTextActive]}>
-                        Eastern Conference
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      style={[styles.nbaConfButton, selectedConference === 'Western' && styles.nbaConfButtonActive]}
-                      onPress={() => setSelectedConference('Western')}
-                    >
-                      <Text style={[styles.nbaConfButtonText, selectedConference === 'Western' && styles.nbaConfButtonTextActive]}>
-                        Western Conference
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {isLoadingNba ? (
-                    <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-                      <Text style={{ color: '#A098B5', fontSize: 13, fontWeight: '600' }}>
-                        Loading official NBA standings...
-                      </Text>
-                    </View>
-                  ) : (
-                    <>
-                      {/* NBA Table Header */}
-                      <View style={styles.nbaTableHeaderRow}>
-                        <Text style={[styles.tableColHeader, styles.nbaColSeed]}>#</Text>
-                        <Text style={[styles.tableColHeader, styles.nbaColTeam]}>Team</Text>
-                        <Text style={[styles.tableColHeader, styles.nbaColStat]}>W</Text>
-                        <Text style={[styles.tableColHeader, styles.nbaColStat]}>L</Text>
-                        <Text style={[styles.tableColHeader, styles.nbaColPct]}>PCT</Text>
-                        <Text style={[styles.tableColHeader, styles.nbaColGb]}>GB</Text>
-                        <Text style={[styles.tableColHeader, styles.nbaColDiff]}>DIFF</Text>
-                        <Text style={[styles.tableColHeader, styles.nbaColStrk]}>STRK</Text>
-                      </View>
-
-                      {/* NBA Table Rows (NO ROW NAVIGATION - informational only) */}
-                      {(selectedConference === 'Eastern' ? nbaStandings.eastern : nbaStandings.western).length > 0 ? (
-                        (selectedConference === 'Eastern' ? nbaStandings.eastern : nbaStandings.western).map(row => {
-                          const isTop6 = row.pos <= 6;
-                          const isPlayIn = row.pos > 6 && row.pos <= 10;
-                          const diffNum = parseFloat(row.diff);
-                          const isPositiveDiff = !isNaN(diffNum) && diffNum > 0;
-
-                          return (
-                            <View key={row.teamId || `${row.team}-${row.pos}`} style={styles.nbaDataRow}>
-                              {/* Seed with Playoff/Play-In indicator dot */}
-                              <View style={styles.nbaSeedCell}>
-                                <View
-                                  style={[
-                                    styles.nbaZoneDot,
-                                    isTop6 && styles.nbaZonePlayoff,
-                                    isPlayIn && styles.nbaZonePlayIn,
-                                  ]}
-                                />
-                                <Text
-                                  style={[
-                                    styles.nbaSeedText,
-                                    isTop6 && styles.nbaSeedTop6,
-                                  ]}
-                                >
-                                  {row.pos}
-                                </Text>
-                              </View>
-
-                              {/* Team Crest + Name */}
-                              <View style={styles.nbaTeamCell}>
-                                <TeamCrest
-                                  uri={row.crestUrl}
-                                  teamName={row.team}
-                                  size={18}
-                                  containerStyle={{ marginRight: 8 }}
-                                />
-                                <Text style={styles.nbaTeamName} numberOfLines={1}>
-                                  {row.team}
-                                </Text>
-                              </View>
-
-                              {/* Non-wrapping Stats */}
-                              <Text style={[styles.nbaStatText, styles.nbaColStat, { fontWeight: '700', color: '#FFFFFF' }]} numberOfLines={1}>
-                                {row.w}
-                              </Text>
-                              <Text style={[styles.nbaStatText, styles.nbaColStat, { color: '#A098B5' }]} numberOfLines={1}>
-                                {row.l}
-                              </Text>
-                              <Text style={[styles.nbaStatText, styles.nbaColPct, { fontWeight: '600', color: '#ECE9FA' }]} numberOfLines={1}>
-                                {row.pct}
-                              </Text>
-                              <Text style={[styles.nbaStatText, styles.nbaColGb, { color: '#A098B5' }]} numberOfLines={1}>
-                                {row.gb}
-                              </Text>
-                              <Text
-                                style={[
-                                  styles.nbaStatText,
-                                  styles.nbaColDiff,
-                                  {
-                                    color: isPositiveDiff ? '#10B981' : (diffNum < 0 ? '#EF4444' : '#A098B5'),
-                                    fontWeight: '700',
-                                  },
-                                ]}
-                                numberOfLines={1}
-                              >
-                                {row.diff}
-                              </Text>
-                              <Text style={[styles.nbaStatText, styles.nbaColStrk, { color: '#C4B5FD', fontSize: 10 }]} numberOfLines={1}>
-                                {row.streak || '-'}
-                              </Text>
-                            </View>
-                          );
-                        })
-                      ) : (
-                        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
-                          <Text style={{ color: '#A098B5', fontSize: 12 }}>
-                            Standings data updating...
-                          </Text>
-                        </View>
-                      )}
-
-                      {/* NBA Qualification Legend */}
-                      <View style={styles.tableFooterLegend}>
-                        <View style={styles.legendItem}>
-                          <View style={[styles.legendDot, styles.nbaZonePlayoff]} />
-                          <Text style={styles.legendText}>Playoff Berth (1-6)</Text>
-                        </View>
-                        <View style={styles.legendItem}>
-                          <View style={[styles.legendDot, styles.nbaZonePlayIn]} />
-                          <Text style={styles.legendText}>Play-In Tournament (7-10)</Text>
-                        </View>
-                      </View>
-                    </>
-                  )}
-                </>
-              ) : isMotorsport ? (
-                <>
-                  <View style={styles.tableHeaderSection}>
-                    <Text style={styles.cardHeaderTitle}>Driver Championship</Text>
-                    <Text style={styles.seasonBadgeLabel}>2025 Season</Text>
-                  </View>
-
-                  <View style={{ gap: 6, marginTop: 8 }}>
-                    {f1Drivers.map(d => (
-                      <View key={d.pos} style={styles.tableDataRow}>
-                        <Text style={[styles.tableCellText, styles.colPos, d.pos === 1 && { color: '#F59E0B', fontWeight: '800' }]}>{d.pos}</Text>
-                        <Image source={{ uri: d.avatar }} style={styles.standingsCrest} />
-                        <View style={{ flex: 1, paddingLeft: 4 }}>
-                          <Text style={styles.tableCellTeam} numberOfLines={1}>{d.driver}</Text>
-                          <Text style={{ color: '#A098B5', fontSize: 10 }} numberOfLines={1}>{d.team}</Text>
-                        </View>
-                        <View style={{ alignItems: 'flex-end', minWidth: 64 }}>
-                          <Text style={[styles.tableCellPts, { color: '#00E5FF' }]}>{d.points} PTS</Text>
-                          <Text style={{ color: '#A098B5', fontSize: 9 }}>{d.wins} wins</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-
-                  <View style={[styles.tableHeaderSection, { marginTop: 20 }]}>
-                    <Text style={styles.cardHeaderTitle}>Constructors Championship</Text>
-                    <Text style={styles.seasonBadgeLabel}>Official Standings</Text>
-                  </View>
-
-                  <View style={{ gap: 6, marginTop: 8 }}>
-                    {f1Constructors.map(c => (
-                      <View key={c.pos} style={styles.tableDataRow}>
-                        <Text style={[styles.tableCellText, styles.colPos, c.pos === 1 && { color: '#F59E0B', fontWeight: '800' }]}>{c.pos}</Text>
-                        <Image source={{ uri: c.logo }} style={[styles.standingsCrest, { resizeMode: 'contain' }]} />
-                        <View style={{ flex: 1, paddingLeft: 4 }}>
-                          <Text style={styles.tableCellTeam} numberOfLines={1}>{c.team}</Text>
-                          <Text style={{ color: '#A098B5', fontSize: 10 }} numberOfLines={1}>{c.engine}</Text>
-                        </View>
-                        <View style={{ alignItems: 'flex-end', minWidth: 64 }}>
-                          <Text style={[styles.tableCellPts, { color: '#00E5FF' }]}>{c.points} PTS</Text>
-                          <Text style={{ color: '#A098B5', fontSize: 9 }}>{c.wins} wins</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              ) : isTennis ? (
-                <>
-                  <View style={styles.tableHeaderSection}>
-                    <Text style={styles.cardHeaderTitle}>ATP & WTA World Rankings</Text>
-                    <Text style={styles.seasonBadgeLabel}>Tour Leaderboard</Text>
-                  </View>
-
-                  <View style={{ gap: 6, marginTop: 8 }}>
-                    {tennisRankings.map(t => (
-                      <View key={t.pos} style={styles.tableDataRow}>
-                        <Text style={[styles.tableCellText, styles.colPos, t.pos === 1 && { color: '#10B981', fontWeight: '800' }]}>{t.pos}</Text>
-                        <Image source={{ uri: t.avatar }} style={styles.standingsCrest} />
-                        <View style={{ flex: 1, paddingLeft: 4 }}>
-                          <Text style={styles.tableCellTeam} numberOfLines={1}>{t.player}</Text>
-                          <Text style={{ color: '#A098B5', fontSize: 10 }}>{t.country}</Text>
-                        </View>
-                        <View style={{ alignItems: 'flex-end', minWidth: 70 }}>
-                          <Text style={[styles.tableCellPts, { color: '#10B981' }]}>{t.points}</Text>
-                          <Text style={{ color: '#A098B5', fontSize: 9 }}>{t.titles} titles</Text>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </>
-              ) : standings.length === 0 ? (
-                <View style={{ paddingVertical: 28, alignItems: 'center' }}>
-                  <Text style={{ color: '#A098B5', fontSize: 13, fontWeight: '600' }}>
-                    Loading official {competition.name} standings...
+              {teamsCount ? (
+                <View style={styles.infoLine}>
+                  <Text style={styles.infoKey}>
+                    {isBasketball || isHockey ? 'Participating Franchises' : 'Active Clubs'}
+                  </Text>
+                  <Text style={styles.infoVal}>
+                    {teamsCount} {isBasketball || isHockey ? 'Franchises' : 'Clubs'}
                   </Text>
                 </View>
-              ) : (
-                <>
-                  <View style={styles.tableHeaderSection}>
-                    <Text style={styles.cardHeaderTitle}>
-                      {isHockey ? 'Division Standings' : isAmericanFootball ? 'NFL Standings' : 'League Table'}
-                    </Text>
-                    <Text style={styles.seasonBadgeLabel}>{season}</Text>
-                  </View>
+              ) : null}
 
-                  {/* Table Header */}
-                  <View style={styles.tableHeaderRow}>
-                    <Text style={[styles.tableColHeader, styles.colPos]}>#</Text>
-                    <Text style={[styles.tableColHeader, styles.colTeam]}>
-                      {isHockey ? 'Team' : 'Club'}
-                    </Text>
-                    <Text style={[styles.tableColHeader, styles.colStat]}>
-                      {isHockey ? 'GP' : 'P'}
-                    </Text>
-                    <Text style={[styles.tableColHeader, styles.colStat]}>W</Text>
-                    {isHockey ? (
-                      <Text style={[styles.tableColHeader, styles.colStat]}>L</Text>
-                    ) : (
-                      <Text style={[styles.tableColHeader, styles.colStat]}>D</Text>
-                    )}
-                    {isHockey ? (
-                      <Text style={[styles.tableColHeader, styles.colStat]}>OTL</Text>
-                    ) : (
-                      <Text style={[styles.tableColHeader, styles.colStat]}>L</Text>
-                    )}
-                    <Text style={[styles.tableColHeader, styles.colGd]}>
-                      {isHockey ? 'DIFF' : 'GD'}
-                    </Text>
-                    <Text style={[styles.tableColHeader, styles.colPts]}>PTS</Text>
-                  </View>
-
-                  {/* Rows (NO ROW NAVIGATION - informational only) */}
-                  {standings.map(row => {
-                    const diffStr = (parseInt(row.gd, 10) || 0) > 0 && !row.gd.startsWith('+') ? `+${row.gd}` : `${row.gd}`;
-
-                    return (
-                      <View
-                        key={row.pos}
-                        style={styles.tableDataRow}
-                      >
-                        {/* Position with UCL / UEL spot bar indicator */}
-                        <View style={styles.posCellBox}>
-                          <View
-                            style={[
-                              styles.spotIndicatorDot,
-                              row.zone === 'ucl' && styles.spotUcl,
-                              row.zone === 'uel' && styles.spotUel,
-                            ]}
-                          />
-                          <Text
-                            style={[
-                              styles.tableCellText,
-                              styles.colPos,
-                              row.pos <= 4 && styles.uclSpot,
-                            ]}
-                          >
-                            {row.pos}
-                          </Text>
-                        </View>
-
-                        {/* Club info: Crest + Name */}
-                        <View style={styles.teamCellBox}>
-                          <TeamCrest
-                            uri={row.crestUrl}
-                            teamName={row.team}
-                            size={18}
-                            containerStyle={{ marginRight: 8 }}
-                          />
-                          <Text style={styles.tableCellTeam} numberOfLines={1}>
-                            {row.team}
-                          </Text>
-                        </View>
-
-                        {/* Stats */}
-                        <Text style={[styles.tableCellText, styles.colStat]}>{row.p}</Text>
-                        <Text style={[styles.tableCellText, styles.colStat]}>{row.w}</Text>
-                        {isHockey ? (
-                          <Text style={[styles.tableCellText, styles.colStat]}>{row.l}</Text>
-                        ) : (
-                          <Text style={[styles.tableCellText, styles.colStat]}>{row.d}</Text>
-                        )}
-                        {isHockey ? (
-                          <Text style={[styles.tableCellText, styles.colStat]}>{row.d}</Text>
-                        ) : (
-                          <Text style={[styles.tableCellText, styles.colStat]}>{row.l}</Text>
-                        )}
-                        <Text style={[styles.tableCellText, styles.colGd]}>{diffStr}</Text>
-                        <Text style={[styles.tableCellPts, styles.colPts]}>{row.pts}</Text>
-                      </View>
-                    );
-                  })}
-
-                  {/* Table Footer Qualification Legend */}
-                  <View style={styles.tableFooterLegend}>
-                    <View style={styles.legendItem}>
-                      <View style={[styles.legendDot, styles.spotUcl]} />
-                      <Text style={styles.legendText}>
-                        {isHockey ? 'Playoff Berth (1-8)' : 'Champions League'}
-                      </Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                      <View style={[styles.legendDot, styles.spotUel]} />
-                      <Text style={styles.legendText}>
-                        {isHockey ? 'Wildcard Hunt' : 'Europa League'}
-                      </Text>
-                    </View>
-                  </View>
-                </>
-              )}
+              <View style={[styles.infoLine, styles.infoLineLast]}>
+                <Text style={styles.infoKey}>Sport</Text>
+                <Text style={styles.infoVal}>{sportLabel}</Text>
+              </View>
             </View>
+          </View>
+        )}
+
+        {/* TAB 2: MATCHES */}
+        {activeTab === 'matches' && (
+          <View style={styles.tabSection}>
+            {isLoadingFixtures && fixtures.length === 0 ? (
+              <View style={styles.loadingCard}>
+                <ActivityIndicator size="small" color="#7952FC" />
+                <Text style={styles.loadingText}>Fetching competition matches...</Text>
+              </View>
+            ) : fixtures.length === 0 ? (
+              <View style={styles.sectionCard}>
+                <Text style={styles.emptyStateTitle}>No scheduled matches right now</Text>
+                <Text style={styles.emptyStateDesc}>
+                  Live fixtures, upcoming rounds, and recent results for {competition.name} will appear here automatically.
+                </Text>
+              </View>
+            ) : (
+              <>
+                {liveAndUpcoming.length > 0 && (
+                  <View style={styles.matchesGroup}>
+                    <Text style={styles.groupHeading}>Live & Upcoming</Text>
+                    {liveAndUpcoming.map(renderMatchRow)}
+                  </View>
+                )}
+
+                {recentResults.length > 0 && (
+                  <View style={styles.matchesGroup}>
+                    <Text style={styles.groupHeading}>Recent Results</Text>
+                    {recentResults.map(renderMatchRow)}
+                  </View>
+                )}
+              </>
+            )}
           </View>
         )}
       </ScrollView>
@@ -745,601 +613,325 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   heroCard: {
-    margin: 16,
-    padding: 20,
-    borderRadius: 18,
-    backgroundColor: '#1E1730',
+    marginHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 22,
+    borderRadius: 20,
+    backgroundColor: '#161224',
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  emblemContainer: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: '#181524',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
+  heroBgImage: {
+    opacity: 0.2,
+    borderRadius: 20,
   },
-  emblemImage: {
-    width: 52,
-    height: 52,
-    resizeMode: 'contain',
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(18, 14, 32, 0.72)',
   },
   heroTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 6,
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  heroMetaText: {
+    fontSize: 13.5,
+    color: '#A098B5',
+    fontWeight: '500',
+    marginBottom: 16,
     textAlign: 'center',
   },
-  heroSubtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#A098B5',
-    marginBottom: 10,
-  },
-  metaRow: {
+  heroFollowBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 14,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: 12,
-    color: '#A098B5',
-    fontWeight: '500',
-  },
-  metaDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#7952FC',
-  },
-  followBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 12,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    borderRadius: 24,
     backgroundColor: '#7952FC',
+    minWidth: 170,
   },
-  followBtnActive: {
+  heroFollowBtnActive: {
     backgroundColor: '#352558',
   },
-  followBtnText: {
-    fontSize: 12.5,
+  heroFollowText: {
+    fontSize: 13.5,
     fontWeight: '700',
     color: '#FFFFFF',
   },
   tabBar: {
     flexDirection: 'row',
     marginHorizontal: 16,
-    marginBottom: 14,
-    backgroundColor: '#181524',
-    borderRadius: 12,
+    marginBottom: 16,
+    backgroundColor: '#161224',
+    borderRadius: 16,
     padding: 4,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 11,
     alignItems: 'center',
-    borderRadius: 9,
+    borderRadius: 12,
   },
   tabButtonActive: {
-    backgroundColor: '#2A2045',
+    backgroundColor: '#251E38',
   },
   tabText: {
-    fontSize: 12,
+    fontSize: 13.5,
     fontWeight: '600',
-    color: '#A098B5',
+    color: '#8E86A8',
   },
   tabTextActive: {
     color: '#FFFFFF',
+    fontWeight: '700',
   },
   tabSection: {
     paddingHorizontal: 16,
-    gap: 12,
+    gap: 14,
   },
-  sectionCard: {
-    backgroundColor: '#1E1730',
-    borderRadius: 16,
+  featuredCard: {
+    backgroundColor: '#161224',
+    borderRadius: 18,
     padding: 16,
   },
+  featuredTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   cardHeaderTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 12,
   },
-  featuredMatchItem: {
-    backgroundColor: '#2A2045',
-    padding: 14,
-    borderRadius: 14,
+  cardHeaderTitleNoMargin: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  featuredMatchTeamsRow: {
+  featuredMatchupRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
   },
-  featuredMatchTeamName: {
-    fontSize: 14,
+  featuredTeamCol: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  featuredTeamName: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
-    flex: 1,
     textAlign: 'center',
   },
-  vsBadge: {
-    backgroundColor: '#181524',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 8,
-    marginHorizontal: 8,
+  featuredCenterCol: {
+    width: 96,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  vsBadgeText: {
-    fontSize: 11,
+  upcomingTimePill: {
+    backgroundColor: '#2A2146',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 12,
+    marginBottom: 6,
+  },
+  upcomingTimeText: {
+    fontSize: 12.5,
     fontWeight: '800',
-    color: '#7952FC',
+    color: '#A58BFC',
   },
-  featuredMatchSub: {
-    fontSize: 11,
-    color: '#A098B5',
-    textAlign: 'center',
+  featuredDateText: {
+    fontSize: 11.5,
+    color: '#8E86A8',
+    fontWeight: '500',
+  },
+  sectionCard: {
+    backgroundColor: '#161224',
+    borderRadius: 18,
+    padding: 16,
   },
   infoLine: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    alignItems: 'center',
+    paddingVertical: 11,
     borderBottomWidth: 1,
-    borderBottomColor: '#181524',
+    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    gap: 12,
+  },
+  infoLineLast: {
+    borderBottomWidth: 0,
+    paddingBottom: 2,
   },
   infoKey: {
-    fontSize: 12.5,
-    color: '#A098B5',
+    fontSize: 13,
+    color: '#8E86A8',
+    fontWeight: '500',
   },
   infoVal: {
-    fontSize: 12.5,
-    fontWeight: '600',
+    fontSize: 13.5,
+    fontWeight: '700',
     color: '#FFFFFF',
+    textAlign: 'right',
+    flexShrink: 1,
   },
-  fixturesList: {
-    gap: 12,
-    marginTop: 6,
+  matchesGroup: {
+    marginBottom: 8,
   },
-  fixtureCard: {
-    backgroundColor: '#181226',
+  groupHeading: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 10,
+  },
+  matchRowCard: {
+    backgroundColor: '#161224',
     borderRadius: 16,
-    padding: 14,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    marginBottom: 10,
   },
-  fixtureHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  fixtureDatePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  fixtureDateText: {
-    fontSize: 10.5,
-    fontWeight: '600',
-    color: '#A098B5',
-  },
-  fixtureTimePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(121, 82, 252, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  fixtureTimePillText: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#7952FC',
-  },
-  fixtureTeamsRow: {
+  matchRowTeams: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 6,
   },
-  fixtureTeamCol: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  fixtureCrestCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#261C3D',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 6,
-  },
-  fixtureCrestImg: {
-    width: 24,
-    height: 24,
-    resizeMode: 'contain',
-  },
-  fixtureTeamName: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  fixtureVsBox: {
-    width: 80,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fixtureVsPill: {
-    backgroundColor: '#2A2045',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginBottom: 4,
-  },
-  fixtureVsLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#7952FC',
-    letterSpacing: 0.5,
-  },
-  fixtureVenueText: {
-    fontSize: 9.5,
-    color: '#8A81A5',
-    textAlign: 'center',
-  },
-  fixtureFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  fixtureWatchStreamLabel: {
-    fontSize: 10.5,
-    fontWeight: '600',
-    color: '#10B981',
-  },
-  fixtureArrowPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: '#7952FC',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  fixtureArrowPillText: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  tableHeaderSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  seasonBadgeLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#7952FC',
-    backgroundColor: '#2A2045',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  tableHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A2045',
-    marginBottom: 4,
-  },
-  tableColHeader: {
-    fontSize: 10.5,
-    fontWeight: '700',
-    color: '#A098B5',
-    textAlign: 'center',
-  },
-  tableDataRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#181524',
-  },
-  posCellBox: {
-    width: 22,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  spotIndicatorDot: {
-    width: 3,
-    height: 12,
-    borderRadius: 1.5,
-    backgroundColor: 'transparent',
-    marginRight: 2,
-  },
-  spotUcl: {
-    backgroundColor: '#38BDF8',
-  },
-  spotUel: {
-    backgroundColor: '#F8BE38',
-  },
-  colPos: {
-    fontSize: 11,
-    textAlign: 'center',
-  },
-  uclSpot: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  colTeam: {
-    flex: 1,
-    paddingLeft: 8,
-  },
-  teamCellBox: {
+  matchTeamLeft: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     paddingRight: 6,
-    paddingLeft: 4,
   },
-  standingsCrest: {
-    width: 18,
-    height: 18,
-    resizeMode: 'contain',
-    marginRight: 7,
-  },
-  tableCellTeam: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  matchTeamRight: {
     flex: 1,
-  },
-  colStat: {
-    width: 20,
-    textAlign: 'center',
-  },
-  colGd: {
-    width: 26,
-    textAlign: 'center',
-  },
-  colPts: {
-    width: 30,
-    textAlign: 'center',
-  },
-  tableCellText: {
-    fontSize: 11,
-    color: '#A098B5',
-    textAlign: 'center',
-  },
-  tableCellPts: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  tableFooterLegend: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    marginTop: 14,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#261C3D',
+    justifyContent: 'flex-end',
+    paddingLeft: 6,
   },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  legendDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  legendText: {
-    fontSize: 10.5,
-    color: '#A098B5',
-    fontWeight: '500',
-  },
-  // ── Combat Rankings Styles ──
-  fighterRankRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#181524',
-    gap: 10,
-  },
-  champRankBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#F8BE38',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  champRankText: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#0E0D14',
-  },
-  contenderRankBadge: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: '#2A2045',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contenderRankText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#A098B5',
-  },
-  fighterAvatar: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#2A2045',
-  },
-  fighterMeta: {
+  matchTeamNameLeft: {
     flex: 1,
-  },
-  fighterName: {
     fontSize: 13.5,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  // ── NBA Conference Standings Styles ──
-  nbaConfToggleBar: {
-    flexDirection: 'row',
-    backgroundColor: '#181524',
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  nbaConfButton: {
+  matchTeamNameRight: {
     flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 9,
-  },
-  nbaConfButtonActive: {
-    backgroundColor: '#7952FC',
-  },
-  nbaConfButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#A098B5',
-  },
-  nbaConfButtonTextActive: {
+    fontSize: 13.5,
+    fontWeight: '700',
     color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  nbaTableHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2A2045',
-    marginBottom: 4,
-  },
-  nbaColSeed: {
-    width: 24,
-    textAlign: 'center',
-  },
-  nbaColTeam: {
-    flex: 1,
-    textAlign: 'left',
-    paddingLeft: 6,
-  },
-  nbaColStat: {
-    width: 28,
-    textAlign: 'center',
-  },
-  nbaColPct: {
-    width: 38,
     textAlign: 'right',
   },
-  nbaColGb: {
-    width: 28,
-    textAlign: 'right',
-  },
-  nbaColDiff: {
-    width: 36,
-    textAlign: 'right',
-  },
-  nbaColStrk: {
-    width: 28,
-    textAlign: 'right',
-  },
-  nbaDataRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#181524',
-  },
-  nbaSeedCell: {
-    width: 24,
-    flexDirection: 'row',
+  matchRowCenter: {
+    width: 92,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  nbaZoneDot: {
-    width: 3,
-    height: 12,
-    borderRadius: 1.5,
-    backgroundColor: 'transparent',
-    marginRight: 2,
-  },
-  nbaZonePlayoff: {
-    backgroundColor: '#10B981',
-  },
-  nbaZonePlayIn: {
-    backgroundColor: '#A855F7',
-  },
-  nbaSeedText: {
-    fontSize: 11,
-    color: '#A098B5',
-    textAlign: 'center',
-  },
-  nbaSeedTop6: {
-    color: '#FFFFFF',
+  matchScoreRed: {
+    fontSize: 14.5,
     fontWeight: '800',
+    color: '#EF4444',
+    marginBottom: 4,
   },
-  nbaTeamCell: {
-    flex: 1,
+  matchScoreWhite: {
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  livePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 4,
-    paddingRight: 4,
+    backgroundColor: 'rgba(239, 68, 68, 0.16)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 4,
+    marginBottom: 4,
   },
-  nbaTeamCrest: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
-    marginRight: 6,
+  liveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#EF4444',
   },
-  nbaTeamName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    flex: 1,
+  livePillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#EF4444',
   },
-  nbaStatText: {
+  ftPill: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  ftPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#CBD5E1',
+  },
+  vsLabel: {
     fontSize: 11,
+    color: '#8E86A8',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  rowTimePill: {
+    backgroundColor: '#221C35',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  rowTimeText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#B8B0CF',
+  },
+  matchRowDateText: {
+    fontSize: 11,
+    color: '#8E86A8',
+    fontWeight: '500',
+  },
+  loadingCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#161224',
+    borderRadius: 16,
+    paddingVertical: 22,
+    gap: 10,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: '#A098B5',
+    fontWeight: '600',
+  },
+  emptyStateTitle: {
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
     textAlign: 'center',
+    marginBottom: 6,
+  },
+  emptyStateDesc: {
+    fontSize: 12.5,
+    color: '#8E86A8',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
+
+export default CompetitionDetailsScreen;

@@ -82,7 +82,7 @@ export const AboutScreen: React.FC = () => {
 
         {/* ── 4. FOOTER & METADATA ── */}
         <View style={styles.footerContainer}>
-          <Text style={styles.versionText}>Version 2.5.1 (Build 2026.11) • Native Android</Text>
+          <Text style={styles.versionText}>Version 2.8.4 • Native Android</Text>
           <Text style={styles.copyrightText}>© 2026 BALLIVE • All rights reserved.</Text>
         </View>
       </View>

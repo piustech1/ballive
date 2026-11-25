@@ -206,7 +206,7 @@ export const ProfileScreen: React.FC = () => {
               icon={Info}
               iconColor="#A58BFC"
               label="About BALLIVE"
-              badgeValue="v2.5.1"
+              badgeValue="v2.8.4"
               isLast
               onPress={() => navigate({ name: 'About' })}
             />
@@ -226,14 +226,18 @@ export const ProfileScreen: React.FC = () => {
       <FollowedTeamsModal
         visible={teamsModalVisible}
         followedTeamIds={profile.followedTeamIds}
+        followedTeamsMeta={profile.followedTeamsMeta}
         onToggleTeam={toggleFollowTeam}
+        onSelectTeam={team => navigate({ name: 'TeamDetails', params: { team } })}
         onClose={() => setTeamsModalVisible(false)}
       />
 
       <FollowedLeaguesModal
         visible={leaguesModalVisible}
         followedLeagueIds={profile.followedLeagueIds}
+        followedLeaguesMeta={profile.followedLeaguesMeta}
         onToggleLeague={toggleFollowLeague}
+        onSelectLeague={competition => navigate({ name: 'CompetitionDetails', params: { competition } })}
         onClose={() => setLeaguesModalVisible(false)}
       />
 

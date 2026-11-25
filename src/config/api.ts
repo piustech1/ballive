@@ -116,8 +116,14 @@ export function getBroadcastChannelId(competition: string = '', sport: string = 
     return API_CONFIG.PRIORITY_CHANNELS.DAZN;
   }
 
-  // Premier League
-  if (compLower.includes('premier') || compLower.includes('epl')) {
+  // English Premier League (Guard against Ukrainian / Egyptian / Kenyan Premier Leagues)
+  if (
+    compLower.includes('epl') ||
+    (compLower.includes('premier') &&
+      !compLower.includes('ukrain') &&
+      !compLower.includes('egypt') &&
+      !compLower.includes('kenya'))
+  ) {
     return API_CONFIG.PRIORITY_CHANNELS.PL;
   }
 

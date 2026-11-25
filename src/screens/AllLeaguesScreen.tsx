@@ -11,6 +11,7 @@ import {
 import { Search, ChevronRight } from 'lucide-react-native';
 import Colors from '../theme/colors';
 import { SecondaryScreenHeader } from '../components/common/SecondaryScreenHeader';
+import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import { POPULAR_LEAGUES, PopularLeague } from '../constants/discoverData';
 import { useAppNavigation } from '../navigation/NavigationContext';
 
@@ -30,7 +31,7 @@ export const AllLeaguesScreen: React.FC = () => {
       {/* Top App Bar */}
       <SecondaryScreenHeader
         title="Popular Leagues"
-        subtitle={`${POPULAR_LEAGUES.length} Domestic Competitions`}
+        subtitle={`${POPULAR_LEAGUES.length} Major Competitions`}
       />
 
       {/* Search Input Box */}
@@ -39,7 +40,7 @@ export const AllLeaguesScreen: React.FC = () => {
           <Search size={16} color="#A098B5" strokeWidth={2.2} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search domestic leagues..."
+            placeholder="Search leagues..."
             placeholderTextColor="#6D6582"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -70,16 +71,19 @@ export const AllLeaguesScreen: React.FC = () => {
               });
             }}
           >
-            <View style={styles.emblemWrapper}>
-              <Image source={{ uri: league.logoUrl }} style={styles.emblemImage} />
-            </View>
+            <CompetitionLogo
+              uri={league.logoUrl}
+              competitionId={league.id}
+              size={44}
+              containerStyle={{ marginRight: 14 }}
+            />
 
             <View style={styles.infoWrapper}>
               <Text style={styles.leagueName} numberOfLines={1}>
                 {league.name}
               </Text>
-              <Text style={styles.leagueCountry}>
-                {league.country} • {league.currentMatchweek}
+              <Text style={styles.leagueCountry} numberOfLines={1}>
+                {league.country}{league.currentMatchweek ? ` • ${league.currentMatchweek}` : ''}
               </Text>
               <Text style={styles.leagueDesc} numberOfLines={1}>
                 {league.description}

@@ -42,9 +42,13 @@ export const SavedTeamRow: React.FC<SavedTeamRowProps> = ({
       <View style={styles.infoCol}>
         <Text style={styles.teamName} numberOfLines={1}>{team.name}</Text>
         <Text style={styles.teamMeta} numberOfLines={1}>
-          {team.country} • {team.stadium}
+          {[team.country, team.stadium].filter(Boolean).join(' • ')}
         </Text>
-        <Text style={styles.teamHonors} numberOfLines={1}>{team.domesticTitle}</Text>
+        {(team.competitionName || team.domesticTitle) ? (
+          <Text style={styles.teamHonors} numberOfLines={1}>
+            {team.competitionName || team.domesticTitle}
+          </Text>
+        ) : null}
       </View>
 
       {/* Following Action Button */}
