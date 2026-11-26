@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
   Text,
+  Image,
   TextInput,
   TouchableOpacity,
   StyleSheet,
@@ -10,42 +11,45 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { X, Check, User } from 'lucide-react-native';
+import { X, Check } from 'lucide-react-native';
 import Colors from '../../../theme/colors';
+import {
+  AVATAR_COLORS,
+  PROFILE_AVATARS,
+  resolveProfileAvatar,
+} from '../../../constants/avatars';
 
 interface EditProfileModalProps {
   visible: boolean;
   currentName: string;
+  currentAvatarId: string;
   currentAvatarBg: string;
   onClose: () => void;
-  onSave: (name: string, avatarBg: string) => void;
+  onSave: (name: string, avatarId: string, avatarBg: string) => void;
 }
-
-const AVATAR_PALETTE = [
-  '#7952FC', // Purple (Premier League)
-  '#FF2E56', // Red (Live / Striker)
-  '#08B3E5', // Cyan (LaLiga)
-  '#22C55E', // Green (Bundesliga)
-  '#F8BE38', // Gold (Champions League)
-];
 
 export const EditProfileModal: React.FC<EditProfileModalProps> = ({
   visible,
   currentName,
+  currentAvatarId,
   currentAvatarBg,
   onClose,
   onSave,
 }) => {
   const [name, setName] = useState(currentName);
+  const [selectedAvatarId, setSelectedAvatarId] = useState(currentAvatarId);
   const [selectedBg, setSelectedBg] = useState(currentAvatarBg);
 
-  // Sync state when opened
-  React.useEffect(() => {
+  useEffect(() => {
     if (visible) {
       setName(currentName);
-      setSelectedBg(currentAvatarBg);
+      setSelectedAvatarId(currentAvatarId || PROFILE_AVATARS[0].id);
+      setSelectedBg(currentAvatarBg || AVATAR_COLORS[0]);
     }
-  }, [visible, currentName, currentAvatarBg]);
+  }, [visible, currentName, currentAvatarId, currentAvatarBg]);
+
+  const activeAvatar = resolveProfileAvatar(selectedAvatarId);
+  const ActiveIcon = activeAvatar.icon;
 
   const handleSave = () => {
     const trimmed = name.trim();
@@ -53,7 +57,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       Alert.alert('Invalid Name', 'Please enter a valid display name.');
       return;
     }
-    onSave(trimmed, selectedBg);
+    onSave(trimmed, selectedAvatarId, selectedBg);
     onClose();
   };
 
@@ -71,7 +75,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
         <View style={styles.sheetContainer}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Edit Profile</Text>
+            <Text style={styles.headerTitle}>Edit Profile & Avatar</Text>
             <TouchableOpacity
               onPress={onClose}
               style={styles.closeBtn}
@@ -81,27 +85,76 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </TouchableOpacity>
           </View>
 
-          {/* Avatar Preview & Color Selector */}
-          <View style={styles.avatarSection}>
+          {/* Live Avatar Preview */}
+          <View style={styles.previewSection}>
             <View style={[styles.avatarPreview, { backgroundColor: selectedBg }]}>
-              <User size={40} color="#FFFFFF" strokeWidth={2.2} />
+              {activeAvatar.source ? (
+                <Image
+                  source={activeAvatar.source}
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <ActiveIcon size={34} color="#FFFFFF" strokeWidth={2.2} />
+              )}
             </View>
-            <Text style={styles.paletteLabel}>Choose Avatar Theme</Text>
-            <View style={styles.paletteRow}>
-              {AVATAR_PALETTE.map(color => {
-                const isSelected = selectedBg === color;
-                return (
-                  <TouchableOpacity
-                    key={color}
-                    style={[styles.colorCircle, { backgroundColor: color }]}
-                    onPress={() => setSelectedBg(color)}
-                    activeOpacity={0.8}
+            <Text style={styles.avatarActiveName}>{activeAvatar.label}</Text>
+          </View>
+
+          {/* Avatar Option Grid */}
+          <Text style={styles.sectionLabel}>Choose Avatar</Text>
+          <View style={styles.avatarGrid}>
+            {PROFILE_AVATARS.map(item => {
+              const IconComp = item.icon;
+              const isSelected = selectedAvatarId === item.id;
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.avatarGridItem, isSelected && styles.avatarGridItemActive]}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setSelectedAvatarId(item.id);
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.gridCircle,
+                      { backgroundColor: isSelected ? selectedBg : item.defaultBg },
+                    ]}
                   >
-                    {isSelected && <Check size={16} color="#FFFFFF" strokeWidth={3} />}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+                    {item.source ? (
+                      <Image source={item.source} style={styles.avatarImage} resizeMode="cover" />
+                    ) : (
+                      <IconComp size={18} color="#FFFFFF" strokeWidth={2.2} />
+                    )}
+                  </View>
+                  <Text
+                    style={[styles.gridItemLabel, isSelected && styles.gridItemLabelActive]}
+                    numberOfLines={1}
+                  >
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Color Theme Swatches */}
+          <Text style={styles.sectionLabel}>Avatar Accent Color</Text>
+          <View style={styles.paletteRow}>
+            {AVATAR_COLORS.map(color => {
+              const isSelected = selectedBg === color;
+              return (
+                <TouchableOpacity
+                  key={color}
+                  style={[styles.colorCircle, { backgroundColor: color }]}
+                  onPress={() => setSelectedBg(color)}
+                  activeOpacity={0.8}
+                >
+                  {isSelected && <Check size={15} color="#FFFFFF" strokeWidth={3} />}
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {/* Display Name Input */}
@@ -131,7 +184,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             <TouchableOpacity
               style={styles.saveBtn}
               onPress={handleSave}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               <Text style={styles.saveBtnText}>Save Changes</Text>
             </TouchableOpacity>
@@ -145,27 +198,27 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.78)',
     justifyContent: 'flex-end',
   },
   sheetContainer: {
     backgroundColor: '#161324',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingHorizontal: 22,
-    paddingTop: 20,
-    paddingBottom: Platform.OS === 'android' ? 28 : 36,
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: Platform.OS === 'android' ? 24 : 34,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17.5,
     fontWeight: '700',
     color: Colors.textPrimary,
   },
@@ -177,52 +230,97 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarSection: {
+  previewSection: {
     alignItems: 'center',
-    paddingVertical: 18,
+    paddingVertical: 14,
   },
   avatarPreview: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarActiveName: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#A58BFC',
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    marginBottom: 8,
+  },
+  avatarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     marginBottom: 14,
   },
-  paletteLabel: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    marginBottom: 10,
-    fontWeight: '500',
+  avatarGridItem: {
+    width: '23%',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    borderRadius: 12,
+    backgroundColor: '#1E1A30',
   },
-  paletteRow: {
-    flexDirection: 'row',
-    gap: 12,
+  avatarGridItemActive: {
+    backgroundColor: '#2B2248',
   },
-  colorCircle: {
+  gridCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  gridItemLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#9891B4',
+  },
+  gridItemLabelActive: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+  },
+  paletteRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  colorCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inputSection: {
-    marginTop: 10,
-    marginBottom: 24,
+    marginBottom: 18,
   },
   inputLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: Colors.textSecondary,
-    marginBottom: 8,
-    fontWeight: '600',
+    marginBottom: 6,
+    fontWeight: '700',
   },
   input: {
     backgroundColor: Colors.surfaceSearch,
-    borderRadius: 14,
-    height: 48,
-    paddingHorizontal: 16,
+    borderRadius: 12,
+    height: 46,
+    paddingHorizontal: 14,
     color: Colors.textPrimary,
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '600',
   },
   actionsRow: {
@@ -231,7 +329,7 @@ const styles = StyleSheet.create({
   },
   cancelBtn: {
     flex: 1,
-    height: 48,
+    height: 46,
     borderRadius: 14,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     alignItems: 'center',
@@ -239,20 +337,20 @@ const styles = StyleSheet.create({
   },
   cancelBtnText: {
     color: Colors.textSecondary,
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '600',
   },
   saveBtn: {
     flex: 2,
-    height: 48,
+    height: 46,
     borderRadius: 14,
-    backgroundColor: '#7952FC',
+    backgroundColor: '#7650F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   saveBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '700',
   },
 });

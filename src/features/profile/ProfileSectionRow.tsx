@@ -73,8 +73,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surfaceCard,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 10.5,
+    paddingHorizontal: 14,
   },
   rowFirst: {
     borderTopLeftRadius: 18,

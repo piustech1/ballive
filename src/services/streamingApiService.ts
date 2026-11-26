@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system';
 import { API_CONFIG, getBroadcastChannelId, isUnsupportedStreamingCompetition } from '../config/api';
 import { LiveMatch } from '../constants/mockData';
 import { DiscoverMatchup } from '../constants/discoverData';
@@ -12,6 +13,7 @@ import {
   parseKickoffTimestamp,
   formatMatchSchedule,
   sortUpcomingChronologically,
+  sortMatchesWithLiveFirst,
   isWithinTodayOrTomorrow,
 } from '../utils/matchStatus';
 import { theSportsDbService } from './theSportsDbService';
@@ -112,6 +114,11 @@ function extractPosterParam(url: string | undefined, param: string): string | nu
 
 export const SPORT_BACKDROPS: Record<string, string> = SPORT_ARTWORK;
 
+const UPCOMING_DISK_CACHE_FILE = `${FileSystem.cacheDirectory || FileSystem.documentDirectory || ''}ballive_upcoming_cache_v1.json`;
+const UPCOMING_DISK_TTL_MS = 5 * 60 * 1000; // 5 minutes for upcoming schedules only
+
+type LiveMatchesListener = (live: LiveMatch[], upcoming: LiveMatch[]) => void;
+
 class StreamingApiService {
   private cachedLiveMatches: LiveMatch[] = [];
   private cachedUpcomingMatches: LiveMatch[] = [];
@@ -123,6 +130,76 @@ class StreamingApiService {
   private inFlightResolutions = new Map<string, Promise<RawStreamSource[]>>();
   private resolvedMirrorsCache = new Map<string, { data: RawStreamSource[]; timestamp: number }>();
   private readonly MIRRORS_CACHE_TTL = 45000; // 45 seconds
+  private listeners = new Set<LiveMatchesListener>();
+  private diskInitPromise: Promise<void> | null = null;
+  private isDiskHydrated = false;
+
+  public subscribe(listener: LiveMatchesListener): () => void {
+    this.listeners.add(listener);
+    if (this.cachedLiveMatches.length > 0 || this.cachedUpcomingMatches.length > 0) {
+      try {
+        listener(this.cachedLiveMatches, this.cachedUpcomingMatches);
+      } catch {}
+    }
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notifyListeners(): void {
+    this.listeners.forEach(fn => {
+      try {
+        fn(this.cachedLiveMatches, this.cachedUpcomingMatches);
+      } catch {}
+    });
+  }
+
+  /**
+   * Hydrates non-live upcoming schedule items from short-lived disk cache so Discover
+   * displays future schedules immediately while fresh LIVE data streams in asynchronously.
+   */
+  public initDiskCache(): Promise<void> {
+    if (this.isDiskHydrated) return Promise.resolve();
+    if (this.diskInitPromise) return this.diskInitPromise;
+
+    this.diskInitPromise = (async () => {
+      try {
+        if (!UPCOMING_DISK_CACHE_FILE || !FileSystem?.getInfoAsync) return;
+        const info = await FileSystem.getInfoAsync(UPCOMING_DISK_CACHE_FILE);
+        if (!info.exists) return;
+        const raw = await FileSystem.readAsStringAsync(UPCOMING_DISK_CACHE_FILE);
+        const parsed = JSON.parse(raw);
+        if (
+          parsed &&
+          Array.isArray(parsed.upcoming) &&
+          typeof parsed.timestamp === 'number' &&
+          Date.now() - parsed.timestamp < UPCOMING_DISK_TTL_MS
+        ) {
+          const now = Date.now();
+          const freshUpcoming: LiveMatch[] = parsed.upcoming.filter(
+            (m: LiveMatch) =>
+              m &&
+              m.status === 'UPCOMING' &&
+              !m.isLive &&
+              (!m.kickoffTimestamp || m.kickoffTimestamp === Number.MAX_SAFE_INTEGER || m.kickoffTimestamp > now - 5 * 60 * 1000)
+          );
+          if (freshUpcoming.length > 0 && this.cachedUpcomingMatches.length === 0) {
+            this.cachedUpcomingMatches = freshUpcoming;
+            if (this.cachedLiveMatches.length === 0) {
+              this.cachedLiveMatches = freshUpcoming;
+            }
+            this.notifyListeners();
+          }
+        }
+      } catch {
+        // Ignore corrupt disk cache
+      } finally {
+        this.isDiskHydrated = true;
+      }
+    })();
+
+    return this.diskInitPromise;
+  }
 
   getCachedLiveMatches(): LiveMatch[] {
     return this.cachedLiveMatches;
@@ -683,6 +760,19 @@ class StreamingApiService {
       // Combine: Live matches first, then scheduled upcoming fixtures sorted chronologically
       const combined = [...fetchedMatches, ...sortedUpcoming];
 
+      if (sortedUpcoming.length > 0) {
+        matchArtworkEnricher.enrichMatches(sortedUpcoming);
+        this.cachedUpcomingMatches = sortedUpcoming;
+        if (UPCOMING_DISK_CACHE_FILE && FileSystem?.writeAsStringAsync) {
+          FileSystem.writeAsStringAsync(
+            UPCOMING_DISK_CACHE_FILE,
+            JSON.stringify({
+              upcoming: sortedUpcoming.slice(0, 40),
+              timestamp: now,
+            })
+          ).catch(() => {});
+        }
+      }
       if (combined.length > 0) {
         // Eagerly enrich matches at data level with verified artwork & persistent caching
         matchArtworkEnricher.enrichMatches(combined);
@@ -691,9 +781,8 @@ class StreamingApiService {
         // Automatically sync and purge finished matches from Saved list
         savedMatchesService.purgeFinishedMatches(combined).catch(() => {});
       }
-      if (sortedUpcoming.length > 0) {
-        matchArtworkEnricher.enrichMatches(sortedUpcoming);
-        this.cachedUpcomingMatches = sortedUpcoming;
+      if (combined.length > 0 || sortedUpcoming.length > 0) {
+        this.notifyListeners();
       }
     } catch (err) {
       console.warn('[StreamingApiService] Error fetching live sports:', err);

@@ -50,7 +50,15 @@ class SavedMatchesService {
     this.init();
   }
 
-  private async init(): Promise<void> {
+  public isReady(): boolean {
+    return this.isInitialized;
+  }
+
+  public getCachedSavedMatchesSync(): DiscoverMatchup[] {
+    return this.convertRecordsToMatchups(Array.from(this.savedRecords.values()));
+  }
+
+  public async init(): Promise<void> {
     if (this.initPromise) return this.initPromise;
 
     this.initPromise = (async () => {
@@ -95,11 +103,17 @@ class SavedMatchesService {
 
   public subscribe(listener: SavedMatchesListener): () => void {
     this.listeners.add(listener);
-    this.getSavedMatches().then(matches => {
+    if (this.isInitialized) {
       try {
-        listener(matches);
+        listener(this.getCachedSavedMatchesSync());
       } catch {}
-    });
+    } else {
+      this.getSavedMatches().then(matches => {
+        try {
+          listener(matches);
+        } catch {}
+      });
+    }
     return () => {
       this.listeners.delete(listener);
     };
@@ -159,14 +173,21 @@ class SavedMatchesService {
     }
   }
 
+  private lastPurgeTime = 0;
+
   /**
    * Automatic match-state handling:
    * 1. Removes completed matches (status === 'FT', authoritative ESPN FT, or elapsed time exceeded).
    * 2. Synchronizes status and scores for saved upcoming matches that have become live.
    */
   public async purgeFinishedMatches(liveMatches?: LiveMatch[]): Promise<DiscoverMatchup[]> {
-    let changed = false;
     const now = Date.now();
+    if (!liveMatches && this.lastPurgeTime > 0 && now - this.lastPurgeTime < 30000) {
+      return this.getCachedSavedMatchesSync();
+    }
+    this.lastPurgeTime = now;
+
+    let changed = false;
 
     for (const [id, rec] of Array.from(this.savedRecords.entries())) {
       // 1. Check if authoritative ESPN scoreboards confirm fixture is finished

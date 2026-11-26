@@ -3,17 +3,22 @@ import { ProfileStorage, UserProfileData } from '../services/profileStorage';
 import type { DiscoverCompetition, PopularLeague, PopularTeam } from '../constants/discoverData';
 
 export const useProfile = () => {
-  const [profile, setProfile] = useState<UserProfileData>(ProfileStorage.getProfile());
+  const [profile, setProfile] = useState<UserProfileData>(() => ProfileStorage.getProfile());
+  const [isReady, setIsReady] = useState<boolean>(() => ProfileStorage.isReady());
 
   useEffect(() => {
     const unsubscribe = ProfileStorage.subscribe(updated => {
       setProfile(updated);
+      if (ProfileStorage.isReady()) {
+        setIsReady(true);
+      }
     });
     return unsubscribe;
   }, []);
 
   return {
     profile,
+    isReady,
     updateProfile: (partial: Partial<UserProfileData>) => ProfileStorage.updateProfile(partial),
     toggleFollowTeam: (teamOrId: string | PopularTeam, meta?: PopularTeam) =>
       ProfileStorage.toggleFollowTeam(teamOrId, meta),

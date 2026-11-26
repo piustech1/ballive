@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
-  Image,
   StyleSheet,
+  ListRenderItem,
 } from 'react-native';
 import Colors from '../../theme/colors';
 import { PopularTeam } from '../../constants/discoverData';
@@ -17,14 +17,54 @@ interface PopularTeamsProps {
   onTeamPress: (team: PopularTeam) => void;
 }
 
-export const PopularTeams: React.FC<PopularTeamsProps> = ({
+const PopularTeamCard = React.memo(({
+  team,
+  onPress,
+}: {
+  team: PopularTeam;
+  onPress: (t: PopularTeam) => void;
+}) => (
+  <TouchableOpacity
+    style={styles.teamCard}
+    activeOpacity={0.8}
+    onPress={() => onPress(team)}
+    accessibilityRole="button"
+    accessibilityLabel={`${team.name}, ${team.country}`}
+  >
+    <TeamCrest
+      uri={team.crestUrl}
+      teamId={team.id}
+      teamName={team.name}
+      size={52}
+      priority={3}
+      containerStyle={styles.crestFlatContainer}
+    />
+
+    <View style={styles.nameContainer}>
+      <Text style={styles.teamName} numberOfLines={1}>
+        {team.name}
+      </Text>
+      <Text style={styles.teamCountry} numberOfLines={1}>
+        {team.country}
+      </Text>
+    </View>
+  </TouchableOpacity>
+));
+
+export const PopularTeams: React.FC<PopularTeamsProps> = React.memo(({
   teams,
   onViewAllPress,
   onTeamPress,
 }) => {
+  const renderItem: ListRenderItem<PopularTeam> = useCallback(
+    ({ item }) => <PopularTeamCard team={item} onPress={onTeamPress} />,
+    [onTeamPress]
+  );
+
+  const keyExtractor = useCallback((item: PopularTeam) => item.id, []);
+
   return (
     <View style={styles.sectionContainer}>
-      {/* ── SECTION HEADER ── */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Popular teams</Text>
         <TouchableOpacity
@@ -36,46 +76,23 @@ export const PopularTeams: React.FC<PopularTeamsProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* ── HORIZONTAL TEAMS SCROLLER ── */}
-      <ScrollView
+      <FlatList
         horizontal
+        data={teams}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
         decelerationRate="fast"
-      >
-        {teams.map(team => (
-          <TouchableOpacity
-            key={team.id}
-            style={styles.teamCard}
-            activeOpacity={0.8}
-            onPress={() => onTeamPress(team)}
-            accessibilityRole="button"
-            accessibilityLabel={`${team.name}, ${team.country}`}
-          >
-            {/* Centered Crest */}
-            <TeamCrest
-              uri={team.crestUrl}
-              teamId={team.id}
-              teamName={team.name}
-              size={52}
-              containerStyle={styles.crestFlatContainer}
-            />
-
-            {/* Club Name & Subtitle */}
-            <View style={styles.nameContainer}>
-              <Text style={styles.teamName} numberOfLines={1}>
-                {team.name}
-              </Text>
-              <Text style={styles.teamCountry} numberOfLines={1}>
-                {team.country}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+        initialNumToRender={5}
+        maxToRenderPerBatch={6}
+        windowSize={3}
+        removeClippedSubviews={true}
+      />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   sectionContainer: {
@@ -101,7 +118,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    gap: 12,
+  },
+  itemSeparator: {
+    width: 12,
   },
   teamCard: {
     width: 120,

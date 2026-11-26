@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   View,
-  ScrollView,
   Text,
   StyleSheet,
   StatusBar,
@@ -9,19 +8,11 @@ import {
   Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path } from 'react-native-svg';
 import {
   Shield,
   Trophy,
   Calendar,
-  Settings,
   Clock,
-  ShieldCheck,
-  HelpCircle,
-  Info,
-  MessageCircle,
-  Check,
-  Video,
 } from 'lucide-react-native';
 
 import { useAppNavigation } from '../navigation/NavigationContext';
@@ -36,10 +27,7 @@ import { EditProfileModal } from '../features/profile/modals/EditProfileModal';
 import { FollowedTeamsModal } from '../features/profile/modals/FollowedTeamsModal';
 import { FollowedLeaguesModal } from '../features/profile/modals/FollowedLeaguesModal';
 import { MatchRemindersModal } from '../features/profile/modals/MatchRemindersModal';
-import {
-  NotificationSettingsModal,
-  TimeFormatModal,
-} from '../features/profile/modals/PreferencesModals';
+import { TimeFormatModal } from '../features/profile/modals/PreferencesModals';
 
 export const ProfileScreen: React.FC = () => {
   const {
@@ -52,45 +40,55 @@ export const ProfileScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
   const insets = useSafeAreaInsets();
 
-  // ── MODAL VISIBILITY STATES ──
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [teamsModalVisible, setTeamsModalVisible] = useState(false);
   const [leaguesModalVisible, setLeaguesModalVisible] = useState(false);
   const [remindersModalVisible, setRemindersModalVisible] = useState(false);
-  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const [timeFormatModalVisible, setTimeFormatModalVisible] = useState(false);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
-      {/* ── TOP CURVED APP BAR CAVITY WITH ROTATING ATHLETE BACKGROUND ── */}
-      <View style={[styles.headerCavity, { paddingTop: Math.max(insets.top, 16) + 4 }]}>
+      {/* ── COMPACT TOP CURVED IDENTITY CAVITY ── */}
+      <View style={[styles.headerCavity, { paddingTop: Math.max(insets.top, 12) + 2 }]}>
         <CurvedHeaderPlayerBackground sport="soccer" screen="profile" />
-        <ProfileHeader onSettingsPress={() => setSettingsModalVisible(true)} />
+        <ProfileHeader />
         <ProfileIdentityCard
           displayName={profile.displayName}
           membership={profile.membership}
+          avatarId={profile.avatarId}
           avatarBg={profile.avatarBg}
           onEditPress={() => setEditModalVisible(true)}
+          onAvatarPress={() => setEditModalVisible(true)}
         />
       </View>
 
-      {/* ── MAIN SCROLLABLE SECTIONS ── */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ── SECTION: MY FOOTBALL ── */}
+      {/* ── NON-SCROLLING COMPACT BODY (FITS CLEANLY ABOVE BOTTOM NAV) ── */}
+      <View style={styles.bodyContainer}>
+        {/* ── MY ACTIVITY SECTION ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>MY FOOTBALL</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionHeader}>MY SPORTS</Text>
+            <TouchableOpacity
+              style={styles.timePill}
+              activeOpacity={0.78}
+              onPress={() => setTimeFormatModalVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`Change time format, currently ${profile.timeFormat}`}
+            >
+              <Clock size={11} color="#A58BFC" strokeWidth={2.2} />
+              <Text style={styles.timePillText}>
+                {profile.timeFormat === '12h' ? '12h' : '24h'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.cardGroup}>
             <ProfileSectionRow
               icon={Shield}
               iconColor="#A58BFC"
               label="Followed Teams"
-              subtitle="Manage your favorite clubs"
               badgeValue={profile.followedTeamIds.length}
               isFirst
               onPress={() => setTeamsModalVisible(true)}
@@ -98,8 +96,7 @@ export const ProfileScreen: React.FC = () => {
             <ProfileSectionRow
               icon={Trophy}
               iconColor={Colors.categoryChampionsLeague}
-              label="Followed Leagues"
-              subtitle="Your favorite competitions"
+              label="Followed Competitions"
               badgeValue={profile.followedLeagueIds.length}
               onPress={() => setLeaguesModalVisible(true)}
             />
@@ -107,7 +104,6 @@ export const ProfileScreen: React.FC = () => {
               icon={Calendar}
               iconColor={Colors.liveRed}
               label="Match Reminders"
-              subtitle="Upcoming matches you don't want to miss"
               badgeValue={profile.matchReminderIds.length}
               isLast
               onPress={() => setRemindersModalVisible(true)}
@@ -115,68 +111,46 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* ── SECTION: PREFERENCES ── */}
+        {/* ── JOIN OUR COMMUNITY SECTION ── */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>PREFERENCES</Text>
-          <View style={styles.cardGroup}>
-            <ProfileSectionRow
-              icon={Settings}
-              iconColor="#A58BFC"
-              label="Settings"
-              subtitle="Stream quality, alerts & storage"
-              isFirst
-              onPress={() => setSettingsModalVisible(true)}
-            />
-            <ProfileSectionRow
-              icon={Clock}
-              iconColor={Colors.textPrimary}
-              label="Time Format"
-              subtitle="Switch between 12-hour and 24-hour"
-              badgeValue={profile.timeFormat === '12h' ? '12-hour' : '24-hour'}
-              isLast
-              onPress={() => setTimeFormatModalVisible(true)}
-            />
-          </View>
-        </View>
-
-        {/* ── SECTION: JOIN OUR FOOTBALL COMMUNITY ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>JOIN OUR FOOTBALL COMMUNITY</Text>
+          <Text style={styles.sectionHeader}>JOIN OUR COMMUNITY</Text>
           <View style={styles.communityGroup}>
-            {/* WhatsApp Channel */}
             <TouchableOpacity
               style={[styles.communityRow, styles.communityRowBorder]}
-              activeOpacity={0.75}
+              activeOpacity={0.78}
               onPress={() => Linking.openURL('https://whatsapp.com').catch(() => {})}
               accessibilityRole="button"
               accessibilityLabel="Join WhatsApp Channel"
             >
               <View style={[styles.communityIconContainer, { backgroundColor: '#1A2F22' }]}>
-                <WhatsAppOfficialIcon size={22} color="#25D366" />
+                <WhatsAppOfficialIcon size={20} color="#25D366" />
               </View>
               <View style={styles.communityTextContainer}>
                 <Text style={styles.communityPrimaryText}>WhatsApp Channel</Text>
-                <Text style={styles.communitySecondaryText}>Streams, lineups & match alerts</Text>
+                <Text style={styles.communitySecondaryText} numberOfLines={1}>
+                  Streams, lineups & match alerts
+                </Text>
               </View>
               <View style={styles.communityActionPill}>
                 <Text style={styles.communityActionText}>Join</Text>
               </View>
             </TouchableOpacity>
 
-            {/* TikTok Community */}
             <TouchableOpacity
               style={styles.communityRow}
-              activeOpacity={0.75}
+              activeOpacity={0.78}
               onPress={() => Linking.openURL('https://tiktok.com').catch(() => {})}
               accessibilityRole="button"
               accessibilityLabel="Follow TikTok Community"
             >
               <View style={[styles.communityIconContainer, { backgroundColor: '#21172A' }]}>
-                <TikTokOfficialIcon size={20} color="#FE2C55" />
+                <TikTokOfficialIcon size={18} color="#FE2C55" />
               </View>
               <View style={styles.communityTextContainer}>
                 <Text style={styles.communityPrimaryText}>TikTok Community</Text>
-                <Text style={styles.communitySecondaryText}>Football clips & viral moments</Text>
+                <Text style={styles.communitySecondaryText} numberOfLines={1}>
+                  Football clips & viral moments
+                </Text>
               </View>
               <View style={styles.communityActionPill}>
                 <Text style={styles.communityActionText}>Follow</Text>
@@ -184,43 +158,18 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* ── SECTION: APPLICATION ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>APPLICATION</Text>
-          <View style={styles.cardGroup}>
-            <ProfileSectionRow
-              icon={ShieldCheck}
-              iconColor={Colors.verifiedBlue}
-              label="Privacy & Security"
-              isFirst
-              onPress={() => navigate({ name: 'PrivacySecurity' })}
-            />
-            <ProfileSectionRow
-              icon={HelpCircle}
-              iconColor={Colors.textSecondary}
-              label="Help & Support"
-              onPress={() => navigate({ name: 'HelpSupport' })}
-            />
-            <ProfileSectionRow
-              icon={Info}
-              iconColor="#A58BFC"
-              label="About BALLIVE"
-              badgeValue="v2.8.5"
-              isLast
-              onPress={() => navigate({ name: 'About' })}
-            />
-          </View>
-        </View>
-      </ScrollView>
+      </View>
 
       {/* ── MODALS ── */}
       <EditProfileModal
         visible={editModalVisible}
         currentName={profile.displayName}
+        currentAvatarId={profile.avatarId}
         currentAvatarBg={profile.avatarBg}
         onClose={() => setEditModalVisible(false)}
-        onSave={(displayName, avatarBg) => updateProfile({ displayName, avatarBg })}
+        onSave={(displayName, avatarId, avatarBg) =>
+          updateProfile({ displayName, avatarId, avatarBg })
+        }
       />
 
       <FollowedTeamsModal
@@ -237,7 +186,9 @@ export const ProfileScreen: React.FC = () => {
         followedLeagueIds={profile.followedLeagueIds}
         followedLeaguesMeta={profile.followedLeaguesMeta}
         onToggleLeague={toggleFollowLeague}
-        onSelectLeague={competition => navigate({ name: 'CompetitionDetails', params: { competition } })}
+        onSelectLeague={competition =>
+          navigate({ name: 'CompetitionDetails', params: { competition } })
+        }
         onClose={() => setLeaguesModalVisible(false)}
       />
 
@@ -246,15 +197,6 @@ export const ProfileScreen: React.FC = () => {
         matchReminderIds={profile.matchReminderIds}
         onToggleReminder={toggleMatchReminder}
         onClose={() => setRemindersModalVisible(false)}
-      />
-
-      <NotificationSettingsModal
-        visible={settingsModalVisible}
-        notifications={profile.notifications}
-        onUpdate={(key, val) =>
-          updateProfile({ notifications: { ...profile.notifications, [key]: val } })
-        }
-        onClose={() => setSettingsModalVisible(false)}
       />
 
       <TimeFormatModal
@@ -272,17 +214,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  scrollView: {
-    flex: 1,
+  headerCavity: {
+    backgroundColor: Colors.headerPurple,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    overflow: 'hidden',
   },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 96,
-    gap: 20,
+  bodyContainer: {
+    flex: 1,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 14,
+    justifyContent: 'space-evenly',
   },
   section: {
     gap: 8,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: 2,
   },
   sectionHeader: {
     fontSize: 11,
@@ -291,11 +243,24 @@ const styles = StyleSheet.create({
     letterSpacing: 0.9,
     paddingLeft: 4,
   },
+  timePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#1E1730',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  timePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#D5CFE6',
+  },
   cardGroup: {
     borderRadius: 16,
     overflow: 'hidden',
   },
-  // Social Community Styles
   communityGroup: {
     backgroundColor: '#1E1730',
     borderRadius: 16,
@@ -304,27 +269,27 @@ const styles = StyleSheet.create({
   communityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
   },
   communityRowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.04)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
   },
   communityIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 38,
+    height: 38,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   communityTextContainer: {
     flex: 1,
     justifyContent: 'center',
   },
   communityPrimaryText: {
-    fontSize: 14.5,
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
   },
@@ -334,20 +299,14 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   communityActionPill: {
-    backgroundColor: '#2A2045',
-    paddingHorizontal: 14,
+    backgroundColor: '#7650F6',
+    paddingHorizontal: 13,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 9,
   },
   communityActionText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
-    color: '#ECE9FA',
-  },
-  headerCavity: {
-    backgroundColor: Colors.headerPurple,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    overflow: 'hidden',
+    color: '#FFFFFF',
   },
 });

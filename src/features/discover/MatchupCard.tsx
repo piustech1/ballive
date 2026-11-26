@@ -11,11 +11,10 @@ export interface MatchupCardProps {
   onReminderToggle?: (matchup: DiscoverMatchup, isSet: boolean) => void;
 }
 
-export const MatchupCard: React.FC<MatchupCardProps> = ({
+export const MatchupCard: React.FC<MatchupCardProps> = React.memo(({
   matchup,
   onMatchDetailsPress,
   onWatchPress,
-  onReminderToggle,
 }) => {
   const handlePress = () => {
     const route = determineMatchRoute(matchup);
@@ -35,7 +34,7 @@ export const MatchupCard: React.FC<MatchupCardProps> = ({
       />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

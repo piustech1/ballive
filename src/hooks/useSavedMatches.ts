@@ -4,11 +4,17 @@ import { LiveMatch } from '../constants/mockData';
 import { savedMatchesService } from '../services/savedMatchesService';
 
 export function useSavedMatches() {
-  const [savedMatches, setSavedMatches] = useState<DiscoverMatchup[]>([]);
+  const [savedMatches, setSavedMatches] = useState<DiscoverMatchup[]>(() =>
+    savedMatchesService.getCachedSavedMatchesSync()
+  );
+  const [isReady, setIsReady] = useState<boolean>(() => savedMatchesService.isReady());
 
   useEffect(() => {
     const unsubscribe = savedMatchesService.subscribe(matches => {
       setSavedMatches(matches);
+      if (savedMatchesService.isReady()) {
+        setIsReady(true);
+      }
     });
     return unsubscribe;
   }, []);
@@ -36,6 +42,7 @@ export function useSavedMatches() {
   return {
     savedMatches,
     savedMatchIds,
+    isReady,
     isSaved,
     toggleSave,
     removeSave,

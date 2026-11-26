@@ -19,10 +19,7 @@ export type ScreenRoute =
   | { name: 'AllCompetitions' }
   | { name: 'AllLeagues' }
   | { name: 'AllTeams' }
-  | { name: 'Notifications' }
-  | { name: 'About' }
-  | { name: 'HelpSupport' }
-  | { name: 'PrivacySecurity' };
+  | { name: 'Notifications' };
 
 interface NavigationContextType {
   currentRoute: ScreenRoute;

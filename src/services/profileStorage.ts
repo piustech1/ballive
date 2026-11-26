@@ -205,8 +205,16 @@ const TEAM_ID_ALIASES: Record<string, string> = {
   'team-ny-rangers': 'team-rangers-nhl',
 };
 
+function stripDiacritics(str: string): string {
+  try {
+    return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  } catch {
+    return str;
+  }
+}
+
 export function normalizeLeagueId(rawId: string): string {
-  const cleaned = (rawId || '')
+  const cleaned = stripDiacritics(rawId || '')
     .toLowerCase()
     .trim()
     .replace(/^(league-|comp-)/, '');
@@ -218,7 +226,7 @@ export function normalizeLeagueId(rawId: string): string {
 }
 
 export function normalizeTeamId(rawIdOrName: string): string {
-  const trimmed = (rawIdOrName || '').toLowerCase().trim();
+  const trimmed = stripDiacritics(rawIdOrName || '').toLowerCase().trim();
   if (!trimmed) return '';
   if (TEAM_ID_ALIASES[trimmed]) return TEAM_ID_ALIASES[trimmed];
   const slug = trimmed.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -338,6 +346,10 @@ class ProfileStorageService {
     })();
 
     return this.initPromise;
+  }
+
+  public isReady(): boolean {
+    return this.isLoaded;
   }
 
   public getProfile(): UserProfileData {

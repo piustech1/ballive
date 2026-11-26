@@ -66,6 +66,100 @@ export function parseKickoffTimestamp(dateInput?: string | number | Date | null)
   return Number.MAX_SAFE_INTEGER;
 }
 
+let cachedTimeFormatterEAT: Intl.DateTimeFormat | null | undefined;
+let cachedDateFormatterEAT: Intl.DateTimeFormat | null | undefined;
+let cachedWeekdayFormatterEAT: Intl.DateTimeFormat | null | undefined;
+let cachedStandardFormatterEAT: Intl.DateTimeFormat | null | undefined;
+
+function getTimeFormatterEAT(): Intl.DateTimeFormat | null {
+  if (cachedTimeFormatterEAT !== undefined) return cachedTimeFormatterEAT;
+  try {
+    cachedTimeFormatterEAT = new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Africa/Nairobi',
+    });
+  } catch {
+    cachedTimeFormatterEAT = null;
+  }
+  return cachedTimeFormatterEAT;
+}
+
+function getDateFormatterEAT(): Intl.DateTimeFormat | null {
+  if (cachedDateFormatterEAT !== undefined) return cachedDateFormatterEAT;
+  try {
+    cachedDateFormatterEAT = new Intl.DateTimeFormat('en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      timeZone: 'Africa/Nairobi',
+    });
+  } catch {
+    cachedDateFormatterEAT = null;
+  }
+  return cachedDateFormatterEAT;
+}
+
+function getWeekdayFormatterEAT(): Intl.DateTimeFormat | null {
+  if (cachedWeekdayFormatterEAT !== undefined) return cachedWeekdayFormatterEAT;
+  try {
+    cachedWeekdayFormatterEAT = new Intl.DateTimeFormat('en-GB', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'Africa/Nairobi',
+    });
+  } catch {
+    cachedWeekdayFormatterEAT = null;
+  }
+  return cachedWeekdayFormatterEAT;
+}
+
+function getStandardFormatterEAT(): Intl.DateTimeFormat | null {
+  if (cachedStandardFormatterEAT !== undefined) return cachedStandardFormatterEAT;
+  try {
+    cachedStandardFormatterEAT = new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'Africa/Nairobi',
+    });
+  } catch {
+    cachedStandardFormatterEAT = null;
+  }
+  return cachedStandardFormatterEAT;
+}
+
+function getEATDayDiff(d: Date, now: Date): number {
+  const dateFormatter = getDateFormatterEAT();
+  if (dateFormatter && typeof dateFormatter.formatToParts === 'function') {
+    const matchParts = dateFormatter.formatToParts(d);
+    const nowParts = dateFormatter.formatToParts(now);
+    const getPart = (parts: Intl.DateTimeFormatPart[], type: string) =>
+      parseInt(parts.find(p => p.type === type)?.value || '0', 10);
+
+    const matchMidnight = Date.UTC(
+      getPart(matchParts, 'year'),
+      getPart(matchParts, 'month') - 1,
+      getPart(matchParts, 'day')
+    );
+    const nowMidnight = Date.UTC(
+      getPart(nowParts, 'year'),
+      getPart(nowParts, 'month') - 1,
+      getPart(nowParts, 'day')
+    );
+    return Math.round((matchMidnight - nowMidnight) / (24 * 60 * 60 * 1000));
+  }
+
+  // Fallback UTC+3 offset calculation when Intl.formatToParts is unavailable
+  const eatOffsetMs = 3 * 60 * 60 * 1000;
+  const dEat = new Date(d.getTime() + eatOffsetMs);
+  const nowEat = new Date(now.getTime() + eatOffsetMs);
+  const matchMidnight = Date.UTC(dEat.getUTCFullYear(), dEat.getUTCMonth(), dEat.getUTCDate());
+  const nowMidnight = Date.UTC(nowEat.getUTCFullYear(), nowEat.getUTCMonth(), nowEat.getUTCDate());
+  return Math.round((matchMidnight - nowMidnight) / (24 * 60 * 60 * 1000));
+}
+
 /**
  * Returns contextual, human-readable date & time representations strictly in
  * East Africa Time (EAT, UTC+3, Africa/Nairobi).
@@ -91,42 +185,16 @@ export function formatMatchSchedule(dateInput?: string | number | Date | null): 
       return { timeEAT: 'Upcoming', dateLabel: 'Upcoming', fullKickoff: 'Upcoming' };
     }
 
-    // Format time in Africa/Nairobi (UTC+3)
-    const timeFormatter = new Intl.DateTimeFormat('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: 'Africa/Nairobi',
-    });
-    const timeStr = `${timeFormatter.format(d)} EAT`;
+    const timeFormatter = getTimeFormatterEAT();
+    let timeStr = '';
+    if (timeFormatter) {
+      timeStr = `${timeFormatter.format(d)} EAT`;
+    } else {
+      const eat = new Date(d.getTime() + 3 * 60 * 60 * 1000);
+      timeStr = `${String(eat.getUTCHours()).padStart(2, '0')}:${String(eat.getUTCMinutes()).padStart(2, '0')} EAT`;
+    }
 
-    // Calculate relative day boundary in Africa/Nairobi
-    const now = new Date();
-    const dateFormatter = new Intl.DateTimeFormat('en-GB', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      timeZone: 'Africa/Nairobi',
-    });
-
-    const matchParts = dateFormatter.formatToParts(d);
-    const nowParts = dateFormatter.formatToParts(now);
-
-    const getPart = (parts: Intl.DateTimeFormatPart[], type: string) =>
-      parseInt(parts.find(p => p.type === type)?.value || '0', 10);
-
-    const matchY = getPart(matchParts, 'year');
-    const matchM = getPart(matchParts, 'month');
-    const matchD = getPart(matchParts, 'day');
-
-    const nowY = getPart(nowParts, 'year');
-    const nowM = getPart(nowParts, 'month');
-    const nowD = getPart(nowParts, 'day');
-
-    // Canonical midnight timestamps in UTC for calendar day diff
-    const matchMidnight = Date.UTC(matchY, matchM - 1, matchD);
-    const nowMidnight = Date.UTC(nowY, nowM - 1, nowD);
-    const dayDiff = Math.round((matchMidnight - nowMidnight) / (24 * 60 * 60 * 1000));
+    const dayDiff = getEATDayDiff(d, new Date());
 
     let dateLabel = '';
     if (dayDiff === 0) {
@@ -134,20 +202,11 @@ export function formatMatchSchedule(dateInput?: string | number | Date | null): 
     } else if (dayDiff === 1) {
       dateLabel = 'Tomorrow';
     } else if (dayDiff > 1 && dayDiff < 7) {
-      const weekdayFormat = new Intl.DateTimeFormat('en-GB', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-        timeZone: 'Africa/Nairobi',
-      });
-      dateLabel = weekdayFormat.format(d); // e.g. "Sat, 22 Nov"
+      const weekdayFormat = getWeekdayFormatterEAT();
+      dateLabel = weekdayFormat ? weekdayFormat.format(d) : d.toDateString().slice(0, 10);
     } else {
-      const standardFormat = new Intl.DateTimeFormat('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        timeZone: 'Africa/Nairobi',
-      });
-      dateLabel = standardFormat.format(d); // e.g. "22 Nov"
+      const standardFormat = getStandardFormatterEAT();
+      dateLabel = standardFormat ? standardFormat.format(d) : d.toDateString().slice(4, 10);
     }
 
     const fullKickoff = `${dateLabel} · ${timeStr}`;
@@ -178,31 +237,7 @@ export function isWithinTodayOrTomorrow(dateInput?: string | number | Date | nul
       return true;
     }
 
-    const now = new Date();
-    const dateFormatter = new Intl.DateTimeFormat('en-GB', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      timeZone: 'Africa/Nairobi',
-    });
-
-    const matchParts = dateFormatter.formatToParts(d);
-    const nowParts = dateFormatter.formatToParts(now);
-
-    const getPart = (parts: Intl.DateTimeFormatPart[], type: string) =>
-      parseInt(parts.find(p => p.type === type)?.value || '0', 10);
-
-    const matchY = getPart(matchParts, 'year');
-    const matchM = getPart(matchParts, 'month');
-    const matchD = getPart(matchParts, 'day');
-
-    const nowY = getPart(nowParts, 'year');
-    const nowM = getPart(nowParts, 'month');
-    const nowD = getPart(nowParts, 'day');
-
-    const matchMidnight = Date.UTC(matchY, matchM - 1, matchD);
-    const nowMidnight = Date.UTC(nowY, nowM - 1, nowD);
-    const dayDiff = Math.round((matchMidnight - nowMidnight) / (24 * 60 * 60 * 1000));
+    const dayDiff = getEATDayDiff(d, new Date());
 
     // Day diff <= 1: Today (0) or Tomorrow (1). Also include matches from earlier today (-1/0)
     return dayDiff <= 1;

@@ -13,8 +13,17 @@ import {
   Check,
   Plus,
   Bookmark,
+  Users,
+  Trophy,
+  Globe,
+  Activity,
+  Dribbble,
+  Flame,
 } from 'lucide-react-native';
 import { ExtendedHeroHeader, HeroStickyTopBar } from '../components/common/ExtendedHeroHeader';
+import { SegmentedControl } from '../components/common/SegmentedControl';
+import { CircularCountryFlag } from '../components/common/CircularCountryFlag';
+import { InfoRowCard, InfoRowItem } from '../components/common/InfoRowCard';
 import { CompetitionLogo } from '../components/common/CompetitionLogo';
 import { TeamCrest } from '../components/common/TeamCrest';
 import {
@@ -531,80 +540,93 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
           }
         />
 
-        {/* Two-Tab Segmented Control (Overview | Matches) */}
-        <View style={styles.tabBar}>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[styles.tabButton, activeTab === 'overview' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('overview')}
-          >
-            <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>
-              Overview
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[styles.tabButton, activeTab === 'matches' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('matches')}
-          >
-            <Text style={[styles.tabText, activeTab === 'matches' && styles.tabTextActive]}>
-              Matches ({fixtures.length})
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Modern Compact Segmented Control (Overview | Matches) */}
+        <SegmentedControl
+          tabs={[
+            { key: 'overview', label: 'Overview' },
+            { key: 'matches', label: `Matches (${fixtures.length})` },
+          ]}
+          activeKey={activeTab}
+          onChange={setActiveTab}
+        />
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <View style={styles.tabSection}>
             {isLoadingFixtures && fixtures.length === 0 ? (
               <View style={styles.loadingCard}>
-                <ActivityIndicator size="small" color="#7952FC" />
+                <ActivityIndicator size="small" color="#7650F6" />
                 <Text style={styles.loadingText}>Loading competition schedule...</Text>
               </View>
             ) : featuredMatch ? (
               renderFeaturedMatchCard(featuredMatch)
             ) : null}
 
-            {/* Tournament Information Card (Authentic fields only) */}
-            <View style={styles.sectionCard}>
-              <Text style={styles.cardHeaderTitle}>Tournament Information</Text>
+            {/* Redesigned Tournament Information Card (No repetitive title row; borderless flag + compact icons) */}
+            <InfoRowCard
+              title="Tournament Information"
+              rows={(() => {
+                const territoryValue = competition.country || region || 'International';
+                const SportIconComp =
+                  compSport === 'basketball'
+                    ? Dribbble
+                    : compSport === 'motorsport'
+                    ? Flame
+                    : compSport === 'soccer'
+                    ? Trophy
+                    : Activity;
 
-              <View style={styles.infoLine}>
-                <Text style={styles.infoKey}>Official Tournament</Text>
-                <Text style={styles.infoVal} numberOfLines={1}>{competition.name}</Text>
-              </View>
+                const items: InfoRowItem[] = [
+                  {
+                    key: 'territory',
+                    label: 'Territory / Country',
+                    value: territoryValue,
+                    icon: Globe,
+                    iconBg: 'rgba(56, 189, 248, 0.14)',
+                    iconColor: '#38BDF8',
+                    customValueLeading: <CircularCountryFlag country={territoryValue} size={20} />,
+                  },
+                ];
 
-              <View style={styles.infoLine}>
-                <Text style={styles.infoKey}>Territory / Country</Text>
-                <Text style={styles.infoVal} numberOfLines={1}>
-                  {competition.country || region || 'International'}
-                </Text>
-              </View>
+                if (
+                  region &&
+                  region !== territoryValue &&
+                  region !== 'Global' &&
+                  region !== 'International'
+                ) {
+                  items.push({
+                    key: 'region',
+                    label: 'Region',
+                    value: region,
+                    icon: Globe,
+                    iconBg: 'rgba(165, 139, 252, 0.14)',
+                    iconColor: '#A58BFC',
+                  });
+                }
 
-              {region && region !== competition.country ? (
-                <View style={styles.infoLine}>
-                  <Text style={styles.infoKey}>Region</Text>
-                  <Text style={styles.infoVal} numberOfLines={1}>{region}</Text>
-                </View>
-              ) : null}
+                if (teamsCount) {
+                  items.push({
+                    key: 'clubs',
+                    label: isBasketball || isHockey ? 'Participating Franchises' : 'Active Clubs',
+                    value: `${teamsCount} ${isBasketball || isHockey ? 'Franchises' : 'Clubs'}`,
+                    icon: Users,
+                    iconBg: 'rgba(34, 197, 94, 0.14)',
+                    iconColor: '#22C55E',
+                  });
+                }
 
-              {teamsCount ? (
-                <View style={styles.infoLine}>
-                  <Text style={styles.infoKey}>
-                    {isBasketball || isHockey ? 'Participating Franchises' : 'Active Clubs'}
-                  </Text>
-                  <Text style={styles.infoVal}>
-                    {teamsCount} {isBasketball || isHockey ? 'Franchises' : 'Clubs'}
-                  </Text>
-                </View>
-              ) : null}
+                items.push({
+                  key: 'sport',
+                  label: 'Sport',
+                  value: sportLabel,
+                  icon: SportIconComp,
+                  iconBg: 'rgba(118, 80, 246, 0.16)',
+                  iconColor: '#A58BFC',
+                });
 
-              <View style={[styles.infoLine, styles.infoLineLast]}>
-                <Text style={styles.infoKey}>Sport</Text>
-                <Text style={styles.infoVal}>{sportLabel}</Text>
-              </View>
-            </View>
+                return items;
+              })()}
+            />
           </View>
         )}
 
@@ -666,7 +688,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 11,
     borderRadius: 24,
-    backgroundColor: '#7952FC',
+    backgroundColor: '#7650F6',
     minWidth: 170,
   },
   heroFollowBtnActive: {
@@ -676,32 +698,6 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '700',
     color: '#FFFFFF',
-  },
-  tabBar: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: '#161224',
-    borderRadius: 16,
-    padding: 4,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 11,
-    alignItems: 'center',
-    borderRadius: 12,
-  },
-  tabButtonActive: {
-    backgroundColor: '#251E38',
-  },
-  tabText: {
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: '#8E86A8',
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
   },
   tabSection: {
     paddingHorizontal: 16,
@@ -717,12 +713,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 16,
-  },
-  cardHeaderTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 12,
   },
   cardHeaderTitleNoMargin: {
     fontSize: 15,
@@ -771,31 +761,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#161224',
     borderRadius: 18,
     padding: 16,
-  },
-  infoLine: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 11,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-    gap: 12,
-  },
-  infoLineLast: {
-    borderBottomWidth: 0,
-    paddingBottom: 2,
-  },
-  infoKey: {
-    fontSize: 13,
-    color: '#8E86A8',
-    fontWeight: '500',
-  },
-  infoVal: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'right',
-    flexShrink: 1,
   },
   matchesGroup: {
     marginBottom: 8,

@@ -22,7 +22,7 @@
 import * as FileSystem from 'expo-file-system';
 import { DEFAULT_CREST } from '../utils/teamCrestResolver';
 
-export type ImageCategory = 'team' | 'competition' | 'hero' | 'player';
+export type ImageCategory = 'team' | 'competition' | 'hero' | 'player' | 'flag';
 
 /**
  * 0 = currently visible on screen

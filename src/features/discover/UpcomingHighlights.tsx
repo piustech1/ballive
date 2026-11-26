@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Colors from '../../theme/colors';
 import { DiscoverMatchup } from '../../constants/discoverData';
@@ -12,16 +12,26 @@ interface UpcomingHighlightsProps {
   onReminderToggle?: (matchup: DiscoverMatchup, isSet: boolean) => void;
 }
 
-export const UpcomingHighlights: React.FC<UpcomingHighlightsProps> = ({
+const INITIAL_RENDER_CAP = 8;
+
+export const UpcomingHighlights: React.FC<UpcomingHighlightsProps> = React.memo(({
   matchups,
   onViewAllPress,
   onMatchDetailsPress,
   onWatchPress,
   onReminderToggle,
 }) => {
+  const [showAll, setShowAll] = useState(false);
+
+  const visibleMatchups = useMemo(
+    () => (showAll ? matchups : matchups.slice(0, INITIAL_RENDER_CAP)),
+    [matchups, showAll]
+  );
+
+  const hasMore = !showAll && matchups.length > INITIAL_RENDER_CAP;
+
   return (
     <View style={styles.sectionContainer}>
-      {/* ── SECTION HEADER ── */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Upcoming highlights</Text>
         <TouchableOpacity
@@ -33,9 +43,8 @@ export const UpcomingHighlights: React.FC<UpcomingHighlightsProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* ── MATCHUP CARDS LIST ── */}
       <View style={styles.cardsList}>
-        {matchups.map(matchup => (
+        {visibleMatchups.map(matchup => (
           <MatchupCard
             key={matchup.id}
             matchup={matchup}
@@ -45,9 +54,21 @@ export const UpcomingHighlights: React.FC<UpcomingHighlightsProps> = ({
           />
         ))}
       </View>
+
+      {hasMore && (
+        <TouchableOpacity
+          style={styles.showMoreBtn}
+          activeOpacity={0.8}
+          onPress={() => setShowAll(true)}
+        >
+          <Text style={styles.showMoreText}>
+            Show all {matchups.length} highlights
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   sectionContainer: {
@@ -74,5 +95,18 @@ const styles = StyleSheet.create({
   },
   cardsList: {
     gap: 12,
+  },
+  showMoreBtn: {
+    marginTop: 14,
+    paddingVertical: 11,
+    borderRadius: 14,
+    backgroundColor: '#1B162D',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  showMoreText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#A58BFC',
   },
 });

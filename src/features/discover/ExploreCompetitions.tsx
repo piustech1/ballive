@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
-  Image,
   StyleSheet,
+  ListRenderItem,
 } from 'react-native';
 import Colors from '../../theme/colors';
 import { CompetitionLogo } from '../../components/common/CompetitionLogo';
@@ -31,14 +31,57 @@ const getCompetitionSubLabel = (comp: DiscoverCompetition): string => {
   return 'Football';
 };
 
-export const ExploreCompetitions: React.FC<ExploreCompetitionsProps> = ({
+const CompetitionCard = React.memo(({
+  comp,
+  onPress,
+}: {
+  comp: DiscoverCompetition;
+  onPress: (c: DiscoverCompetition) => void;
+}) => (
+  <TouchableOpacity
+    style={styles.card}
+    activeOpacity={0.8}
+    onPress={() => onPress(comp)}
+    accessibilityRole="button"
+    accessibilityLabel={`${comp.name}, ${comp.country}`}
+  >
+    <View style={styles.cardHeader}>
+      <CompetitionLogo
+        uri={comp.logoUrl}
+        competitionId={comp.id}
+        size={38}
+        priority={3}
+      />
+      <View style={styles.regionBadge}>
+        <Text style={styles.regionText} numberOfLines={1}>{comp.country}</Text>
+      </View>
+    </View>
+
+    <View style={styles.cardBody}>
+      <Text style={styles.compName} numberOfLines={1}>
+        {comp.name}
+      </Text>
+      <Text style={styles.seasonText} numberOfLines={1}>
+        {getCompetitionSubLabel(comp)}
+      </Text>
+    </View>
+  </TouchableOpacity>
+));
+
+export const ExploreCompetitions: React.FC<ExploreCompetitionsProps> = React.memo(({
   competitions,
   onSeeAllPress,
   onCompetitionPress,
 }) => {
+  const renderItem: ListRenderItem<DiscoverCompetition> = useCallback(
+    ({ item }) => <CompetitionCard comp={item} onPress={onCompetitionPress} />,
+    [onCompetitionPress]
+  );
+
+  const keyExtractor = useCallback((item: DiscoverCompetition) => item.id, []);
+
   return (
     <View style={styles.sectionContainer}>
-      {/* ── SECTION HEADER ── */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Explore competitions</Text>
         <TouchableOpacity
@@ -50,53 +93,27 @@ export const ExploreCompetitions: React.FC<ExploreCompetitionsProps> = ({
         </TouchableOpacity>
       </View>
 
-      {/* ── HORIZONTAL CARDS SCROLLER ── */}
-      <ScrollView
+      <FlatList
         horizontal
+        data={competitions}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
         decelerationRate="fast"
-      >
-        {competitions.map(comp => (
-          <TouchableOpacity
-            key={comp.id}
-            style={styles.card}
-            activeOpacity={0.8}
-            onPress={() => onCompetitionPress(comp)}
-            accessibilityRole="button"
-            accessibilityLabel={`${comp.name}, ${comp.country}`}
-          >
-            {/* Top Accent Strip & Logo */}
-            <View style={styles.cardHeader}>
-              <CompetitionLogo
-                uri={comp.logoUrl}
-                competitionId={comp.id}
-                size={38}
-              />
-              <View style={styles.regionBadge}>
-                <Text style={styles.regionText} numberOfLines={1}>{comp.country}</Text>
-              </View>
-            </View>
-
-            {/* Competition Details */}
-            <View style={styles.cardBody}>
-              <Text style={styles.compName} numberOfLines={1}>
-                {comp.name}
-              </Text>
-              <Text style={styles.seasonText} numberOfLines={1}>
-                {getCompetitionSubLabel(comp)}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+        initialNumToRender={5}
+        maxToRenderPerBatch={6}
+        windowSize={3}
+        removeClippedSubviews={true}
+      />
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   sectionContainer: {
-    marginTop: 24,
+    marginTop: 22,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -118,7 +135,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    gap: 12,
+  },
+  itemSeparator: {
+    width: 12,
   },
   card: {
     width: 156,
@@ -133,24 +152,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  logoContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 6,
-  },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-  },
   regionBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    maxWidth: 82,
   },
   regionText: {
     fontSize: 11,

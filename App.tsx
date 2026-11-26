@@ -16,9 +16,6 @@ import { AllTeamsScreen } from './src/screens/AllTeamsScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { AllLiveStreamsScreen } from './src/screens/AllLiveStreamsScreen';
 import { LiveStreamDetailsScreen } from './src/screens/LiveStreamDetailsScreen';
-import { AboutScreen } from './src/screens/AboutScreen';
-import { HelpSupportScreen } from './src/screens/HelpSupportScreen';
-import { PrivacySecurityScreen } from './src/screens/PrivacySecurityScreen';
 import {
   NavigationProvider,
   useAppNavigation,
@@ -36,7 +33,7 @@ const AppContent: React.FC = () => {
     startupPreloader.warmCoreAssetsOnStartup();
   }, []);
 
-  // Lazy tab mounting: Mount tabs on first visit, then keep them mounted in memory for 0ms switching
+  // Lazy tab mounting: mount synchronously on first active frame, then retain in memory for 0ms switching
   const [visitedTabs, setVisitedTabs] = React.useState<Record<TabDestination, boolean>>({
     Home: true,
     Discover: false,
@@ -50,6 +47,7 @@ const AppContent: React.FC = () => {
     }
   }, [activeTab, visitedTabs]);
 
+  const shouldRenderTab = (tab: TabDestination) => visitedTabs[tab] || activeTab === tab;
   const isMainRoute = currentRoute.name === 'Main';
 
   const renderDetailScreen = () => {
@@ -92,12 +90,6 @@ const AppContent: React.FC = () => {
         return <AllTeamsScreen />;
       case 'Notifications':
         return <NotificationsScreen />;
-      case 'About':
-        return <AboutScreen />;
-      case 'HelpSupport':
-        return <HelpSupportScreen />;
-      case 'PrivacySecurity':
-        return <PrivacySecurityScreen />;
       default:
         return null;
     }
@@ -113,19 +105,21 @@ const AppContent: React.FC = () => {
 
       {/* Screen View */}
       <View style={isFullscreen ? styles.fullscreenScreenContainer : styles.screenContainer}>
-        {/* Persistent Bottom Tab Screens: Kept mounted in memory once visited for 0ms instantaneous tab switching */}
+        {/* Persistent Bottom Tab Screens */}
         <View style={[styles.mainTabsContainer, !isMainRoute && styles.hiddenPane]}>
           <View style={[styles.tabPane, activeTab === 'Home' ? styles.visiblePane : styles.hiddenPane]}>
-            {visitedTabs.Home && <HomeScreen />}
+            {shouldRenderTab('Home') && <HomeScreen />}
           </View>
           <View style={[styles.tabPane, activeTab === 'Discover' ? styles.visiblePane : styles.hiddenPane]}>
-            {visitedTabs.Discover && <DiscoverScreen />}
+            {shouldRenderTab('Discover') && <DiscoverScreen />}
           </View>
           <View style={[styles.tabPane, activeTab === 'Saved' ? styles.visiblePane : styles.hiddenPane]}>
-            {visitedTabs.Saved && <SavedScreen onNavigateToDiscover={() => switchTab('Discover')} />}
+            {shouldRenderTab('Saved') && (
+              <SavedScreen onNavigateToDiscover={() => switchTab('Discover')} />
+            )}
           </View>
           <View style={[styles.tabPane, activeTab === 'Profile' ? styles.visiblePane : styles.hiddenPane]}>
-            {visitedTabs.Profile && <ProfileScreen />}
+            {shouldRenderTab('Profile') && <ProfileScreen />}
           </View>
         </View>
 
@@ -133,7 +127,7 @@ const AppContent: React.FC = () => {
         {!isMainRoute && renderDetailScreen()}
       </View>
 
-      {/* Anchored Bottom Navigation Bar - hidden during fullscreen video streaming */}
+      {/* Anchored Bottom Navigation Bar */}
       {!isFullscreen && (
         <BottomNavigation
           activeTab={activeTab}

@@ -1,15 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useId, useMemo } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   Animated,
+  Dimensions,
   ImageSourcePropType,
+  LayoutChangeEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import Svg, {
+  Defs,
+  ClipPath,
+  Path,
+  Image as SvgImage,
+  LinearGradient as SvgLinearGradient,
+  Stop,
+  Rect,
+} from 'react-native-svg';
 import { ArrowLeft, LucideIcon } from 'lucide-react-native';
 import Colors from '../../theme/colors';
 import { useAppNavigation } from '../../navigation/NavigationContext';
@@ -29,9 +38,9 @@ interface ExtendedHeroHeaderProps {
   emblemComponent: React.ReactNode;
   /** Primary identity title (e.g. FC Barcelona, Premier League) */
   identityTitle: string;
-  /** Contextual subtitle directly beneath identity title (e.g. Football · LaLiga EA Sports) */
+  /** Contextual subtitle directly beneath identity title (e.g. England · 20 Clubs · Football) */
   identitySubtitle?: string;
-  /** Optional metadata items below subtitle (stadium/country) */
+  /** Optional metadata items below subtitle */
   metaComponent?: React.ReactNode;
   /** Follow pill action CTA */
   followButtonComponent?: React.ReactNode;
@@ -47,10 +56,11 @@ interface PinnedTopBarProps {
   scrollY: Animated.Value;
 }
 
+const INITIAL_SCREEN_WIDTH = Dimensions.get('window').width || 390;
+
 /**
  * Sticky transparent top bar overlay at scrollY=0 that transitions smoothly
  * to `#1E1730` as the user scrolls down through long Fixtures/Matches lists.
- * Shares exact status bar insets so there is ZERO gap or card seam at rest.
  */
 export const HeroStickyTopBar: React.FC<PinnedTopBarProps> = ({
   overlineTitle,
@@ -69,17 +79,18 @@ export const HeroStickyTopBar: React.FC<PinnedTopBarProps> = ({
   };
 
   const backdropOpacity = scrollY.interpolate({
-    inputRange: [18, 95],
+    inputRange: [24, 110],
     outputRange: [0, 1],
     extrapolate: 'clamp',
   });
+
+  const ActionIcon = rightAction?.icon;
 
   return (
     <View
       style={[styles.stickyContainer, { paddingTop: Math.max(insets.top, 10) + 4 }]}
       pointerEvents="box-none"
     >
-      {/* Fades in clean curved dark header fill only when scrolling past top */}
       <Animated.View
         pointerEvents="none"
         style={[
@@ -100,43 +111,35 @@ export const HeroStickyTopBar: React.FC<PinnedTopBarProps> = ({
           <ArrowLeft size={19} color="#FFFFFF" strokeWidth={2.4} />
         </TouchableOpacity>
 
-        <View style={styles.titleContainer}>
-          {onTitlePress ? (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={onTitlePress}
-              hitSlop={{ top: 6, bottom: 4, left: 4, right: 8 }}
-              accessibilityRole="button"
-              accessibilityLabel={`Open ${overlineTitle}`}
-            >
-              <Text style={styles.overlineText} numberOfLines={1} ellipsizeMode="tail">
-                {overlineTitle}
-              </Text>
-            </TouchableOpacity>
-          ) : (
-            <Text style={styles.overlineText} numberOfLines={1} ellipsizeMode="tail">
-              {overlineTitle}
-            </Text>
-          )}
+        <TouchableOpacity
+          activeOpacity={onTitlePress ? 0.75 : 1}
+          disabled={!onTitlePress}
+          onPress={onTitlePress}
+          style={styles.titleContainer}
+        >
+          <Text style={styles.overlineText} numberOfLines={1}>
+            {overlineTitle}
+          </Text>
           {subtitle ? (
-            <Text style={styles.subtitleText} numberOfLines={1} ellipsizeMode="tail">
+            <Text style={styles.subtitleText} numberOfLines={1}>
               {subtitle}
             </Text>
           ) : null}
-        </View>
+        </TouchableOpacity>
 
-        {rightAction ? (
+        {rightAction && ActionIcon ? (
           <TouchableOpacity
-            activeOpacity={0.75}
+            activeOpacity={0.8}
             style={[
               styles.topIconButton,
               rightAction.active && styles.topIconButtonActive,
             ]}
             onPress={rightAction.onPress}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel={rightAction.accessibilityLabel || 'Action'}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel={rightAction.accessibilityLabel}
           >
-            <rightAction.icon
+            <ActionIcon
               size={18}
               color={
                 rightAction.active
@@ -155,9 +158,12 @@ export const HeroStickyTopBar: React.FC<PinnedTopBarProps> = ({
 };
 
 /**
- * Unified Full-Bleed Extended Hero Header Container
- * Spans continuously from top of screen (behind status bar/notch + top nav row)
- * through the centered team/competition identity block down to BALLIVE's 28dp curved bottom corners.
+ * Unified Full-Bleed Extended Curved Hero Header
+ *
+ * Uses react-native-svg ClipPath to genuinely clip both the background photograph
+ * and restrained readability scrim into a single continuous silhouette extending
+ * from behind the translucent status bar down to a smooth inward-curving lower arch
+ * cleanly below the emblem, title, metadata, and Follow CTA.
  */
 export const ExtendedHeroHeader: React.FC<ExtendedHeroHeaderProps> = ({
   heroSource,
@@ -169,58 +175,96 @@ export const ExtendedHeroHeader: React.FC<ExtendedHeroHeaderProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const topBarClearance = Math.max(insets.top, 10) + 4 + 44 + 14;
-  const [photoFailed, setPhotoFailed] = useState(false);
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, '');
 
-  useEffect(() => {
-    setPhotoFailed(false);
-  }, [heroSource]);
+  const [dimensions, setDimensions] = useState<{ width: number; height: number }>({
+    width: INITIAL_SCREEN_WIDTH,
+    height: 318,
+  });
 
-  const showPhoto = Boolean(heroSource) && !photoFailed;
+  const handleLayout = (e: LayoutChangeEvent) => {
+    const { width, height } = e.nativeEvent.layout;
+    if (width > 0 && height > 0) {
+      if (Math.abs(width - dimensions.width) > 1 || Math.abs(height - dimensions.height) > 1) {
+        setDimensions({ width, height });
+      }
+    }
+  };
+
+  // Geometric inward-curving lower edge contour (cubic Bezier arching gently upward at center)
+  const { width, height, clipPathD } = useMemo(() => {
+    const w = Math.max(dimensions.width, 280);
+    const h = Math.max(dimensions.height, 260);
+    // Control offset ~42dp pulls curve apex smoothly upward by ~31.5dp below Follow CTA
+    const ctrlOffset = Math.min(44, Math.max(28, h * 0.13));
+    const d = `M 0 0 L ${w} 0 L ${w} ${h} C ${w * 0.72} ${h - ctrlOffset} ${w * 0.28} ${h - ctrlOffset} 0 ${h} Z`;
+    return { width: w, height: h, clipPathD: d };
+  }, [dimensions.width, dimensions.height]);
+
+  const clipId = `heroClip_${uid}`;
+  const scrimGradId = `heroScrim_${uid}`;
+  const fallbackGradId = `heroFallback_${uid}`;
 
   return (
-    <View style={[styles.heroContainer, { paddingTop: topBarClearance }]}>
-      {/* Full-bleed Context-Aware Club / Competition Background Photography */}
-      {showPhoto && heroSource ? (
-        <Image
-          source={heroSource}
-          style={styles.heroBgImage}
-          resizeMode="cover"
-          onError={() => setPhotoFailed(true)}
-        />
-      ) : null}
-
-      {/* Top & Mid Contrast Scrim: keeps authentic photo clearly recognizable behind text */}
-      <LinearGradient
-        colors={
-          showPhoto
-            ? [
-                'rgba(18, 14, 32, 0.56)',
-                'rgba(22, 17, 40, 0.42)',
-                'rgba(16, 13, 28, 0.72)',
-                'rgba(14, 13, 20, 0.94)',
-              ]
-            : ['#251C3D', '#1E1730', '#161224', '#141120']
-        }
-        locations={[0, 0.34, 0.74, 1]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
+    <View
+      style={[styles.heroContainer, { paddingTop: topBarClearance }]}
+      onLayout={handleLayout}
+    >
+      {/* True SVG-Clipped Full-Bleed Background Silhouette */}
+      <Svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        style={styles.svgBackdrop}
         pointerEvents="none"
-      />
+      >
+        <Defs>
+          <ClipPath id={clipId}>
+            <Path d={clipPathD} />
+          </ClipPath>
 
-      {/* Subtle radial depth tint from purple header base at top corners */}
-      {showPhoto ? (
-        <LinearGradient
-          colors={['rgba(30, 23, 48, 0.45)', 'transparent']}
-          locations={[0, 0.55]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0.8 }}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
-      ) : null}
+          {/* Restrained readability scrim: keeps authentic photograph vivid & recognizable */}
+          <SvgLinearGradient id={scrimGradId} x1="0.5" y1="0" x2="0.5" y2="1">
+            <Stop offset="0" stopColor="#120E20" stopOpacity="0.46" />
+            <Stop offset="0.34" stopColor="#151026" stopOpacity="0.24" />
+            <Stop offset="0.72" stopColor="#110D1D" stopOpacity="0.56" />
+            <Stop offset="1" stopColor="#0E0D14" stopOpacity="0.86" />
+          </SvgLinearGradient>
 
-      {/* Centered Identity Stack inside same unified canvas */}
+          {/* Subtle clean dark purple gradient when no photograph is verified */}
+          <SvgLinearGradient id={fallbackGradId} x1="0.5" y1="0" x2="0.5" y2="1">
+            <Stop offset="0" stopColor="#261D40" stopOpacity="1" />
+            <Stop offset="0.45" stopColor="#1E1730" stopOpacity="1" />
+            <Stop offset="1" stopColor="#161224" stopOpacity="1" />
+          </SvgLinearGradient>
+        </Defs>
+
+        {heroSource ? (
+          <>
+            <SvgImage
+              x={0}
+              y={0}
+              width={width}
+              height={height}
+              href={heroSource}
+              preserveAspectRatio="xMidYMid slice"
+              clipPath={`url(#${clipId})`}
+            />
+            <Rect
+              x={0}
+              y={0}
+              width={width}
+              height={height}
+              fill={`url(#${scrimGradId})`}
+              clipPath={`url(#${clipId})`}
+            />
+          </>
+        ) : (
+          <Path d={clipPathD} fill={`url(#${fallbackGradId})`} />
+        )}
+      </Svg>
+
+      {/* Centered Identity Content inside same unified hero canvas */}
       <View style={styles.identityContent}>
         <View style={styles.emblemSlot}>{emblemComponent}</View>
 
@@ -256,11 +300,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.headerPurple || '#1E1730',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 6,
   },
   topRow: {
     height: 44,
@@ -271,7 +310,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(28, 21, 48, 0.72)',
+    backgroundColor: 'rgba(20, 16, 36, 0.65)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -293,7 +332,7 @@ const styles = StyleSheet.create({
     color: '#D5CFE6',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
@@ -303,27 +342,26 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: -0.2,
     marginTop: 1,
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+    textShadowColor: 'rgba(0, 0, 0, 0.6)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
   heroContainer: {
     width: '100%',
-    backgroundColor: Colors.headerPurple || '#1E1730',
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    overflow: 'hidden',
-    paddingBottom: 24,
-    marginBottom: 16,
+    backgroundColor: 'transparent',
+    paddingBottom: 48,
+    marginBottom: 8,
+    position: 'relative',
   },
-  heroBgImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
+  svgBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
   identityContent: {
     alignItems: 'center',
     paddingHorizontal: 20,
+    zIndex: 2,
   },
   emblemSlot: {
     marginBottom: 12,
@@ -337,19 +375,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: -0.3,
     marginBottom: 4,
-    textShadowColor: 'rgba(0, 0, 0, 0.65)',
+    textShadowColor: 'rgba(0, 0, 0, 0.72)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    textShadowRadius: 5,
   },
   heroSubtitle: {
     fontSize: 13.5,
     fontWeight: '600',
-    color: '#D5CFE6',
+    color: '#EAE5FA',
     textAlign: 'center',
-    marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+    marginBottom: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.65)',
     textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    textShadowRadius: 4,
   },
   metaSlot: {
     marginBottom: 14,

@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system';
 import { API_CONFIG } from '../config/api';
 import { POPULAR_TEAMS, PopularTeam } from '../constants/discoverData';
 import { SportType } from '../constants/mockData';
@@ -100,7 +101,9 @@ const STANDING_SOURCES: StandingSource[] = [
   },
 ];
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const DISK_CACHE_TTL_MS = 45 * 60 * 1000;
+const TEAMS_CACHE_FILE = `${FileSystem.cacheDirectory || FileSystem.documentDirectory || ''}ballive_popular_teams_v1.json`;
 
 function extractStandingsEntries(data: any): any[] {
   const entries: any[] = [];
@@ -131,16 +134,80 @@ function makeShortName(name: string, abbr?: string): string {
   return name.slice(0, 3).toUpperCase();
 }
 
+type TeamsListener = (teams: PopularTeam[]) => void;
+
 class PopularTeamsService {
   private cachedTeams: PopularTeam[] = [];
   private cacheTimestamp = 0;
   private inFlightPromise: Promise<PopularTeam[]> | null = null;
+  private initPromise: Promise<void> | null = null;
+  private isDiskLoaded = false;
+  private listeners = new Set<TeamsListener>();
+
+  public subscribe(listener: TeamsListener): () => void {
+    this.listeners.add(listener);
+    if (this.cachedTeams.length > 0) {
+      try {
+        listener(this.cachedTeams);
+      } catch {}
+    }
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private notifyListeners(): void {
+    if (this.cachedTeams.length === 0) return;
+    this.listeners.forEach(fn => {
+      try {
+        fn(this.cachedTeams);
+      } catch {}
+    });
+  }
+
+  public async init(): Promise<void> {
+    if (this.isDiskLoaded) return;
+    if (this.initPromise) return this.initPromise;
+
+    this.initPromise = (async () => {
+      try {
+        if (!TEAMS_CACHE_FILE || !FileSystem?.getInfoAsync) return;
+        const info = await FileSystem.getInfoAsync(TEAMS_CACHE_FILE);
+        if (info.exists) {
+          const raw = await FileSystem.readAsStringAsync(TEAMS_CACHE_FILE);
+          const parsed = JSON.parse(raw);
+          if (
+            parsed &&
+            Array.isArray(parsed.teams) &&
+            parsed.teams.length > 0 &&
+            typeof parsed.timestamp === 'number' &&
+            Date.now() - parsed.timestamp < DISK_CACHE_TTL_MS
+          ) {
+            this.cachedTeams = parsed.teams;
+            this.cacheTimestamp = parsed.timestamp;
+            this.notifyListeners();
+          }
+        }
+      } catch {
+        // Fallback to seed teams
+      } finally {
+        this.isDiskLoaded = true;
+      }
+    })();
+
+    return this.initPromise;
+  }
+
+  public isCacheFresh(): boolean {
+    return this.cachedTeams.length > 0 && Date.now() - this.cacheTimestamp < CACHE_TTL_MS;
+  }
 
   public getCachedPopularTeams(): PopularTeam[] {
     return this.cachedTeams.length > 0 ? this.cachedTeams : POPULAR_TEAMS;
   }
 
   public async getPopularTeams(forceRefresh = false): Promise<PopularTeam[]> {
+    await this.init();
     const now = Date.now();
     if (!forceRefresh && this.cachedTeams.length > 0 && now - this.cacheTimestamp < CACHE_TTL_MS) {
       return this.cachedTeams;
@@ -278,6 +345,16 @@ class PopularTeamsService {
 
         this.cachedTeams = combined;
         this.cacheTimestamp = Date.now();
+        this.notifyListeners();
+
+        // Persist refreshed teams catalog to disk cache so future launches hydrate instantaneously
+        if (TEAMS_CACHE_FILE && FileSystem?.writeAsStringAsync && combined.length > POPULAR_TEAMS.length) {
+          FileSystem.writeAsStringAsync(
+            TEAMS_CACHE_FILE,
+            JSON.stringify({ teams: combined, timestamp: this.cacheTimestamp })
+          ).catch(() => {});
+        }
+
         return combined;
       } catch {
         return POPULAR_TEAMS;

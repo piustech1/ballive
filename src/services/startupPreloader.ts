@@ -12,20 +12,25 @@ import { imageCacheService, ImageCacheSpec } from './imageCacheService';
 import { teamEmblemService } from './teamEmblemService';
 import { ProfileStorage, normalizeLeagueId, normalizeTeamId } from './profileStorage';
 import { popularTeamsService } from './popularTeamsService';
+import { streamingApiService } from './streamingApiService';
 
 class StartupPreloader {
   private hasRunLaunchWarmup = false;
 
   /**
    * Immediately hydrates persistent disk index on mount and warms
-   * followed entities + core Discover competitions at controlled low concurrency.
+   * followed entities + core Discover competitions & schedule cache cleanly in the background.
    */
   public warmCoreAssetsOnStartup(): void {
     if (this.hasRunLaunchWarmup) return;
     this.hasRunLaunchWarmup = true;
 
     (async () => {
-      await imageCacheService.init();
+      await Promise.allSettled([
+        imageCacheService.init(),
+        popularTeamsService.init(),
+        streamingApiService.initDiskCache(),
+      ]);
 
       const specs: ImageCacheSpec[] = [];
 

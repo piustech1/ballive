@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   StatusBar,
-  Alert,
 } from 'react-native';
 import { SearchX, RotateCcw } from 'lucide-react-native';
 import Colors from '../theme/colors';
@@ -17,14 +16,13 @@ import { PopularTeams } from '../features/discover/PopularTeams';
 import { UpcomingHighlights } from '../features/discover/UpcomingHighlights';
 import {
   EXPLORE_COMPETITIONS,
-  POPULAR_LEAGUES,
   POPULAR_TEAMS,
   UPCOMING_HIGHLIGHTS,
   DiscoverCompetition,
-  PopularLeague,
   PopularTeam,
   DiscoverMatchup,
 } from '../constants/discoverData';
+import { LiveMatch } from '../constants/mockData';
 
 import { useAppNavigation } from '../navigation/NavigationContext';
 import { navigateToMatch, findCompetitionById } from '../navigation/navHelpers';
@@ -35,12 +33,24 @@ import { sportsApiService, GlobalSearchResult } from '../services/sportsApiServi
 import { popularTeamsService } from '../services/popularTeamsService';
 import { normalizeLeagueId, normalizeTeamId } from '../services/profileStorage';
 import { sortMatchesWithLiveFirst, sortUpcomingChronologically } from '../utils/matchStatus';
-import { DiscoverSkeleton } from '../components/common/SkeletonLoader';
+import { DiscoverSkeleton, ScheduleSectionSkeleton } from '../components/common/SkeletonLoader';
+
+function toLiveAndUpcomingMatchups(matches: LiveMatch[]) {
+  const all = matches.map(m => streamingApiService.convertLiveMatchToMatchup(m));
+  const upcomingOnly = matches
+    .filter(m => m.status === 'UPCOMING')
+    .map(m => streamingApiService.convertLiveMatchToMatchup(m));
+  return {
+    allSorted: sortMatchesWithLiveFirst(all),
+    upcomingSorted: sortUpcomingChronologically(upcomingOnly),
+  };
+}
 
 export const DiscoverScreen: React.FC = () => {
   const { navigate } = useAppNavigation();
   const { toggleMatchReminder } = useProfile();
   const [searchQuery, setSearchQuery] = useState('');
+
   const [dynamicPopularTeams, setDynamicPopularTeams] = useState<PopularTeam[]>(() =>
     popularTeamsService.getCachedPopularTeams()
   );
@@ -60,60 +70,95 @@ export const DiscoverScreen: React.FC = () => {
         )
       : [];
   });
-  const [isLoading, setIsLoading] = useState(() => liveHighlights.length === 0 && upcomingScheduleMatches.length === 0);
+
+  const [isLoadingStreams, setIsLoadingStreams] = useState(
+    () => streamingApiService.getCachedLiveMatches().length === 0 && streamingApiService.getCachedUpcomingMatches().length === 0
+  );
   const [globalSearchResults, setGlobalSearchResults] = useState<GlobalSearchResult[]>([]);
 
-  React.useEffect(() => {
+  // Subscribe cleanly to shared in-memory caches so Home/disk updates arrive automatically without refetching
+  useEffect(() => {
     let isMounted = true;
+
+    const unsubTeams = popularTeamsService.subscribe(teams => {
+      if (isMounted && teams.length > 0) {
+        setDynamicPopularTeams(teams);
+      }
+    });
+
+    const unsubStreams = streamingApiService.subscribe((live, upcoming) => {
+      if (!isMounted) return;
+      if (live && live.length > 0) {
+        const { allSorted, upcomingSorted } = toLiveAndUpcomingMatchups(live);
+        setLiveHighlights(allSorted);
+        if (upcomingSorted.length > 0) {
+          setUpcomingScheduleMatches(upcomingSorted);
+        }
+        setIsLoadingStreams(false);
+      } else if (upcoming && upcoming.length > 0) {
+        const upSorted = sortUpcomingChronologically(
+          upcoming.filter(m => m.status === 'UPCOMING').map(m => streamingApiService.convertLiveMatchToMatchup(m))
+        );
+        if (upSorted.length > 0) {
+          setUpcomingScheduleMatches(upSorted);
+          setIsLoadingStreams(false);
+        }
+      }
+    });
+
+    // Hydrate disk caches & trigger stale-while-revalidate refresh only when TTL expired
+    streamingApiService.initDiskCache().catch(() => {});
+    popularTeamsService.init().catch(() => {});
+
     streamingApiService
       .getLiveMatches()
       .then(matches => {
         if (!isMounted) return;
         if (matches && matches.length > 0) {
           startupPreloader.preloadMatches(matches);
-          const converted = matches.map(m => streamingApiService.convertLiveMatchToMatchup(m));
-          setLiveHighlights(sortMatchesWithLiveFirst(converted));
-
-          const upcomingOnly = matches
-            .filter(m => m.status === 'UPCOMING')
-            .map(m => streamingApiService.convertLiveMatchToMatchup(m));
-          if (upcomingOnly.length > 0) {
-            setUpcomingScheduleMatches(sortUpcomingChronologically(upcomingOnly));
+          const { allSorted, upcomingSorted } = toLiveAndUpcomingMatchups(matches);
+          setLiveHighlights(allSorted);
+          if (upcomingSorted.length > 0) {
+            setUpcomingScheduleMatches(upcomingSorted);
           }
         }
       })
       .catch(() => {})
       .finally(() => {
-        if (isMounted) setIsLoading(false);
+        if (isMounted) setIsLoadingStreams(false);
       });
 
-    popularTeamsService
-      .getPopularTeams()
-      .then(teams => {
-        if (isMounted && teams && teams.length > 0) {
-          setDynamicPopularTeams(teams);
-        }
-      })
-      .catch(() => {});
+    if (!popularTeamsService.isCacheFresh()) {
+      popularTeamsService
+        .getPopularTeams()
+        .then(teams => {
+          if (isMounted && teams && teams.length > 0) {
+            setDynamicPopularTeams(teams);
+          }
+        })
+        .catch(() => {});
+    }
 
-    return () => { isMounted = false; };
+    return () => {
+      isMounted = false;
+      unsubTeams();
+      unsubStreams();
+    };
   }, []);
 
-  // ── FILTER DATA IN REAL TIME & GLOBAL ESPN SEARCH ──
   const query = searchQuery.trim().toLowerCase();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!query || query.length < 2) {
       setGlobalSearchResults([]);
       return;
     }
 
     const timer = setTimeout(() => {
-      sportsApiService.searchGlobalTeamsAndLeagues(query).then(results => {
-        setGlobalSearchResults(results);
-      }).catch(() => {
-        setGlobalSearchResults([]);
-      });
+      sportsApiService
+        .searchGlobalTeamsAndLeagues(query)
+        .then(results => setGlobalSearchResults(results))
+        .catch(() => setGlobalSearchResults([]));
     }, 300);
 
     return () => clearTimeout(timer);
@@ -129,7 +174,6 @@ export const DiscoverScreen: React.FC = () => {
             c.shortName.toLowerCase().includes(query)
         );
 
-    // Merge dynamically discovered global leagues (e.g. MLS, Scottish Premiership, Saudi Pro League)
     const dynamicComps: DiscoverCompetition[] = globalSearchResults
       .filter(r => r.type === 'competition')
       .map(r => {
@@ -156,37 +200,6 @@ export const DiscoverScreen: React.FC = () => {
     return combined;
   }, [query, globalSearchResults]);
 
-  const filteredLeagues = useMemo(() => {
-    const base = !query
-      ? POPULAR_LEAGUES
-      : POPULAR_LEAGUES.filter(
-          l =>
-            l.name.toLowerCase().includes(query) ||
-            l.country.toLowerCase().includes(query) ||
-            l.description.toLowerCase().includes(query)
-        );
-
-    const dynamicLeagues: PopularLeague[] = globalSearchResults
-      .filter(r => r.type === 'competition')
-      .map(r => ({
-        id: r.leagueKey || normalizeLeagueId(r.id),
-        name: r.name,
-        country: r.category || 'International',
-        description: `${r.name} Competition`,
-        logoUrl: r.logo,
-        sport: (r.sport as any) || 'soccer',
-      }));
-
-    const combined = [...base];
-    dynamicLeagues.forEach(dl => {
-      if (!combined.some(existing => existing.name.toLowerCase() === dl.name.toLowerCase())) {
-        combined.push(dl);
-      }
-    });
-
-    return combined;
-  }, [query, globalSearchResults]);
-
   const filteredTeams = useMemo(() => {
     const pool = dynamicPopularTeams.length > 0 ? dynamicPopularTeams : POPULAR_TEAMS;
     const base = !query
@@ -199,7 +212,6 @@ export const DiscoverScreen: React.FC = () => {
             (t.competitionName || '').toLowerCase().includes(query)
         );
 
-    // Merge dynamically discovered global teams (e.g. Al Nassr, Inter Miami, Boca Juniors)
     const dynamicTeams: PopularTeam[] = globalSearchResults
       .filter(r => r.type === 'team')
       .map(r => ({
@@ -239,65 +251,74 @@ export const DiscoverScreen: React.FC = () => {
     return sortMatchesWithLiveFirst(filtered);
   }, [liveHighlights, query]);
 
-  const totalResults =
-    filteredCompetitions.length +
-    filteredLeagues.length +
-    filteredTeams.length +
-    filteredMatchups.length;
-
   const isSearchActive = query.length > 0;
-  const hasNoResults = isSearchActive && totalResults === 0;
+  const hasNoResults =
+    isSearchActive &&
+    filteredCompetitions.length === 0 &&
+    filteredTeams.length === 0 &&
+    filteredMatchups.length === 0;
 
-  // ── USER INTERACTIONS & HANDLERS ──
-  const handleCompetitionPress = (comp: DiscoverCompetition) => {
-    navigate({
-      name: 'CompetitionDetails',
-      params: { competition: comp },
-    });
-  };
+  const handleCompetitionPress = useCallback(
+    (comp: DiscoverCompetition) => {
+      navigate({ name: 'CompetitionDetails', params: { competition: comp } });
+    },
+    [navigate]
+  );
 
-  const handleLeaguePress = (league: PopularLeague) => {
-    navigate({
-      name: 'CompetitionDetails',
-      params: { competition: league },
-    });
-  };
+  const handleSeeAllCompetitions = useCallback(() => {
+    navigate({ name: 'AllCompetitions' });
+  }, [navigate]);
 
-  const handleTeamPress = (team: PopularTeam) => {
-    navigate({
-      name: 'TeamDetails',
-      params: { team },
-    });
-  };
+  const handleTeamPress = useCallback(
+    (team: PopularTeam) => {
+      navigate({ name: 'TeamDetails', params: { team } });
+    },
+    [navigate]
+  );
 
-  const handleMatchDetailsPress = (matchup: DiscoverMatchup) => {
-    navigateToMatch(navigate, matchup);
-  };
+  const handleViewAllTeams = useCallback(() => {
+    navigate({ name: 'AllTeams' });
+  }, [navigate]);
 
-  const handleWatchPress = (matchup: DiscoverMatchup) => {
-    navigateToMatch(navigate, matchup);
-  };
+  const handleMatchDetailsPress = useCallback(
+    (matchup: DiscoverMatchup) => {
+      navigateToMatch(navigate, matchup);
+    },
+    [navigate]
+  );
 
-  const handleReminderToggle = (matchup: DiscoverMatchup, isSet: boolean) => {
-    toggleMatchReminder(matchup.id);
-  };
+  const handleReminderToggle = useCallback(
+    (matchup: DiscoverMatchup) => {
+      toggleMatchReminder(matchup.id);
+    },
+    [toggleMatchReminder]
+  );
 
-  const handleNotificationsPress = () => {
+  const handleNotificationsPress = useCallback(() => {
     navigate({ name: 'Notifications' });
-  };
+  }, [navigate]);
+
+  const handleViewAllStreams = useCallback(() => {
+    navigate({ name: 'AllLiveStreams' });
+  }, [navigate]);
+
+  const showInitialFullSkeleton =
+    !isSearchActive &&
+    isLoadingStreams &&
+    liveHighlights.length === 0 &&
+    upcomingScheduleMatches.length === 0 &&
+    !popularTeamsService.isCacheFresh();
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
-      {/* ── A. DISCOVER HEADER ── */}
       <DiscoverHeader
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onNotificationsPress={handleNotificationsPress}
       />
 
-      {/* ── MAIN VERTICAL CONTENT SCROLLER ── */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -305,7 +326,6 @@ export const DiscoverScreen: React.FC = () => {
         keyboardShouldPersistTaps="handled"
       >
         {hasNoResults ? (
-          /* Empty Search State */
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconCircle}>
               <SearchX size={38} color={Colors.textMuted} strokeWidth={1.8} />
@@ -323,43 +343,43 @@ export const DiscoverScreen: React.FC = () => {
               <Text style={styles.clearSearchButtonText}>Clear search</Text>
             </TouchableOpacity>
           </View>
-        ) : isLoading && !isSearchActive && liveHighlights.length === 0 ? (
+        ) : showInitialFullSkeleton ? (
           <DiscoverSkeleton />
         ) : (
           <>
-            {/* ── B. EXPLORE COMPETITIONS (Horizontally Scrollable) ── */}
             {filteredCompetitions.length > 0 && (
               <ExploreCompetitions
                 competitions={filteredCompetitions}
-                onSeeAllPress={() => navigate({ name: 'AllCompetitions' })}
+                onSeeAllPress={handleSeeAllCompetitions}
                 onCompetitionPress={handleCompetitionPress}
               />
             )}
 
-            {/* ── C. SPORTS SCHEDULE TIMELINE (Replacing Community Banner) ── */}
             {!isSearchActive && (
-              <SportsScheduleTimeline
-                matches={upcomingScheduleMatches}
-                onMatchPress={handleMatchDetailsPress}
-              />
+              upcomingScheduleMatches.length > 0 ? (
+                <SportsScheduleTimeline
+                  matches={upcomingScheduleMatches}
+                  onMatchPress={handleMatchDetailsPress}
+                />
+              ) : isLoadingStreams ? (
+                <ScheduleSectionSkeleton />
+              ) : null
             )}
 
-            {/* ── D. POPULAR TEAMS (Horizontally Scrollable) ── */}
             {filteredTeams.length > 0 && (
               <PopularTeams
                 teams={filteredTeams}
-                onViewAllPress={() => navigate({ name: 'AllTeams' })}
+                onViewAllPress={handleViewAllTeams}
                 onTeamPress={handleTeamPress}
               />
             )}
 
-            {/* ── E. UPCOMING HIGHLIGHTS (Matchup Cards) ── */}
             {filteredMatchups.length > 0 && (
               <UpcomingHighlights
                 matchups={filteredMatchups}
-                onViewAllPress={() => navigate({ name: 'AllLiveStreams' })}
+                onViewAllPress={handleViewAllStreams}
                 onMatchDetailsPress={handleMatchDetailsPress}
-                onWatchPress={handleWatchPress}
+                onWatchPress={handleMatchDetailsPress}
                 onReminderToggle={handleReminderToggle}
               />
             )}
@@ -414,7 +434,7 @@ const styles = StyleSheet.create({
   clearSearchButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#7952FC',
+    backgroundColor: '#7650F6',
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 12,

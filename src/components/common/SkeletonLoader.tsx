@@ -1,5 +1,40 @@
-import React, { useEffect, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, ViewStyle } from 'react-native';
+
+const SkeletonPulseContext = createContext<Animated.Value | null>(null);
+
+/**
+ * Shared single-driver pulse container: drives an entire skeleton layout with ONE
+ * Animated.loop instead of allocating 25+ concurrent Animated timers per screen.
+ */
+export const SkeletonPulseGroup: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const pulseAnim = useRef(new Animated.Value(0.32)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.72,
+          duration: 750,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0.32,
+          duration: 750,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulseAnim]);
+
+  return (
+    <SkeletonPulseContext.Provider value={pulseAnim}>
+      {children}
+    </SkeletonPulseContext.Provider>
+  );
+};
 
 interface SkeletonProps {
   width?: number | string;
@@ -14,26 +49,30 @@ export const SkeletonBox: React.FC<SkeletonProps> = ({
   borderRadius = 6,
   style,
 }) => {
-  const opacityAnim = useRef(new Animated.Value(0.3)).current;
+  const sharedPulse = useContext(SkeletonPulseContext);
+  const localPulse = useRef(new Animated.Value(0.32)).current;
 
   useEffect(() => {
+    if (sharedPulse) return;
     const pulse = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacityAnim, {
-          toValue: 0.7,
-          duration: 800,
+        Animated.timing(localPulse, {
+          toValue: 0.72,
+          duration: 750,
           useNativeDriver: true,
         }),
-        Animated.timing(opacityAnim, {
-          toValue: 0.3,
-          duration: 800,
+        Animated.timing(localPulse, {
+          toValue: 0.32,
+          duration: 750,
           useNativeDriver: true,
         }),
       ])
     );
     pulse.start();
     return () => pulse.stop();
-  }, [opacityAnim]);
+  }, [sharedPulse, localPulse]);
+
+  const opacity = sharedPulse || localPulse;
 
   return (
     <Animated.View
@@ -43,7 +82,7 @@ export const SkeletonBox: React.FC<SkeletonProps> = ({
           width: width as any,
           height,
           borderRadius,
-          opacity: opacityAnim,
+          opacity,
         },
         style,
       ]}
@@ -54,54 +93,49 @@ export const SkeletonBox: React.FC<SkeletonProps> = ({
 export const SkeletonCircle: React.FC<{ size?: number; style?: ViewStyle }> = ({
   size = 40,
   style,
-}) => {
-  return (
-    <SkeletonBox
-      width={size}
-      height={size}
-      borderRadius={size / 2}
-      style={style}
-    />
-  );
-};
+}) => (
+  <SkeletonBox
+    width={size}
+    height={size}
+    borderRadius={size / 2}
+    style={style}
+  />
+);
 
-export const MatchCardSkeleton: React.FC = () => {
-  return (
-    <View style={styles.cardContainer}>
-      <View style={styles.cardHeader}>
-        <SkeletonBox width={100} height={14} borderRadius={4} />
-        <SkeletonBox width={60} height={18} borderRadius={10} />
+export const MatchCardSkeleton: React.FC = () => (
+  <View style={styles.cardContainer}>
+    <View style={styles.cardHeader}>
+      <SkeletonBox width={105} height={13} borderRadius={4} />
+      <SkeletonBox width={56} height={18} borderRadius={9} />
+    </View>
+
+    <View style={styles.teamsRow}>
+      <View style={styles.teamCol}>
+        <SkeletonCircle size={42} />
+        <SkeletonBox width={72} height={13} style={{ marginTop: 8 }} />
       </View>
 
-      <View style={styles.teamsRow}>
-        <View style={styles.teamCol}>
-          <SkeletonCircle size={44} />
-          <SkeletonBox width={70} height={14} style={{ marginTop: 8 }} />
-        </View>
-
-        <View style={styles.scoreCol}>
-          <SkeletonBox width={50} height={28} borderRadius={6} />
-          <SkeletonBox width={40} height={12} style={{ marginTop: 6 }} />
-        </View>
-
-        <View style={styles.teamCol}>
-          <SkeletonCircle size={44} />
-          <SkeletonBox width={70} height={14} style={{ marginTop: 8 }} />
-        </View>
+      <View style={styles.scoreCol}>
+        <SkeletonBox width={54} height={26} borderRadius={8} />
+        <SkeletonBox width={38} height={11} style={{ marginTop: 6 }} />
       </View>
 
-      <View style={styles.cardFooter}>
-        <SkeletonBox width={120} height={12} />
-        <SkeletonBox width={80} height={26} borderRadius={13} />
+      <View style={styles.teamCol}>
+        <SkeletonCircle size={42} />
+        <SkeletonBox width={72} height={13} style={{ marginTop: 8 }} />
       </View>
     </View>
-  );
-};
 
-export const MatchDetailsSkeleton: React.FC = () => {
-  return (
+    <View style={styles.cardFooter}>
+      <SkeletonBox width={120} height={11} />
+      <SkeletonBox width={76} height={24} borderRadius={12} />
+    </View>
+  </View>
+);
+
+export const MatchDetailsSkeleton: React.FC = () => (
+  <SkeletonPulseGroup>
     <View style={styles.detailsContainer}>
-      {/* Header Matchup Skeleton */}
       <View style={styles.headerBlock}>
         <SkeletonBox width={140} height={16} style={{ marginBottom: 12 }} />
         <View style={styles.teamsRow}>
@@ -117,7 +151,6 @@ export const MatchDetailsSkeleton: React.FC = () => {
         </View>
       </View>
 
-      {/* Tabs Skeleton */}
       <View style={styles.tabsRow}>
         <SkeletonBox width={70} height={32} borderRadius={16} />
         <SkeletonBox width={70} height={32} borderRadius={16} />
@@ -125,76 +158,148 @@ export const MatchDetailsSkeleton: React.FC = () => {
         <SkeletonBox width={70} height={32} borderRadius={16} />
       </View>
 
-      {/* Content Pitch / Stats Skeleton */}
       <View style={styles.pitchSkeleton}>
         <SkeletonBox width="100%" height={260} borderRadius={16} />
       </View>
     </View>
-  );
-};
+  </SkeletonPulseGroup>
+);
 
-export const DiscoverSkeleton: React.FC = () => {
-  return (
+/**
+ * Matches the actual Discover layout structurally:
+ * 1. Explore competitions horizontal 156x120 cards
+ * 2. Sports schedule wide hero card + 2 compact side-by-side cards
+ * 3. Popular teams 120x136 horizontal cards
+ * 4. Upcoming highlights vertical match cards
+ */
+export const DiscoverSkeleton: React.FC = () => (
+  <SkeletonPulseGroup>
     <View style={styles.discoverSkeletonContainer}>
-      {/* 1. Explore Competitions Row */}
+      {/* 1. Explore Competitions */}
       <View style={styles.sectionHeaderSkeleton}>
-        <SkeletonBox width={150} height={18} borderRadius={4} />
-        <SkeletonBox width={50} height={14} borderRadius={4} />
+        <SkeletonBox width={160} height={18} borderRadius={5} />
+        <SkeletonBox width={46} height={14} borderRadius={4} />
       </View>
       <View style={styles.horizontalRowSkeleton}>
-        <SkeletonBox width={115} height={42} borderRadius={21} style={{ marginRight: 10 }} />
-        <SkeletonBox width={105} height={42} borderRadius={21} style={{ marginRight: 10 }} />
-        <SkeletonBox width={120} height={42} borderRadius={21} style={{ marginRight: 10 }} />
-        <SkeletonBox width={100} height={42} borderRadius={21} />
-      </View>
-
-      {/* 2. Schedule Timeline Section */}
-      <View style={[styles.sectionHeaderSkeleton, { marginTop: 26 }]}>
-        <SkeletonBox width={180} height={18} borderRadius={4} />
-        <SkeletonBox width={60} height={14} borderRadius={4} />
-      </View>
-      <View style={styles.horizontalRowSkeleton}>
-        <SkeletonBox width={210} height={125} borderRadius={18} style={{ marginRight: 12 }} />
-        <SkeletonBox width={140} height={125} borderRadius={18} style={{ marginRight: 12 }} />
-        <SkeletonBox width={140} height={125} borderRadius={18} />
-      </View>
-
-      {/* 3. Popular Teams Row */}
-      <View style={[styles.sectionHeaderSkeleton, { marginTop: 26 }]}>
-        <SkeletonBox width={130} height={18} borderRadius={4} />
-        <SkeletonBox width={50} height={14} borderRadius={4} />
-      </View>
-      <View style={styles.horizontalRowSkeleton}>
-        {[1, 2, 3, 4, 5].map(i => (
-          <View key={i} style={styles.teamCircleCol}>
-            <SkeletonCircle size={52} />
-            <SkeletonBox width={50} height={10} borderRadius={3} style={{ marginTop: 8 }} />
+        {[1, 2, 3].map(idx => (
+          <View key={idx} style={styles.exploreCardSkeleton}>
+            <View style={styles.exploreTopRow}>
+              <SkeletonCircle size={36} />
+              <SkeletonBox width={54} height={18} borderRadius={8} />
+            </View>
+            <View>
+              <SkeletonBox width={110} height={13} borderRadius={4} />
+              <SkeletonBox width={70} height={11} borderRadius={4} style={{ marginTop: 5 }} />
+            </View>
           </View>
         ))}
       </View>
 
-      {/* 4. Upcoming Highlights Match Cards */}
-      <View style={[styles.sectionHeaderSkeleton, { marginTop: 26, marginBottom: 12 }]}>
-        <SkeletonBox width={160} height={18} borderRadius={4} />
-        <SkeletonBox width={50} height={14} borderRadius={4} />
+      {/* 2. Sports Schedule Timeline */}
+      <View style={[styles.sectionHeaderSkeleton, { marginTop: 26 }]}>
+        <SkeletonBox width={140} height={18} borderRadius={5} />
+        <SkeletonBox width={82} height={22} borderRadius={10} />
+      </View>
+      <SkeletonBox width="100%" height={118} borderRadius={18} />
+      <View style={styles.sideBySideSkeletonRow}>
+        <View style={styles.halfCardSkeleton}>
+          <SkeletonBox width={54} height={11} borderRadius={4} />
+          <SkeletonBox width="85%" height={14} borderRadius={4} style={{ marginTop: 12 }} />
+          <SkeletonBox width="75%" height={14} borderRadius={4} style={{ marginTop: 8 }} />
+          <SkeletonBox width={65} height={10} borderRadius={4} style={{ marginTop: 14 }} />
+        </View>
+        <View style={styles.halfCardSkeleton}>
+          <SkeletonBox width={54} height={11} borderRadius={4} />
+          <SkeletonBox width="85%" height={14} borderRadius={4} style={{ marginTop: 12 }} />
+          <SkeletonBox width="75%" height={14} borderRadius={4} style={{ marginTop: 8 }} />
+          <SkeletonBox width={65} height={10} borderRadius={4} style={{ marginTop: 14 }} />
+        </View>
+      </View>
+
+      {/* 3. Popular Teams */}
+      <View style={[styles.sectionHeaderSkeleton, { marginTop: 26 }]}>
+        <SkeletonBox width={125} height={18} borderRadius={5} />
+        <SkeletonBox width={52} height={14} borderRadius={4} />
+      </View>
+      <View style={styles.horizontalRowSkeleton}>
+        {[1, 2, 3, 4].map(idx => (
+          <View key={idx} style={styles.popularTeamCardSkeleton}>
+            <SkeletonCircle size={52} />
+            <View style={{ width: '100%', alignItems: 'center' }}>
+              <SkeletonBox width={84} height={12} borderRadius={4} />
+              <SkeletonBox width={56} height={10} borderRadius={4} style={{ marginTop: 5 }} />
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* 4. Upcoming Highlights */}
+      <View style={[styles.sectionHeaderSkeleton, { marginTop: 26 }]}>
+        <SkeletonBox width={165} height={18} borderRadius={5} />
+        <SkeletonBox width={52} height={14} borderRadius={4} />
       </View>
       <MatchCardSkeleton />
       <MatchCardSkeleton />
     </View>
-  );
-};
+  </SkeletonPulseGroup>
+);
+
+/**
+ * Lightweight targeted skeleton for the live schedule/highlights tail when competitions & teams
+ * are already visible immediately.
+ */
+export const ScheduleSectionSkeleton: React.FC = () => (
+  <SkeletonPulseGroup>
+    <View style={styles.sectionTailContainer}>
+      <View style={[styles.sectionHeaderSkeleton, { marginTop: 24 }]}>
+        <SkeletonBox width={140} height={18} borderRadius={5} />
+        <SkeletonBox width={82} height={22} borderRadius={10} />
+      </View>
+      <SkeletonBox width="100%" height={112} borderRadius={18} />
+    </View>
+  </SkeletonPulseGroup>
+);
+
+/**
+ * Tab-aware Saved screen skeleton matching match cards or saved entity rows cleanly.
+ */
+export const SavedSkeleton: React.FC<{ tab: 'matches' | 'teams' | 'competitions' }> = ({
+  tab,
+}) => (
+  <SkeletonPulseGroup>
+    <View style={styles.savedSkeletonContainer}>
+      {tab === 'matches' ? (
+        <>
+          <MatchCardSkeleton />
+          <MatchCardSkeleton />
+          <MatchCardSkeleton />
+        </>
+      ) : (
+        [1, 2, 3, 4].map(idx => (
+          <View key={idx} style={styles.savedRowSkeleton}>
+            <SkeletonCircle size={44} />
+            <View style={styles.savedRowInfo}>
+              <SkeletonBox width="62%" height={14} borderRadius={4} />
+              <SkeletonBox width="45%" height={11} borderRadius={4} style={{ marginTop: 6 }} />
+              <SkeletonBox width="35%" height={10} borderRadius={4} style={{ marginTop: 5 }} />
+            </View>
+            <SkeletonBox width={76} height={28} borderRadius={10} />
+          </View>
+        ))
+      )}
+    </View>
+  </SkeletonPulseGroup>
+);
 
 const styles = StyleSheet.create({
   skeletonBase: {
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.11)',
   },
   cardContainer: {
     backgroundColor: '#161522',
     borderRadius: 16,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -222,8 +327,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 14,
     paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255, 255, 255, 0.06)',
   },
   detailsContainer: {
     padding: 16,
@@ -244,9 +349,12 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   discoverSkeletonContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 22,
     paddingBottom: 24,
+  },
+  sectionTailContainer: {
+    paddingHorizontal: 20,
   },
   sectionHeaderSkeleton: {
     flexDirection: 'row',
@@ -257,10 +365,56 @@ const styles = StyleSheet.create({
   horizontalRowSkeleton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
     overflow: 'hidden',
   },
-  teamCircleCol: {
+  exploreCardSkeleton: {
+    width: 156,
+    height: 120,
+    backgroundColor: '#161522',
+    borderRadius: 18,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  exploreTopRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 16,
+    justifyContent: 'space-between',
+  },
+  sideBySideSkeletonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  halfCardSkeleton: {
+    flex: 1,
+    height: 112,
+    backgroundColor: '#161522',
+    borderRadius: 16,
+    padding: 14,
+  },
+  popularTeamCardSkeleton: {
+    width: 120,
+    height: 136,
+    backgroundColor: '#161522',
+    borderRadius: 20,
+    padding: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  savedSkeletonContainer: {
+    gap: 4,
+  },
+  savedRowSkeleton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#161522',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 10,
+  },
+  savedRowInfo: {
+    flex: 1,
+    marginHorizontal: 14,
   },
 });

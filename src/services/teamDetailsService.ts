@@ -29,6 +29,7 @@ export interface TeamFixtureItem {
 
 export interface TeamDetailsPayload {
   resolvedTeam: PopularTeam;
+  abbreviation?: string;
   competitionId?: string;
   competitionName?: string;
   competitionLogo?: string;
@@ -230,6 +231,10 @@ class TeamDetailsService {
         : undefined;
     let standingSummary: string | undefined;
     let recordSummary: string | undefined;
+    let resolvedAbbreviation: string | undefined =
+      team.shortName && team.shortName.trim().length >= 2 && team.shortName.trim().length <= 6
+        ? team.shortName.trim().toUpperCase()
+        : undefined;
     let resolvedCrest = team.crestUrl && team.crestUrl !== DEFAULT_CREST ? team.crestUrl : getTeamCrest(team.name);
     let compName = team.competitionName || identity?.competitionName;
     let compId = team.competitionId;
@@ -270,6 +275,9 @@ class TeamDetailsService {
         }
         if (tInfo.venue?.address?.country && !resolvedCountry) {
           resolvedCountry = tInfo.venue.address.country;
+        }
+        if (tInfo.abbreviation && typeof tInfo.abbreviation === 'string' && tInfo.abbreviation.trim().length >= 2) {
+          resolvedAbbreviation = tInfo.abbreviation.trim().toUpperCase();
         }
         if (tInfo.standingSummary) {
           standingSummary = tInfo.standingSummary;
@@ -529,6 +537,7 @@ class TeamDetailsService {
     const payload: TeamDetailsPayload = {
       resolvedTeam: {
         ...team,
+        shortName: resolvedAbbreviation || team.shortName,
         crestUrl: resolvedCrest,
         stadium: resolvedVenue || team.stadium,
         country: resolvedCountry || team.country,
@@ -539,6 +548,7 @@ class TeamDetailsService {
         espnLeague: identity?.espnLeague || team.espnLeague,
         sport: appSport,
       },
+      abbreviation: resolvedAbbreviation,
       competitionId: finalCompId,
       competitionName: finalCompName,
       competitionLogo: finalCompLogo,

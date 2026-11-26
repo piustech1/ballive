@@ -2,33 +2,62 @@ import React from 'react';
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { User, Pencil, CheckCircle2 } from 'lucide-react-native';
+import { Pencil, CheckCircle2, Camera } from 'lucide-react-native';
 import Colors from '../../theme/colors';
+import { resolveProfileAvatar } from '../../constants/avatars';
 
 interface ProfileIdentityCardProps {
   displayName: string;
   membership: string;
+  avatarId: string;
   avatarBg: string;
   onEditPress: () => void;
+  onAvatarPress?: () => void;
 }
 
 export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
   displayName,
   membership,
+  avatarId,
   avatarBg,
   onEditPress,
+  onAvatarPress,
 }) => {
+  const avatarOption = resolveProfileAvatar(avatarId);
+  const AvatarIcon = avatarOption.icon;
+  const circleBg = avatarBg || avatarOption.defaultBg;
+
   return (
     <View style={styles.container}>
-      {/* ── LEFT: COMPACT CIRCULAR AVATAR ── */}
-      <View style={[styles.avatarCircle, { backgroundColor: avatarBg }]}>
-        <User size={28} color="#FFFFFF" strokeWidth={2.2} />
-      </View>
+      {/* ── LEFT: TAPPABLE AVATAR WITH QUICK CUSTOMIZE INDICATOR ── */}
+      <TouchableOpacity
+        activeOpacity={0.82}
+        onPress={onAvatarPress || onEditPress}
+        accessibilityRole="button"
+        accessibilityLabel="Change profile avatar"
+        style={styles.avatarTouch}
+      >
+        <View style={[styles.avatarCircle, { backgroundColor: circleBg }]}>
+          {avatarOption.source ? (
+            <Image
+              source={avatarOption.source}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <AvatarIcon size={26} color="#FFFFFF" strokeWidth={2.2} />
+          )}
+        </View>
+        <View style={styles.cameraBadge}>
+          <Camera size={10} color="#FFFFFF" strokeWidth={2.4} />
+        </View>
+      </TouchableOpacity>
 
-      {/* ── RIGHT: USER INFO & EDIT ACTION (LEFT-ALIGNED) ── */}
+      {/* ── RIGHT: DISPLAY NAME, ROLE & EDIT ACTION ── */}
       <View style={styles.infoColumn}>
         <Text style={styles.displayName} numberOfLines={1}>
           {displayName}
@@ -41,10 +70,10 @@ export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
 
         <TouchableOpacity
           style={styles.editButton}
-          activeOpacity={0.75}
+          activeOpacity={0.78}
           onPress={onEditPress}
           accessibilityRole="button"
-          accessibilityLabel="Edit Profile"
+          accessibilityLabel="Edit profile name and avatar"
         >
           <Pencil size={11} color="#ECE9FA" strokeWidth={2.2} />
           <Text style={styles.editButtonText}>Edit Profile</Text>
@@ -60,8 +89,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'transparent',
     paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 16,
+    paddingTop: 2,
+    paddingBottom: 14,
+  },
+  avatarTouch: {
+    position: 'relative',
   },
   avatarCircle: {
     width: 56,
@@ -69,11 +101,22 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    elevation: 4,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  cameraBadge: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#7650F6',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   infoColumn: {
     flex: 1,
@@ -100,9 +143,9 @@ const styles = StyleSheet.create({
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingVertical: 5,
     borderRadius: 12,
     marginTop: 6,
     alignSelf: 'flex-start',

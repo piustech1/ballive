@@ -14,9 +14,15 @@ import {
   Plus,
   MapPin,
   Trophy,
-  ChevronRight,
+  Globe,
+  Hash,
+  Award,
+  Activity,
 } from 'lucide-react-native';
 import { ExtendedHeroHeader, HeroStickyTopBar } from '../components/common/ExtendedHeroHeader';
+import { SegmentedControl } from '../components/common/SegmentedControl';
+import { CircularCountryFlag } from '../components/common/CircularCountryFlag';
+import { InfoRowCard, InfoRowItem } from '../components/common/InfoRowCard';
 import { PopularTeam } from '../constants/discoverData';
 import { TeamCrest } from '../components/common/TeamCrest';
 import { useProfile } from '../hooks/useProfile';
@@ -257,25 +263,6 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
           }
           identityTitle={resolvedTeam.name}
           identitySubtitle={heroSub}
-          metaComponent={
-            venue || country ? (
-              <View style={styles.metaRow}>
-                {venue ? (
-                  <View style={styles.metaItem}>
-                    <MapPin size={13} color="#D5CFE6" strokeWidth={2} />
-                    <Text style={styles.metaText} numberOfLines={1}>{venue}</Text>
-                  </View>
-                ) : null}
-                {venue && country ? <View style={styles.metaSpacer} /> : null}
-                {country ? (
-                  <View style={styles.metaItem}>
-                    <Trophy size={13} color="#D5CFE6" strokeWidth={2} />
-                    <Text style={styles.metaText} numberOfLines={1}>{country}</Text>
-                  </View>
-                ) : null}
-              </View>
-            ) : null
-          }
           followButtonComponent={
             <TouchableOpacity
               activeOpacity={0.85}
@@ -297,40 +284,27 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
           }
         />
 
-        {/* Two-Tab Segmented Control (Overview | Fixtures) */}
-        <View style={styles.tabBar}>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[styles.tabButton, activeTab === 'overview' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('overview')}
-          >
-            <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>
-              Overview
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={[styles.tabButton, activeTab === 'fixtures' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('fixtures')}
-          >
-            <Text style={[styles.tabText, activeTab === 'fixtures' && styles.tabTextActive]}>
-              Fixtures ({totalFixtures})
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/* Modern Compact Segmented Control (Overview | Fixtures) */}
+        <SegmentedControl
+          tabs={[
+            { key: 'overview', label: 'Overview' },
+            { key: 'fixtures', label: `Fixtures (${totalFixtures})` },
+          ]}
+          activeKey={activeTab}
+          onChange={setActiveTab}
+        />
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
           <View style={styles.tabSection}>
             {isLoading && recentForm.length === 0 && totalFixtures === 0 ? (
               <View style={styles.loadingCard}>
-                <ActivityIndicator size="small" color="#7952FC" />
+                <ActivityIndicator size="small" color="#7650F6" />
                 <Text style={styles.loadingText}>Loading live team profile & schedule...</Text>
               </View>
             ) : null}
 
-            {/* Recent Form (Genuine completed results only) */}
+            {/* Recent Form (Solid Opaque State Badges) */}
             {recentForm.length > 0 && (
               <View style={styles.sectionCard}>
                 <View style={styles.formHeaderRow}>
@@ -351,23 +325,14 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
                         result === 'L' && styles.formCircleLoss,
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.formCircleText,
-                          result === 'W' && styles.formTextWin,
-                          result === 'D' && styles.formTextDraw,
-                          result === 'L' && styles.formTextLoss,
-                        ]}
-                      >
-                        {result}
-                      </Text>
+                      <Text style={styles.formCircleText}>{result}</Text>
                     </View>
                   ))}
                 </View>
               </View>
             )}
 
-            {/* Next Match Quick Card (When an upcoming or live fixture is available) */}
+            {/* Next Match Quick Card (Preserved working navigation & layout) */}
             {nextMatch && (
               <View style={styles.sectionCard}>
                 <View style={styles.formHeaderRow}>
@@ -382,59 +347,92 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
               </View>
             )}
 
-            {/* Club / Franchise Information (Real metadata only) */}
-            <View style={styles.sectionCard}>
-              <Text style={styles.cardHeaderTitle}>Club Information</Text>
+            {/* Redesigned Team Information Card (Zero duplicate Sport row; circular flag & abbreviation) */}
+            <InfoRowCard
+              title="Team Information"
+              rows={(() => {
+                const items: InfoRowItem[] = [];
+                const teamAbbr =
+                  details?.abbreviation ||
+                  (resolvedTeam.shortName &&
+                  resolvedTeam.shortName.length >= 2 &&
+                  resolvedTeam.shortName.length <= 6 &&
+                  resolvedTeam.shortName.toUpperCase() !== resolvedTeam.name.toUpperCase()
+                    ? resolvedTeam.shortName.toUpperCase()
+                    : undefined);
 
-              {venue ? (
-                <View style={styles.infoLine}>
-                  <Text style={styles.infoKey}>Home Stadium</Text>
-                  <Text style={styles.infoVal} numberOfLines={1}>{venue}</Text>
-                </View>
-              ) : null}
+                if (venue) {
+                  items.push({
+                    key: 'stadium',
+                    label: 'Home Stadium',
+                    value: venue,
+                    icon: MapPin,
+                    iconBg: 'rgba(118, 80, 246, 0.16)',
+                    iconColor: '#A58BFC',
+                  });
+                }
 
-              {country ? (
-                <View style={styles.infoLine}>
-                  <Text style={styles.infoKey}>Country / Federation</Text>
-                  <Text style={styles.infoVal} numberOfLines={1}>{country}</Text>
-                </View>
-              ) : null}
+                if (country) {
+                  items.push({
+                    key: 'country',
+                    label: 'Country / Federation',
+                    value: country,
+                    icon: Globe,
+                    iconBg: 'rgba(56, 189, 248, 0.14)',
+                    iconColor: '#38BDF8',
+                    customValueLeading: <CircularCountryFlag country={country} size={20} />,
+                  });
+                }
 
-              {competitionName ? (
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  style={styles.infoLine}
-                  onPress={handleOpenCompetition}
-                >
-                  <Text style={styles.infoKey}>Competition</Text>
-                  <View style={styles.infoLinkWrap}>
-                    <Text style={[styles.infoVal, { color: '#A58BFC' }]} numberOfLines={1}>
-                      {competitionName}
-                    </Text>
-                    <ChevronRight size={14} color="#A58BFC" />
-                  </View>
-                </TouchableOpacity>
-              ) : null}
+                if (competitionName) {
+                  items.push({
+                    key: 'competition',
+                    label: 'Competition',
+                    value: competitionName,
+                    icon: Trophy,
+                    iconBg: 'rgba(245, 158, 11, 0.14)',
+                    iconColor: '#F59E0B',
+                    valueColor: '#A58BFC',
+                    onPress: handleOpenCompetition,
+                  });
+                }
 
-              {details?.standingSummary ? (
-                <View style={styles.infoLine}>
-                  <Text style={styles.infoKey}>League Standing</Text>
-                  <Text style={styles.infoVal} numberOfLines={1}>{details.standingSummary}</Text>
-                </View>
-              ) : null}
+                if (teamAbbr) {
+                  items.push({
+                    key: 'abbr',
+                    label: 'Short Abbreviation',
+                    value: teamAbbr,
+                    icon: Hash,
+                    iconBg: 'rgba(34, 197, 94, 0.14)',
+                    iconColor: '#22C55E',
+                  });
+                }
 
-              {details?.recordSummary ? (
-                <View style={styles.infoLine}>
-                  <Text style={styles.infoKey}>Record</Text>
-                  <Text style={styles.infoVal} numberOfLines={1}>{details.recordSummary}</Text>
-                </View>
-              ) : null}
+                if (details?.standingSummary) {
+                  items.push({
+                    key: 'standing',
+                    label: 'League Standing',
+                    value: details.standingSummary,
+                    icon: Award,
+                    iconBg: 'rgba(236, 72, 153, 0.14)',
+                    iconColor: '#F472B6',
+                  });
+                }
 
-              <View style={[styles.infoLine, styles.infoLineLast]}>
-                <Text style={styles.infoKey}>Sport</Text>
-                <Text style={styles.infoVal}>{sportLabel}</Text>
-              </View>
-            </View>
+                if (details?.recordSummary) {
+                  items.push({
+                    key: 'record',
+                    label: 'Season Record',
+                    value: details.recordSummary,
+                    icon: Activity,
+                    iconBg: 'rgba(165, 139, 252, 0.14)',
+                    iconColor: '#A58BFC',
+                  });
+                }
+
+                return items;
+              })()}
+            />
           </View>
         )}
 
@@ -495,31 +493,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 16,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    maxWidth: 180,
-  },
-  metaText: {
-    fontSize: 12.5,
-    color: '#E2DDF2',
-    fontWeight: '600',
-  },
-  metaSpacer: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#9E92C2',
-  },
   heroFollowBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -528,7 +501,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 11,
     borderRadius: 24,
-    backgroundColor: '#7952FC',
+    backgroundColor: '#7650F6',
     minWidth: 154,
   },
   heroFollowBtnActive: {
@@ -539,32 +512,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  tabBar: {
-    flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    backgroundColor: '#161224',
-    borderRadius: 16,
-    padding: 4,
-  },
-  tabButton: {
-    flex: 1,
-    paddingVertical: 11,
-    alignItems: 'center',
-    borderRadius: 12,
-  },
-  tabButtonActive: {
-    backgroundColor: '#251E38',
-  },
-  tabText: {
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: '#8E86A8',
-  },
-  tabTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
   tabSection: {
     paddingHorizontal: 16,
     gap: 14,
@@ -573,12 +520,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#161224',
     borderRadius: 18,
     padding: 16,
-  },
-  cardHeaderTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 12,
   },
   cardHeaderTitleNoMargin: {
     fontSize: 15,
@@ -626,46 +567,6 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '800',
     color: '#FFFFFF',
-  },
-  formTextWin: {
-    color: '#FFFFFF',
-  },
-  formTextDraw: {
-    color: '#FFFFFF',
-  },
-  formTextLoss: {
-    color: '#FFFFFF',
-  },
-  infoLine: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 11,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
-    gap: 12,
-  },
-  infoLineLast: {
-    borderBottomWidth: 0,
-    paddingBottom: 2,
-  },
-  infoKey: {
-    fontSize: 13,
-    color: '#8E86A8',
-    fontWeight: '500',
-  },
-  infoVal: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textAlign: 'right',
-    flexShrink: 1,
-  },
-  infoLinkWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    flexShrink: 1,
   },
   fixturesGroup: {
     marginBottom: 8,

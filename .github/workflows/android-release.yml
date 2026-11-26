@@ -9,9 +9,9 @@ on:
   workflow_dispatch:
     inputs:
       release_tag:
-        description: 'Release tag name (e.g. v2.8.5)'
+        description: 'Release tag name (e.g. v2.8.6)'
         required: false
-        default: 'v2.8.5'
+        default: 'v2.8.6'
   release:
     types: [published]
 
@@ -78,20 +78,20 @@ jobs:
       - name: 🚀 Publish BALLIVE.apk to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release_tag != '' && github.event.inputs.release_tag || 'v2.8.5') }}
-          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.8.5' }} — Extended Hero Headers, Real Hero Photography, Solid Form Indicators & Reliable Crest Caching"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || (github.event.inputs.release_tag != '' && github.event.inputs.release_tag || 'v2.8.6') }}
+          name: "BALLIVE ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v2.8.6' }} — SVG Curved Hero Silhouettes, Flag Info Cards, Simplified Profile & Instant Discover/Saved"
           body: |
-            ## 🚀 BALLIVE v2.8.5 — Extended Hero Headers, Real Hero Photography, Solid Form Indicators & Reliable Crest Caching
+            ## 🚀 BALLIVE v2.8.6 — Curved SVG Hero Refinement, Profile Simplification & Instant Discover/Saved
 
-            Targeted experience and reliability upgrade:
-            - 🖼️ **Extended Curved Hero Headers & Sticky Navigation**:
-              - Unified the top navigation bar and team/competition identity card into a single continuous full-bleed photographic hero surface extending smoothly behind the translucent status bar with rounded `28dp` bottom corners.
-            - 📸 **42 Visually Verified Hero Backgrounds & Dynamic Stadium Lookup**:
-              - Bundled curated stadium/arena/action photography for 24 flagship clubs and 18 premier competitions, plus cached non-blocking lookup for dynamic teams and competitions.
-            - 🟢 **Solid Recent Form Indicators**:
-              - Upgraded W/D/L Recent Form circles and fixture result pills to crisp solid opaque green (`#16A34A`), amber (`#D97706`), and red (`#DC2626`) fills with bold white lettering.
-            - 🛡️ **Shared Persistent Crest & Emblem Cache**:
-              - Unified `TeamCrest` and `CompetitionLogo` onto a prioritized, persistent `expo-file-system` cache with multi-candidate fallback chains, first-launch preloading, and fixed CDN URLs/collisions.
+            Focused polish, navigation, and performance release:
+            - 🎨 **SVG-Clipped Extended Curved Heroes & Segmented Tabs**:
+              - Replaced rounded rectangles with a continuous `react-native-svg` `ClipPath` inward-curving lower hero boundary on Competition & Team Details, paired with solid `#7650F6` Overview/Matches & Overview/Fixtures segmented controls.
+            - 🏳️ **Redesigned Tournament & Team Information Cards**:
+              - Eliminated duplicate header fields (`Official Tournament` and repeated metadata), introduced borderless `CircularCountryFlag` badges with cached country flag lookups, compact icons, and team abbreviations.
+            - 👤 **Simplified Non-Scrolling Profile & Persistent Avatar System**:
+              - Removed unused Settings, About, Privacy Policy, and System Info sections/routes; introduced an interactive avatar picker registry (`PROFILE_AVATARS`) and compact single-screen layout above the bottom bar.
+            - ⚡ **Instant Discover & Saved Loading Performance**:
+              - Fixed 1-frame blank tab mount lag, added shared single-driver `SkeletonPulseGroup` (`DiscoverSkeleton` + tab-aware `SavedSkeleton`), persisted `PopularTeamsService` and non-live upcoming schedule caches, and windowed horizontal carousels via `FlatList`.
 
             ### 📱 Download & Install
             1. Download `BALLIVE.apk` below directly to your Android device.
@@ -100,8 +100,8 @@ jobs:
             ### 🔍 Build Information
             - **Application Name**: BALLIVE
             - **Application ID**: `com.piustech.ballive`
-            - **Version**: 2.8.5
-            - **Version Code**: 60
+            - **Version**: 2.8.6
+            - **Version Code**: 61
             - **Target Android Version**: Android 14 (API 34)
             - **Compile SDK**: Android 15 (API 35)
             - **Architecture**: Universal (arm64-v8a, armeabi-v7a, x86, x86_64)
