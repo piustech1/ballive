@@ -42,6 +42,10 @@ export const LOCAL_TEAM_HEROES: Record<string, ImageSourcePropType> = {
   'team-warriors': require('../../assets/images/heroes/teams/warriors.jpg'),
   'team-celtics': require('../../assets/images/heroes/teams/celtics.jpg'),
   'team-rangers-nhl': require('../../assets/images/heroes/teams/ny_rangers.jpg'),
+  'team-pachuca': require('../../assets/images/heroes/teams/pachuca.jpg'),
+  'team-dallas-stars': require('../../assets/images/heroes/teams/dallas_stars.jpg'),
+  'team-orlando-pirates': require('../../assets/images/heroes/teams/orlando_pirates.jpg'),
+  'team-hearts-of-midlothian': require('../../assets/images/heroes/teams/hearts_of_midlothian.jpg'),
 };
 
 export const LOCAL_COMPETITION_HEROES: Record<string, ImageSourcePropType> = {
@@ -56,8 +60,20 @@ export const LOCAL_COMPETITION_HEROES: Record<string, ImageSourcePropType> = {
   nba: require('../../assets/images/heroes/competitions/nba.jpg'),
   nhl: require('../../assets/images/heroes/competitions/nhl.jpg'),
   nfl: require('../../assets/images/heroes/competitions/nfl.jpg'),
-  f1: require('../../assets/images/heroes/competitions/f1.jpg'),
   euroleague: require('../../assets/images/heroes/competitions/euroleague.jpg'),
+  fiba_world_cup: require('../../assets/images/heroes/competitions/fiba_world_cup.jpg'),
+  nz_basketball: require('../../assets/images/heroes/competitions/nz_basketball.jpg'),
+  eredivisie: require('../../assets/images/heroes/competitions/eredivisie.jpg'),
+  super_lig: require('../../assets/images/heroes/competitions/super_lig.jpg'),
+  egyptian_premier: require('../../assets/images/heroes/competitions/egyptian_premier.jpg'),
+  saudi_first_division: require('../../assets/images/heroes/competitions/saudi_first_division.jpg'),
+  copa_paraguay: require('../../assets/images/heroes/competitions/copa_paraguay.jpg'),
+  russia_mhl: require('../../assets/images/heroes/competitions/russia_mhl.jpg'),
+  aihl: require('../../assets/images/heroes/competitions/aihl.jpg'),
+  premier_liga: require('../../assets/images/heroes/competitions/premier_liga.jpg'),
+  brasileirao: require('../../assets/images/heroes/competitions/brasileirao.jpg'),
+  ugandan_premier: require('../../assets/images/heroes/competitions/ugandan_premier.jpg'),
+  champions_super_league: require('../../assets/images/heroes/competitions/champions_super_league.jpg'),
   liga_mx: require('../../assets/images/heroes/competitions/liga_mx.jpg'),
   argentina_primera: require('../../assets/images/heroes/competitions/argentina_primera.jpg'),
   afc_champions_league: require('../../assets/images/heroes/competitions/afc_champions_league.jpg'),
@@ -152,10 +168,10 @@ async function queryWikimediaHeroUrl(query: string): Promise<string | null> {
           x.h > 0 &&
           x.w / x.h >= 1.25 &&
           x.w / x.h <= 2.5 &&
-          (x.mime === 'image/jpeg' || x.mime === 'image/png') &&
+          x.mime === 'image/jpeg' &&
           x.lic &&
           !/fair use|non-free|copyrighted/i.test(x.lic) &&
-          !/logo|crest|map|diagram|flag|icon|shirt|kit|jersey|metro|station|ticket|subway/i.test(x.title)
+          !/logo|crest|map|diagram|flag|icon|shirt|kit|jersey|metro|station|ticket|subway|participation|chart|chess|leichtathletik|trophy/i.test(x.title)
       );
 
     return match ? normalizeImageUrl(match.url) : null;

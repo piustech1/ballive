@@ -26,7 +26,6 @@ export const AllCompetitionsScreen: React.FC = () => {
     if (sport === 'american_football') return 'American Football';
     if (sport === 'tennis') return 'Tennis';
     if (sport === 'cricket') return 'Cricket';
-    if (sport === 'motorsport') return 'Motorsport';
     return 'Football';
   };
 
@@ -102,6 +101,7 @@ export const AllCompetitionsScreen: React.FC = () => {
             <CompetitionLogo
               uri={comp.logoUrl}
               competitionId={comp.id}
+              sport={comp.sport}
               size={46}
               containerStyle={{ marginRight: 14 }}
             />

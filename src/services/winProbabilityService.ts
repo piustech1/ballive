@@ -14,6 +14,7 @@
  */
 
 import { API_CONFIG } from '../config/api';
+import { isValidFixture } from '../utils/fixtureValidator';
 import { sportsApiService } from './sportsApiService';
 
 export interface WinProbabilityResult {
@@ -58,13 +59,6 @@ export class WinProbabilityService {
     awayTeam?: string;
   }): Promise<WinProbabilityResult> {
     const { matchId, sport = 'soccer', competition = '', homeTeam = '', awayTeam = '' } = params;
-    const cacheKey = `${matchId || ''}_${sport}_${homeTeam}_${awayTeam}`;
-
-    const cached = probabilityCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      return cached.result;
-    }
-
     const sportLower = sport.toLowerCase();
     const isTwoWay =
       sportLower.includes('basketball') ||
@@ -74,6 +68,21 @@ export class WinProbabilityService {
       sportLower.includes('tennis') ||
       sportLower.includes('american_football') ||
       sportLower.includes('nfl');
+
+    if (!isValidFixture({ homeTeam, awayTeam, competition, sport })) {
+      return {
+        isAvailable: false,
+        sport,
+        isTwoWay,
+      };
+    }
+
+    const cacheKey = `${matchId || ''}_${sport}_${homeTeam}_${awayTeam}`;
+
+    const cached = probabilityCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      return cached.result;
+    }
 
     // Extract ESPN event ID if matchId starts with espn-
     let espnEventId: string | null = null;

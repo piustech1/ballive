@@ -61,12 +61,6 @@ const CATEGORY_TILES: CategoryTile[] = [
     name: 'Ice Hockey',
     image: require('../../../assets/categories/nhl.png'),
   },
-  {
-    id: 'motorsport',
-    label: 'F1',
-    name: 'Formula 1 & Motorsport',
-    image: require('../../../assets/categories/f1.png'),
-  },
 ];
 
 interface CompetitionCategoriesProps {
@@ -79,9 +73,11 @@ export const CompetitionCategories: React.FC<CompetitionCategoriesProps> = ({
   onSelectCategory,
 }) => {
   const { width: windowWidth } = useWindowDimensions();
-  // Reference spec: ~42% of screen width (~160dp on 380dp screen), ~2.1:1 aspect ratio matching green outline
-  const cardWidth = Math.round(windowWidth * 0.42);
-  const cardHeight = Math.round(cardWidth / 2.1);
+  // 75% scaled category tiles (both width and height scaled cleanly by 0.75)
+  const baseWidth = Math.round(windowWidth * 0.42);
+  const baseHeight = Math.round(baseWidth / 2.1);
+  const cardWidth = Math.round(baseWidth * 0.75);
+  const cardHeight = Math.round(baseHeight * 0.75);
 
   const handleCategoryPress = (categoryId: string) => {
     if (!onSelectCategory) return;
@@ -170,8 +166,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tileWrapper: {
-    borderRadius: 14,
-    marginRight: 12,
+    borderRadius: 12,
+    marginRight: 10,
     overflow: 'hidden',
     backgroundColor: '#1E1730',
     position: 'relative',
@@ -196,8 +192,8 @@ const styles = StyleSheet.create({
   },
   activeSelectionBorder: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 14,
-    borderWidth: 2.5,
+    borderRadius: 12,
+    borderWidth: 2,
     borderColor: '#7952FC',
   },
   labelContainer: {
@@ -206,19 +202,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.62)',
-    paddingVertical: 5,
-    paddingHorizontal: 8,
+    paddingVertical: 3.5,
+    paddingHorizontal: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomLeftRadius: 14,
-    borderBottomRightRadius: 14,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   },
   labelText: {
-    fontSize: 12,
+    fontSize: 10.5,
     fontWeight: '700',
     color: '#ECE9FA',
     textAlign: 'center',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   labelTextSelected: {
     color: '#FFFFFF',

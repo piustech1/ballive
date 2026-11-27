@@ -1,6 +1,7 @@
 /**
  * BALLIVE Official Club Crests and League Emblems CDN mappings
- * Uses reliable high-speed CDN assets for authentic presentation
+ * Uses reliable high-speed CDN assets for authentic presentation.
+ * Strict rule: Generic sport keys ('football', 'soccer') must NEVER map to FIFA World Cup 2026 logo.
  */
 
 const CDN_TEAM = 'https://media.api-sports.io/football/teams';
@@ -47,10 +48,12 @@ export const LEAGUE_EMBLEMS: Record<string, string> = {
   'bundesliga': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/10.png',
   'ligue-1': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/9.png',
   'efl-championship': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/24.png',
+
+  // FIFA World Cup (strictly isolated — NEVER used as generic 'football' / 'soccer' fallback!)
   'world-cup': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png',
+  'fifa-world-cup': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png',
   'wc': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png',
-  'football': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png',
-  'soccer': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/4.png',
+
   'mls': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/19.png',
   'major-league-soccer': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/19.png',
   'liga-mx': 'https://r2.thesportsdb.com/images/media/league/badge/mav5rx1686157960.png',
@@ -96,7 +99,18 @@ export const LEAGUE_EMBLEMS: Record<string, string> = {
   'eredivisie': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/11.png',
   'primeira-liga': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/14.png',
   'super-lig': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/18.png',
+  'turkish-super-lig': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/18.png',
+  'turkish-premier-league': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/18.png',
+  'russian-premier-league': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/106.png',
+  'premier-liga': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/106.png',
+  'ugandan-premier-league': 'https://r2.thesportsdb.com/images/media/league/badge/y4fu071674457678.png',
+  'ugandan-premier': 'https://r2.thesportsdb.com/images/media/league/badge/y4fu071674457678.png',
+  'uga.1': 'https://r2.thesportsdb.com/images/media/league/badge/y4fu071674457678.png',
+  'paraguayan-primera': 'https://a.espncdn.com/i/leaguelogos/soccer/500/1892.png',
+  'copa-paraguay': 'https://r2.thesportsdb.com/images/media/league/badge/sk46bb1764024619.png',
   'libertadores': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/58.png',
+  'scottish-premiership': `${CDN_LEAGUE}/179.png`,
+  'south-african-psl': 'https://a.espncdn.com/i/leaguelogos/soccer/500-dark/2359.png',
 
   // Multi-Sport
   'all': 'https://cdn-icons-png.flaticon.com/512/857/857455.png',
@@ -109,7 +123,9 @@ export const LEAGUE_EMBLEMS: Record<string, string> = {
   'ncaa-m': 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-basketball.png',
   'college-basketball': 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-basketball.png',
   'wnba': 'https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png',
-  'fiba': 'https://a.espncdn.com/i/teamlogos/leagues/500/fiba.png',
+  'fiba': 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/fiba.png',
+  'fiba-world-cup': 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/fiba.png',
+  'fiba-basketball-world-cup': 'https://a.espncdn.com/combiner/i?img=/i/teamlogos/leagues/500-dark/fiba.png',
   'nhl': 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nhl.png',
   'hockey': 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nhl.png',
   'del': 'https://r2.thesportsdb.com/images/media/league/badge/ttrhds1615493883.png',
@@ -120,10 +136,6 @@ export const LEAGUE_EMBLEMS: Record<string, string> = {
   'nfl': 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nfl.png',
   'american-football': 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nfl.png',
   'american_football': 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nfl.png',
-  'f1': 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/f1.png',
-  'formula-1': 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/f1.png',
-  'formula1': 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/f1.png',
-  'motorsport': 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/f1.png',
   'tennis': 'https://a.espncdn.com/combiner/i?img=/redesign/assets/img/icons/ESPN-icon-tennis.png',
   'atp': 'https://r2.thesportsdb.com/images/media/league/badge/q7aej51769857150.png',
   'wta': 'https://r2.thesportsdb.com/images/media/league/badge/bddhun1768230678.png',
@@ -137,7 +149,6 @@ export const SPORT_BACKDROPS: Record<string, string> = {
   hockey: 'https://images.unsplash.com/photo-1580748141549-71748dbe0bdc?auto=format&fit=crop&w=800&q=80',
   american_football: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80',
   nfl: 'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80',
-  motorsport: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
   tennis: 'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=800&q=80',
   cricket: 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80',
   other: 'https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=800&q=80',

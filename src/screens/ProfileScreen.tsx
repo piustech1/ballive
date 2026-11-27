@@ -2,17 +2,21 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
+  ScrollView,
   StyleSheet,
   StatusBar,
   TouchableOpacity,
   Linking,
+  useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 import {
   Shield,
   Trophy,
   Calendar,
   Clock,
+  Bell,
 } from 'lucide-react-native';
 
 import { useAppNavigation } from '../navigation/NavigationContext';
@@ -29,6 +33,8 @@ import { FollowedLeaguesModal } from '../features/profile/modals/FollowedLeagues
 import { MatchRemindersModal } from '../features/profile/modals/MatchRemindersModal';
 import { TimeFormatModal } from '../features/profile/modals/PreferencesModals';
 
+const CONVEX_CURVE_DIP = 26;
+
 export const ProfileScreen: React.FC = () => {
   const {
     profile,
@@ -39,6 +45,7 @@ export const ProfileScreen: React.FC = () => {
   } = useProfile();
   const { navigate } = useAppNavigation();
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
 
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [teamsModalVisible, setTeamsModalVisible] = useState(false);
@@ -46,119 +53,149 @@ export const ProfileScreen: React.FC = () => {
   const [remindersModalVisible, setRemindersModalVisible] = useState(false);
   const [timeFormatModalVisible, setTimeFormatModalVisible] = useState(false);
 
+  const curveWidth = Math.max(windowWidth, 320);
+  // Carves bottom corners cleanly away so the hero forms a pronounced downward convex arch
+  const curveCutoutPath = `M 0 0 Q ${curveWidth / 2} ${CONVEX_CURVE_DIP * 2} ${curveWidth} 0 L ${curveWidth} ${CONVEX_CURVE_DIP + 2} L 0 ${CONVEX_CURVE_DIP + 2} Z`;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
 
-      {/* ── COMPACT TOP CURVED IDENTITY CAVITY ── */}
-      <View style={[styles.headerCavity, { paddingTop: Math.max(insets.top, 12) + 2 }]}>
-        <CurvedHeaderPlayerBackground sport="soccer" screen="profile" />
-        <ProfileHeader />
-        <ProfileIdentityCard
-          displayName={profile.displayName}
-          membership={profile.membership}
-          avatarId={profile.avatarId}
-          avatarBg={profile.avatarBg}
-          onEditPress={() => setEditModalVisible(true)}
-          onAvatarPress={() => setEditModalVisible(true)}
-        />
-      </View>
-
-      {/* ── NON-SCROLLING COMPACT BODY (FITS CLEANLY ABOVE BOTTOM NAV) ── */}
-      <View style={styles.bodyContainer}>
-        {/* ── MY ACTIVITY SECTION ── */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionHeader}>MY SPORTS</Text>
-            <TouchableOpacity
-              style={styles.timePill}
-              activeOpacity={0.78}
-              onPress={() => setTimeFormatModalVisible(true)}
-              accessibilityRole="button"
-              accessibilityLabel={`Change time format, currently ${profile.timeFormat}`}
-            >
-              <Clock size={11} color="#A58BFC" strokeWidth={2.2} />
-              <Text style={styles.timePillText}>
-                {profile.timeFormat === '12h' ? '12h' : '24h'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.cardGroup}>
-            <ProfileSectionRow
-              icon={Shield}
-              iconColor="#A58BFC"
-              label="Followed Teams"
-              badgeValue={profile.followedTeamIds.length}
-              isFirst
-              onPress={() => setTeamsModalVisible(true)}
-            />
-            <ProfileSectionRow
-              icon={Trophy}
-              iconColor={Colors.categoryChampionsLeague}
-              label="Followed Competitions"
-              badgeValue={profile.followedLeagueIds.length}
-              onPress={() => setLeaguesModalVisible(true)}
-            />
-            <ProfileSectionRow
-              icon={Calendar}
-              iconColor={Colors.liveRed}
-              label="Match Reminders"
-              badgeValue={profile.matchReminderIds.length}
-              isLast
-              onPress={() => setRemindersModalVisible(true)}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── PRONOUNCED DOWNWARD CONVEX HERO CAVITY ── */}
+        <View style={[styles.headerCavity, { paddingTop: Math.max(insets.top, 12) + 8 }]}>
+          <CurvedHeaderPlayerBackground sport="soccer" screen="profile" />
+          <ProfileHeader />
+          <View style={styles.identityWrap}>
+            <ProfileIdentityCard
+              displayName={profile.displayName}
+              membership={profile.membership}
+              avatarId={profile.avatarId}
+              avatarBg={profile.avatarBg}
+              onEditPress={() => setEditModalVisible(true)}
+              onAvatarPress={() => setEditModalVisible(true)}
             />
           </View>
+
+          <Svg
+            width={curveWidth}
+            height={CONVEX_CURVE_DIP}
+            viewBox={`0 0 ${curveWidth} ${CONVEX_CURVE_DIP}`}
+            style={styles.convexCurveSvg}
+            pointerEvents="none"
+          >
+            <Path d={curveCutoutPath} fill={Colors.background} />
+          </Svg>
         </View>
 
-        {/* ── JOIN OUR COMMUNITY SECTION ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>JOIN OUR COMMUNITY</Text>
-          <View style={styles.communityGroup}>
-            <TouchableOpacity
-              style={[styles.communityRow, styles.communityRowBorder]}
-              activeOpacity={0.78}
-              onPress={() => Linking.openURL('https://whatsapp.com').catch(() => {})}
-              accessibilityRole="button"
-              accessibilityLabel="Join WhatsApp Channel"
-            >
-              <View style={[styles.communityIconContainer, { backgroundColor: '#1A2F22' }]}>
-                <WhatsAppOfficialIcon size={20} color="#25D366" />
-              </View>
-              <View style={styles.communityTextContainer}>
-                <Text style={styles.communityPrimaryText}>WhatsApp Channel</Text>
-                <Text style={styles.communitySecondaryText} numberOfLines={1}>
-                  Streams, lineups & match alerts
+        {/* ── SCROLLABLE PROFILE BODY (EVEN, NATURAL VERTICAL RHYTHM) ── */}
+        <View style={styles.bodyContainer}>
+          {/* ── MY SPORTS SECTION ── */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderRow}>
+              <Text style={styles.sectionHeader}>MY SPORTS</Text>
+              <TouchableOpacity
+                style={styles.timePill}
+                activeOpacity={0.78}
+                onPress={() => setTimeFormatModalVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`Change time format, currently ${profile.timeFormat}`}
+              >
+                <Clock size={11} color="#A58BFC" strokeWidth={2.2} />
+                <Text style={styles.timePillText}>
+                  {profile.timeFormat === '12h' ? '12h' : '24h'}
                 </Text>
-              </View>
-              <View style={styles.communityActionPill}>
-                <Text style={styles.communityActionText}>Join</Text>
-              </View>
-            </TouchableOpacity>
+              </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              style={styles.communityRow}
-              activeOpacity={0.78}
-              onPress={() => Linking.openURL('https://tiktok.com').catch(() => {})}
-              accessibilityRole="button"
-              accessibilityLabel="Follow TikTok Community"
-            >
-              <View style={[styles.communityIconContainer, { backgroundColor: '#21172A' }]}>
-                <TikTokOfficialIcon size={18} color="#FE2C55" />
-              </View>
-              <View style={styles.communityTextContainer}>
-                <Text style={styles.communityPrimaryText}>TikTok Community</Text>
-                <Text style={styles.communitySecondaryText} numberOfLines={1}>
-                  Football clips & viral moments
-                </Text>
-              </View>
-              <View style={styles.communityActionPill}>
-                <Text style={styles.communityActionText}>Follow</Text>
-              </View>
-            </TouchableOpacity>
+            <View style={styles.cardsColumn}>
+              <ProfileSectionRow
+                icon={Shield}
+                iconColor="#A58BFC"
+                label="Followed Teams"
+                badgeValue={profile.followedTeamIds.length}
+                standalone
+                onPress={() => setTeamsModalVisible(true)}
+              />
+              <ProfileSectionRow
+                icon={Trophy}
+                iconColor={Colors.categoryChampionsLeague}
+                label="Followed Competitions"
+                badgeValue={profile.followedLeagueIds.length}
+                standalone
+                onPress={() => setLeaguesModalVisible(true)}
+              />
+              <ProfileSectionRow
+                icon={Calendar}
+                iconColor={Colors.liveRed}
+                label="Match Reminders"
+                badgeValue={profile.matchReminderIds.length}
+                standalone
+                onPress={() => setRemindersModalVisible(true)}
+              />
+              <ProfileSectionRow
+                icon={Bell}
+                iconColor="#38BDF8"
+                label="Notifications"
+                standalone
+                onPress={() => navigate({ name: 'Notifications' })}
+              />
+            </View>
+          </View>
+
+          {/* ── JOIN OUR COMMUNITY SECTION ── */}
+          <View style={styles.section}>
+            <Text style={styles.sectionHeader}>JOIN OUR COMMUNITY</Text>
+            <View style={styles.cardsColumn}>
+              <TouchableOpacity
+                style={[styles.communityCard, styles.whatsappCard]}
+                activeOpacity={0.82}
+                onPress={() => Linking.openURL('https://whatsapp.com').catch(() => {})}
+                accessibilityRole="button"
+                accessibilityLabel="Join WhatsApp Channel"
+              >
+                <View style={styles.unboxedIconSlot}>
+                  <WhatsAppOfficialIcon size={26} color="#FFFFFF" />
+                </View>
+                <View style={styles.communityTextContainer}>
+                  <Text style={styles.whatsappPrimaryText}>WhatsApp Channel</Text>
+                  <Text style={styles.whatsappSecondaryText} numberOfLines={1}>
+                    Streams, lineups & match alerts
+                  </Text>
+                </View>
+                <View style={styles.whatsappJoinPill}>
+                  <Text style={styles.whatsappJoinText}>Join</Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.communityCard, styles.tiktokCard]}
+                activeOpacity={0.82}
+                onPress={() => Linking.openURL('https://tiktok.com').catch(() => {})}
+                accessibilityRole="button"
+                accessibilityLabel="Follow TikTok Community"
+              >
+                <View style={styles.unboxedIconSlot}>
+                  <TikTokOfficialIcon size={24} color="#FFFFFF" />
+                </View>
+                <View style={styles.communityTextContainer}>
+                  <Text style={styles.tiktokPrimaryText}>TikTok Community</Text>
+                  <Text style={styles.tiktokSecondaryText} numberOfLines={1}>
+                    Highlights & match clips
+                  </Text>
+                </View>
+                <View style={styles.tiktokFollowPill}>
+                  <Text style={styles.tiktokFollowText}>Follow</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-      </View>
+      </ScrollView>
 
       {/* ── MODALS ── */}
       <EditProfileModal
@@ -214,21 +251,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 28,
+  },
   headerCavity: {
     backgroundColor: Colors.headerPurple,
-    borderBottomLeftRadius: 26,
-    borderBottomRightRadius: 26,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  identityWrap: {
+    paddingBottom: CONVEX_CURVE_DIP + 4,
+  },
+  convexCurveSvg: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
   },
   bodyContainer: {
-    flex: 1,
     paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 14,
-    justifyContent: 'space-evenly',
+    paddingTop: 12,
+    gap: 20,
   },
   section: {
-    gap: 8,
+    gap: 10,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -248,8 +296,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#1E1730',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 10,
   },
   timePillText: {
@@ -257,56 +305,77 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#D5CFE6',
   },
-  cardGroup: {
-    borderRadius: 16,
-    overflow: 'hidden',
+  cardsColumn: {
+    gap: 10,
   },
-  communityGroup: {
-    backgroundColor: '#1E1730',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  communityRow: {
+  communityCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 11,
-    paddingHorizontal: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 15,
+    borderRadius: 16,
   },
-  communityRowBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255, 255, 255, 0.06)',
+  whatsappCard: {
+    backgroundColor: '#1FB155',
   },
-  communityIconContainer: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
+  tiktokCard: {
+    backgroundColor: '#000000',
+  },
+  unboxedIconSlot: {
+    width: 34,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    backgroundColor: 'transparent',
   },
   communityTextContainer: {
     flex: 1,
     justifyContent: 'center',
   },
-  communityPrimaryText: {
-    fontSize: 14,
-    fontWeight: '700',
+  whatsappPrimaryText: {
+    fontSize: 14.5,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
-  communitySecondaryText: {
+  whatsappSecondaryText: {
     fontSize: 11.5,
-    color: '#9A97B8',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginTop: 1,
+    fontWeight: '500',
   },
-  communityActionPill: {
-    backgroundColor: '#7650F6',
-    paddingHorizontal: 13,
-    paddingVertical: 6,
-    borderRadius: 9,
+  whatsappJoinPill: {
+    backgroundColor: '#0B0B0E',
+    paddingHorizontal: 15,
+    paddingVertical: 7,
+    borderRadius: 11,
   },
-  communityActionText: {
+  whatsappJoinText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  tiktokPrimaryText: {
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  tiktokSecondaryText: {
     fontSize: 11.5,
-    fontWeight: '700',
+    color: '#A1A1AA',
+    marginTop: 1,
+    fontWeight: '500',
+  },
+  tiktokFollowPill: {
+    backgroundColor: '#FE2C55',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 11,
+  },
+  tiktokFollowText: {
+    fontSize: 12,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
 });
+
+export default ProfileScreen;

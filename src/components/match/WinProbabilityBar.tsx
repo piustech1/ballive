@@ -94,6 +94,7 @@ export const WinProbabilityBar: React.FC<WinProbabilityBarProps> = ({
                   uri={homeCrest}
                   teamId={homeTeamId}
                   teamName={homeTeamName}
+                  sport={sport}
                   size={28}
                   containerStyle={styles.crestContainer}
                 />
@@ -137,6 +138,7 @@ export const WinProbabilityBar: React.FC<WinProbabilityBarProps> = ({
                   uri={awayCrest}
                   teamId={awayTeamId}
                   teamName={awayTeamName}
+                  sport={sport}
                   size={28}
                   containerStyle={styles.crestContainer}
                 />

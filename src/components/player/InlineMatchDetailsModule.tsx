@@ -113,12 +113,6 @@ export const InlineMatchDetailsModule: React.FC<InlineMatchDetailsModuleProps> =
           { key: 'lineups' as TabKey, label: 'Lines' },
           { key: 'events' as TabKey, label: 'Periods' },
         ];
-      case 'motorsport':
-        return [
-          { key: 'overview' as TabKey, label: 'Overview' },
-          { key: 'lineups' as TabKey, label: 'Grid' },
-          { key: 'events' as TabKey, label: 'Laps' },
-        ];
       default:
         return [
           { key: 'overview' as TabKey, label: 'Overview' },

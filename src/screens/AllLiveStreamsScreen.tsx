@@ -31,9 +31,10 @@ import { streamingApiService } from '../services/streamingApiService';
 import { MatchCardSkeleton } from '../components/common/SkeletonLoader';
 import { sortMatchesWithLiveFirst } from '../utils/matchStatus';
 import { getCanonicalSport } from '../utils/sportClassifier';
+import { isValidFixture } from '../utils/fixtureValidator';
 
 type StreamFilter = 'all' | 'live' | 'upcoming' | 'available';
-type SportFilter = 'all' | 'football' | 'american_football' | 'basketball' | 'hockey' | 'motorsport';
+type SportFilter = 'all' | 'football' | 'american_football' | 'basketball' | 'hockey';
 
 interface FilterOption {
   id: StreamFilter;
@@ -66,7 +67,6 @@ const SPORT_TABS: SportTab[] = [
   { id: 'american_football', label: 'American Football', icon: Shield },
   { id: 'basketball', label: 'Basketball', icon: Activity },
   { id: 'hockey', label: 'Hockey', icon: Shield },
-  { id: 'motorsport', label: 'Motorsport', icon: Activity },
 ];
 
 function parseInitialSport(raw?: string): SportFilter {
@@ -76,7 +76,6 @@ function parseInitialSport(raw?: string): SportFilter {
   if (s === 'nfl' || s === 'american_football') return 'american_football';
   if (s === 'nba' || s === 'basketball') return 'basketball';
   if (s === 'nhl' || s === 'hockey') return 'hockey';
-  if (s === 'motorsport' || s === 'f1') return 'motorsport';
   return 'all';
 }
 
@@ -88,7 +87,7 @@ export const AllLiveStreamsScreen: React.FC = () => {
   const [allStreamMatches, setAllStreamMatches] = useState<DiscoverMatchup[]>(() => {
     const cached = streamingApiService.getCachedLiveMatches();
     if (cached && cached.length > 0) {
-      return cached.map(m => streamingApiService.convertLiveMatchToMatchup(m));
+      return cached.filter(isValidFixture).map(m => streamingApiService.convertLiveMatchToMatchup(m));
     }
     return [];
   });
@@ -108,7 +107,7 @@ export const AllLiveStreamsScreen: React.FC = () => {
     try {
       const live = await streamingApiService.getLiveMatches();
       if (live && live.length > 0) {
-        const converted = live.map(m => streamingApiService.convertLiveMatchToMatchup(m));
+        const converted = live.filter(isValidFixture).map(m => streamingApiService.convertLiveMatchToMatchup(m));
         setAllStreamMatches(converted);
       }
     } catch {
@@ -132,6 +131,8 @@ export const AllLiveStreamsScreen: React.FC = () => {
 
   const filteredMatches = useMemo(() => {
     const filtered = allStreamMatches.filter(m => {
+      if (!isValidFixture(m)) return false;
+
       // Sport filter
       if (selectedSport !== 'all') {
         const canonical = getCanonicalSport(m.sport, m.competition);
@@ -143,8 +144,6 @@ export const AllLiveStreamsScreen: React.FC = () => {
           if (canonical !== 'basketball') return false;
         } else if (selectedSport === 'hockey') {
           if (canonical !== 'hockey') return false;
-        } else if (selectedSport === 'motorsport') {
-          if (canonical !== 'motorsport') return false;
         }
       }
 

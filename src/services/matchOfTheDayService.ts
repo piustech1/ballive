@@ -3,6 +3,7 @@ import { DiscoverMatchup, UPCOMING_HIGHLIGHTS } from '../constants/discoverData'
 import { LiveMatch } from '../constants/mockData';
 import { resolveLiveMatchToMatchup } from '../navigation/navHelpers';
 import { parseKickoffTimestamp } from '../utils/matchStatus';
+import { isValidFixture } from '../utils/fixtureValidator';
 
 export interface StoredMotdRecord {
   date: string; // YYYY-MM-DD in device-local time
@@ -116,8 +117,6 @@ export function calculateMatchAnticipationScore(
     score += 75;
   } else if (comp.includes('nfl') || comp.includes('super bowl')) {
     score += 75;
-  } else if (comp.includes('formula 1') || comp.includes('f1') || comp.includes('grand prix')) {
-    score += 75;
   } else if (comp.includes('nhl')) {
     score += 60;
   } else if (comp.includes('ligue 1') || comp.includes('fra.1')) {
@@ -193,7 +192,7 @@ class MatchOfTheDayService {
         if (info.exists) {
           const raw = await FileSystem.readAsStringAsync(STORAGE_FILE);
           const parsed = JSON.parse(raw) as StoredMotdRecord;
-          if (parsed && parsed.date && parsed.cachedMatchup) {
+          if (parsed && parsed.date && parsed.cachedMatchup && isValidFixture(parsed.cachedMatchup)) {
             this.currentRecord = parsed;
           }
         }
@@ -221,7 +220,7 @@ class MatchOfTheDayService {
 
   public subscribe(listener: MotdListener): () => void {
     this.listeners.add(listener);
-    if (this.currentRecord?.cachedMatchup) {
+    if (this.currentRecord?.cachedMatchup && isValidFixture(this.currentRecord.cachedMatchup)) {
       listener(this.currentRecord.cachedMatchup);
     }
     return () => {
@@ -261,12 +260,12 @@ class MatchOfTheDayService {
     await this.init();
     const today = getDeviceLocalDate();
 
-    // 1. If we have a saved MOTD for today, check for real-time status updates
-    if (this.currentRecord && this.currentRecord.date === today) {
+    // 1. If we have a valid saved MOTD for today, check for real-time status updates
+    if (this.currentRecord && this.currentRecord.date === today && isValidFixture(this.currentRecord.cachedMatchup)) {
       const matchId = this.currentRecord.matchId;
       const liveMatch = availableLiveMatches.find(m => m.id === matchId);
 
-      if (liveMatch) {
+      if (liveMatch && isValidFixture(liveMatch)) {
         const updatedMatchup = resolveLiveMatchToMatchup(liveMatch);
         // Persist update if status, score, or minute changed
         if (
@@ -289,7 +288,7 @@ class MatchOfTheDayService {
       return this.currentRecord.cachedMatchup;
     }
 
-    // 2. New day or first run: Run deterministic ranking
+    // 2. New day or invalid saved MOTD: Run deterministic ranking
     return this.selectAndPersistMotd(today, availableLiveMatches);
   }
 
@@ -306,9 +305,11 @@ class MatchOfTheDayService {
 
     const candidates: Candidate[] = [];
 
-    // Evaluate live & upcoming matches from memory
+    // Evaluate live & upcoming matches from memory (strictly rejecting invalid/self-vs-self fixtures)
     for (const lm of availableLiveMatches) {
+      if (!isValidFixture(lm)) continue;
       const matchup = resolveLiveMatchToMatchup(lm);
+      if (!isValidFixture(matchup)) continue;
       const score = calculateMatchAnticipationScore(
         lm.homeTeam,
         lm.awayTeam,
@@ -324,6 +325,7 @@ class MatchOfTheDayService {
     // Evaluate static UPCOMING_HIGHLIGHTS if candidates are low
     if (candidates.length < 3 && UPCOMING_HIGHLIGHTS && UPCOMING_HIGHLIGHTS.length > 0) {
       for (const uh of UPCOMING_HIGHLIGHTS) {
+        if (!isValidFixture(uh)) continue;
         if (!candidates.some(c => c.matchup.id === uh.id)) {
           const score = calculateMatchAnticipationScore(
             uh.homeTeam.name,

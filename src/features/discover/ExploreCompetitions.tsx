@@ -27,7 +27,6 @@ const getCompetitionSubLabel = (comp: DiscoverCompetition): string => {
   if (s === 'american_football') return 'American Football';
   if (s === 'tennis') return 'Tennis';
   if (s === 'cricket') return 'Cricket';
-  if (s === 'motorsport') return 'Motorsport';
   return 'Football';
 };
 
@@ -49,6 +48,7 @@ const CompetitionCard = React.memo(({
       <CompetitionLogo
         uri={comp.logoUrl}
         competitionId={comp.id}
+        sport={comp.sport}
         size={38}
         priority={3}
       />

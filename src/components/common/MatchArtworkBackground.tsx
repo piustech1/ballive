@@ -87,12 +87,12 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
 
   // 3. Resolve team crests with stable IDs and names
   const resolvedHomeCrest = useMemo(() => {
-    return teamEmblemService.resolveRemoteUrl(homeTeamId, homeCrest, homeTeamName) || DEFAULT_CREST;
-  }, [homeCrest, homeTeamId, homeTeamName]);
+    return teamEmblemService.resolveRemoteUrl(homeTeamId, homeCrest, homeTeamName, sport) || DEFAULT_CREST;
+  }, [homeCrest, homeTeamId, homeTeamName, sport]);
 
   const resolvedAwayCrest = useMemo(() => {
-    return teamEmblemService.resolveRemoteUrl(awayTeamId, awayCrest, awayTeamName) || DEFAULT_CREST;
-  }, [awayCrest, awayTeamId, awayTeamName]);
+    return teamEmblemService.resolveRemoteUrl(awayTeamId, awayCrest, awayTeamName, sport) || DEFAULT_CREST;
+  }, [awayCrest, awayTeamId, awayTeamName, sport]);
 
   // Enlarge fallback emblems from 52 to 68-72 (and 76 on featured cards)
   const emblemSize = featured ? 76 : 68;
@@ -115,6 +115,7 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
               uri={resolvedHomeCrest}
               teamId={homeTeamId}
               teamName={homeTeamName}
+              sport={sport}
               size={emblemSize}
             />
           </View>
@@ -125,6 +126,7 @@ export const MatchArtworkBackground: React.FC<MatchArtworkBackgroundProps> = ({
               uri={resolvedAwayCrest}
               teamId={awayTeamId}
               teamName={awayTeamName}
+              sport={sport}
               size={emblemSize}
             />
           </View>

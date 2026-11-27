@@ -10,7 +10,6 @@ export type SportType =
   | 'american_football'
   | 'tennis'
   | 'cricket'
-  | 'motorsport'
   | 'other';
 
 export interface CompetitionCategory {
@@ -98,14 +97,6 @@ export const COMPETITION_CATEGORIES: CompetitionCategory[] = [
     color: '#F59E0B',
     iconName: 'shield',
     sport: 'american_football',
-  },
-  {
-    id: 'motorsport',
-    name: 'Formula 1',
-    shortLabel: 'F1',
-    color: '#E10600',
-    iconName: 'flame',
-    sport: 'motorsport',
   },
   {
     id: 'tennis',
@@ -209,16 +200,6 @@ export const FEATURED_COMPETITIONS: FeaturedCompetition[] = [
     crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/nfl.png',
     verified: true,
     sport: 'american_football',
-  },
-  {
-    id: 'comp-f1',
-    name: 'Formula 1 World Championship',
-    country: 'Global',
-    matchesCount: 24,
-    season: 'Global',
-    crestUrl: 'https://a.espncdn.com/i/teamlogos/leagues/500-dark/f1.png',
-    verified: true,
-    sport: 'motorsport',
   },
   {
     id: 'comp-tennis',

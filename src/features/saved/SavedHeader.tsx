@@ -43,7 +43,7 @@ export const SavedHeader: React.FC<SavedHeaderProps> = ({
       {/* ── SCREEN TITLE & SUBTITLE ── */}
       <View style={styles.titleContainer}>
         <Text style={styles.title}>Saved</Text>
-        <Text style={styles.subtitle}>Your football favorites</Text>
+        <Text style={styles.subtitle}>Your saved sports favorites</Text>
       </View>
 
       {/* ── SEGMENTED CATEGORY TABS ── */}

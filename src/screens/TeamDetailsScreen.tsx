@@ -100,6 +100,7 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
       return;
     }
 
+    setHeroSource(null);
     resolveTeamHeroSource({
       teamId: resolvedTeam.id,
       teamName: resolvedTeam.name,
@@ -164,6 +165,7 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
           uri={item.opponentCrest}
           teamId={item.opponentId}
           teamName={item.opponentName}
+          sport={resolvedTeam.sport}
           size={36}
           containerStyle={styles.fixtureCrest}
         />
@@ -257,6 +259,7 @@ export const TeamDetailsScreen: React.FC<TeamDetailsScreenProps> = ({ team }) =>
               uri={resolvedTeam.crestUrl}
               teamId={resolvedTeam.id}
               teamName={resolvedTeam.name}
+              sport={resolvedTeam.sport}
               size={76}
               containerStyle={styles.crestFlatContainer}
             />

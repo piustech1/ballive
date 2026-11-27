@@ -38,7 +38,6 @@ export const API_CONFIG = {
     NBA: 'moviebay_sport_cdn_ch_xx_nba-tv-fhd-us',
     NBA_BACKUP: 'moviebay_sport_dlv_ch_404_nba-tv-usa',
     NHL: 'moviebay_sport_dami_247-nhl-network-29780',
-    F1: 'moviebay_sport_cdn_ch_xx_sky-sports-f1-fhd-uk',
     TENNIS: 'moviebay_sport_cdn_ch_xx_sky-sport-tennis-fhd-de',
   },
 
@@ -62,9 +61,6 @@ export function getBroadcastChannelId(competition: string = '', sport: string = 
   }
   if (sportLower.includes('hockey') || compLower.includes('nhl')) {
     return API_CONFIG.PRIORITY_CHANNELS.NHL;
-  }
-  if (sportLower.includes('f1') || sportLower.includes('motor') || compLower.includes('formula')) {
-    return API_CONFIG.PRIORITY_CHANNELS.F1;
   }
   if (sportLower.includes('tennis') || compLower.includes('atp') || compLower.includes('wta')) {
     return API_CONFIG.PRIORITY_CHANNELS.TENNIS;
@@ -116,13 +112,12 @@ export function getBroadcastChannelId(competition: string = '', sport: string = 
     return API_CONFIG.PRIORITY_CHANNELS.DAZN;
   }
 
-  // English Premier League (Guard against Ukrainian / Egyptian / Kenyan Premier Leagues)
+  // English Premier League (Strictly exclude all non-English Premier Leagues)
   if (
     compLower.includes('epl') ||
-    (compLower.includes('premier') &&
-      !compLower.includes('ukrain') &&
-      !compLower.includes('egypt') &&
-      !compLower.includes('kenya'))
+    compLower.includes('eng.1') ||
+    compLower.includes('english premier') ||
+    compLower === 'premier league'
   ) {
     return API_CONFIG.PRIORITY_CHANNELS.PL;
   }
@@ -132,14 +127,26 @@ export function getBroadcastChannelId(competition: string = '', sport: string = 
 }
 
 /**
- * Detects competitions that have NO verified streaming broadcasts on upstream servers.
- * Prevents phantom live fixtures (Coupe de France, Première Ligue, Liga F, NWSL, etc.)
- * from being ingested or mapped to incorrect broadcast channels.
+ * Detects competitions that have NO verified streaming broadcasts or are excluded from BALLIVE
+ * (Formula 1, Motorsport, Combat Sports, unsupported regional women's cup feeds, etc.).
  */
 export function isUnsupportedStreamingCompetition(competition?: string | null, title?: string | null): boolean {
   const comp = (competition || '').toLowerCase();
   const tit = (title || '').toLowerCase();
   const combined = `${comp} ${tit}`;
+
+  // Formula 1 & Motorsport (completely removed from BALLIVE)
+  if (
+    /\b(f1|formula\s*1|formula\s*2|formula\s*3|motogp|moto2|moto3|nascar|indycar|motorsport|supercars|grand\s+prix)\b/i.test(
+      combined
+    ) ||
+    comp === 'racing' ||
+    combined.includes('lusail') ||
+    combined.includes('abu dhabi grand prix') ||
+    combined.includes('qatar grand prix')
+  ) {
+    return true;
+  }
 
   // Combat Sports (Boxing, MMA, UFC, WWE, Bellator, PFL, BKFC - explicitly eliminated from BALLIVE)
   if (

@@ -12,6 +12,7 @@ import { LIVE_MATCHES, LiveMatch, FEATURED_COMPETITIONS, SportType } from '../co
 import { LEAGUE_EMBLEMS } from '../constants/crests';
 import { resolveCompetitionLogo } from '../components/common/CompetitionLogo';
 import { getTeamCrest } from '../utils/teamCrestResolver';
+import { isValidFixture } from '../utils/fixtureValidator';
 import { API_CONFIG, getBroadcastChannelId, isUnsupportedStreamingCompetition } from '../config/api';
 import { resolveSportBackground } from '../utils/sportBackgroundResolver';
 import { normalizeMatchStatus, formatKickoffEAT } from '../utils/matchStatus';
@@ -73,23 +74,18 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
       ? resolvedComp.name
       : live.competition;
 
-  const compLogo =
-    live.competitionLogo ||
-    (resolvedComp.isIdentified ? resolvedComp.logoUrl : resolveCompetitionLogo(effectiveCompetition));
-
   const compLower = (effectiveCompetition || '').toLowerCase();
   const sport: any = resolvedComp.isIdentified
-    ? resolvedComp.sport === 'racing'
-      ? 'motorsport'
-      : resolvedComp.sport
+    ? resolvedComp.sport
     : live.sport || (
-        compLower.includes('nba') || compLower.includes('euroleague') || compLower.includes('basketball') ? 'basketball' :
-        compLower.includes('nhl') || compLower.includes('hockey') || compLower.includes('allsvenskan') || compLower.includes('icehl') ? 'hockey' :
-        compLower.includes('nfl') || compLower.includes('american football') ? 'american_football' :
-        compLower.includes('f1') || compLower.includes('formula') || compLower.includes('motorsport') ? 'motorsport' :
-        compLower.includes('tennis') ? 'tennis' :
-        compLower.includes('cricket') ? 'cricket' : 'soccer'
+        compLower.includes('nba') || compLower.includes('euroleague') || compLower.includes('fiba') || compLower.includes('basketball') ? 'basketball' :
+        compLower.includes('nhl') || compLower.includes('hockey') || compLower.includes('allsvenskan') || compLower.includes('icehl') || compLower.includes('mhl') || compLower.includes('aihl') ? 'hockey' :
+        compLower.includes('nfl') || compLower.includes('american football') ? 'american_football' : 'soccer'
       );
+
+  const compLogo =
+    live.competitionLogo ||
+    (resolvedComp.isIdentified ? resolvedComp.logoUrl : resolveCompetitionLogo(effectiveCompetition, sport));
 
   const venue = live.venue || '';
 
@@ -111,7 +107,8 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
     ? 'Full Time'
     : (rawKickoff.includes('EAT') ? rawKickoff : formatKickoffEAT(rawKickoff));
 
-  const isUnsupported = isUnsupportedStreamingCompetition(effectiveCompetition, live.title);
+  const validFixture = isValidFixture(live);
+  const isUnsupported = !validFixture || isUnsupportedStreamingCompetition(effectiveCompetition, live.title);
   const compChannel = isUnsupported ? '' : getBroadcastChannelId(effectiveCompetition, sport);
   const resolvedStreamUrl = isUnsupported ? undefined : (live.streamUrl || (isLive ? `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${compChannel}.json` : undefined));
   const resolvedStreams = isUnsupported
@@ -157,9 +154,9 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
       score: awayScore,
     },
     venue,
-    hasLiveBroadcast: isLive || hasLiveStream,
-    streamUrl: isLive ? resolvedStreamUrl : undefined,
-    streams: isLive ? resolvedStreams : undefined,
+    hasLiveBroadcast: !isUnsupported && isLive && hasLiveStream,
+    streamUrl: isLive && !isUnsupported ? resolvedStreamUrl : undefined,
+    streams: isLive && !isUnsupported ? resolvedStreams : undefined,
     poster,
   };
 }
@@ -168,8 +165,9 @@ export function resolveLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
  * Returns the marquee Match of the Day dynamically derived from active live matches or marquee fixtures.
  */
 export function getMarqueeMatchOfTheDay(liveMatches?: LiveMatch[]): DiscoverMatchup | null {
-  if (liveMatches && liveMatches.length > 0) {
-    const sorted = [...liveMatches].sort((a, b) => {
+  const validPool = (liveMatches || []).filter(m => isValidFixture(m));
+  if (validPool.length > 0) {
+    const sorted = [...validPool].sort((a, b) => {
       const sA = calculateMatchAnticipationScore(a.homeTeam, a.awayTeam, a.competition, a.status, a.rawDate, a.kickoffTime || a.time);
       const sB = calculateMatchAnticipationScore(b.homeTeam, b.awayTeam, b.competition, b.status, b.rawDate, b.kickoffTime || b.time);
       return sB - sA;
@@ -177,8 +175,9 @@ export function getMarqueeMatchOfTheDay(liveMatches?: LiveMatch[]): DiscoverMatc
     return resolveLiveMatchToMatchup(sorted[0]);
   }
 
-  if (UPCOMING_HIGHLIGHTS && UPCOMING_HIGHLIGHTS.length > 0) {
-    return UPCOMING_HIGHLIGHTS[0];
+  const validStatic = (UPCOMING_HIGHLIGHTS || []).filter(m => isValidFixture(m));
+  if (validStatic.length > 0) {
+    return validStatic[0];
   }
 
   return null;
@@ -218,7 +217,7 @@ export function findCompetitionById(
       shortName: 'Football',
       country: 'Global',
       region: 'International',
-      logoUrl: LEAGUE_EMBLEMS['football'],
+      logoUrl: '',
       accentColor: '#10B981',
       sport: 'soccer',
     };
@@ -294,7 +293,7 @@ export function findCompetitionById(
       region: resolved.region,
       logoUrl: optionalMeta?.logoUrl || resolved.logoUrl,
       accentColor: resolved.accentColor,
-      sport: (resolved.sport === 'racing' ? 'motorsport' : resolved.sport) as SportType,
+      sport: resolved.sport as SportType,
     };
   }
 
@@ -305,7 +304,7 @@ export function findCompetitionById(
     shortName: raw.split(' ').slice(0, 2).join(' '),
     country: optionalMeta?.country || 'International',
     region: optionalMeta?.country || 'International',
-    logoUrl: optionalMeta?.logoUrl || resolveCompetitionLogo(raw),
+    logoUrl: optionalMeta?.logoUrl || resolveCompetitionLogo(raw, optionalMeta?.sport),
     accentColor: '#7952FC',
     sport: optionalMeta?.sport || 'soccer',
   };
@@ -449,15 +448,20 @@ export function determineMatchRoute(match: any): ScreenRoute {
       Boolean(typeof match.playTime === 'string' && match.playTime.includes('LIVE')) ||
       Boolean(typeof matchup.playTime === 'string' && matchup.playTime.includes('LIVE')));
 
-  // If match is authoritatively LIVE, route to LiveStreamDetails
-  if (isAuthoritativelyLive) {
+  // If match is authoritatively LIVE and valid, route to LiveStreamDetails
+  const canStream =
+    isAuthoritativelyLive &&
+    isValidFixture(matchup) &&
+    !isUnsupportedStreamingCompetition(matchup.competition, `${matchup.homeTeam?.name || ''} ${matchup.awayTeam?.name || ''}`);
+
+  if (canStream) {
     return {
       name: 'LiveStreamDetails',
       params: { match: matchup },
     };
   }
 
-  // Otherwise (Upcoming or Completed), route to the Unified Match Details screen
+  // Otherwise (Upcoming, Completed, or Non-Streamable), route to MatchDetails
   return {
     name: 'MatchDetails',
     params: { matchup },

@@ -15,14 +15,12 @@ export type AthleteKey =
   | 'cristiano_ronaldo'
   | 'erling_haaland'
   | 'mohamed_salah'
-  | 'leon_goretzka'
-  | 'max_verstappen'
-  | 'lewis_hamilton';
+  | 'leon_goretzka';
 
 export interface AthleteInfo {
   key: AthleteKey;
   name: string;
-  sport: 'football' | 'motorsport';
+  sport: 'football';
   teams: string[];
   competitions: string[];
   source: ImageSourcePropType;
@@ -85,22 +83,6 @@ export const LOCAL_ATHLETE_ASSETS: Record<AthleteKey, AthleteInfo> = {
     competitions: ['saudi pro', 'ksa.1'],
     source: require('../../assets/images/players/football/cristiano_ronaldo.jpg'),
   },
-  max_verstappen: {
-    key: 'max_verstappen',
-    name: 'Max Verstappen',
-    sport: 'motorsport',
-    teams: ['red bull', 'red bull racing'],
-    competitions: ['formula 1', 'f1', 'grand prix'],
-    source: require('../../assets/images/players/motorsport/max_verstappen.jpg'),
-  },
-  lewis_hamilton: {
-    key: 'lewis_hamilton',
-    name: 'Lewis Hamilton',
-    sport: 'motorsport',
-    teams: ['mercedes', 'ferrari'],
-    competitions: ['formula 1', 'f1', 'grand prix'],
-    source: require('../../assets/images/players/motorsport/lewis_hamilton.jpg'),
-  },
 };
 
 const FOOTBALL_KEYS: AthleteKey[] = [
@@ -111,11 +93,6 @@ const FOOTBALL_KEYS: AthleteKey[] = [
   'cristiano_ronaldo',
   'nico_paz',
   'leon_goretzka',
-];
-
-const MOTORSPORT_KEYS: AthleteKey[] = [
-  'max_verstappen',
-  'lewis_hamilton',
 ];
 
 export interface PlayerSelectionContext {
@@ -136,17 +113,6 @@ export class PlayerAssetService {
   public getAthletePool(context: PlayerSelectionContext = {}): AthleteInfo[] {
     if (context.athleteKey && LOCAL_ATHLETE_ASSETS[context.athleteKey]) {
       return [LOCAL_ATHLETE_ASSETS[context.athleteKey]];
-    }
-
-    const sportLower = (context.sport || '').toLowerCase();
-    const isMotorsport =
-      sportLower.includes('motor') ||
-      sportLower.includes('f1') ||
-      sportLower.includes('formula') ||
-      sportLower.includes('racing');
-
-    if (isMotorsport) {
-      return MOTORSPORT_KEYS.map(k => LOCAL_ATHLETE_ASSETS[k]);
     }
 
     // Team context prioritized match
@@ -178,21 +144,7 @@ export class PlayerAssetService {
       return LOCAL_ATHLETE_ASSETS[context.athleteKey];
     }
 
-    const sportLower = (context.sport || '').toLowerCase();
-    const isMotorsport =
-      sportLower.includes('motor') ||
-      sportLower.includes('f1') ||
-      sportLower.includes('formula') ||
-      sportLower.includes('racing');
-
-    // 2. Motorsport context
-    if (isMotorsport) {
-      const day = new Date().getDate();
-      const idx = (day + (context.sectionId?.length || 0)) % MOTORSPORT_KEYS.length;
-      return LOCAL_ATHLETE_ASSETS[MOTORSPORT_KEYS[idx]];
-    }
-
-    // 3. Match team context (Liverpool, Man City, Barca, Bayern, Como, Al Nassr)
+    // 2. Match team context (Liverpool, Man City, Barca, Bayern, Como, Al Nassr)
     const combinedTeams = `${context.teamName || ''} ${context.homeTeam || ''} ${context.awayTeam || ''}`.toLowerCase();
     if (combinedTeams.length > 2) {
       if (combinedTeams.includes('liverpool')) {

@@ -97,6 +97,7 @@ export const FollowedLeaguesModal: React.FC<FollowedLeaguesModalProps> = ({
                 <CompetitionLogo
                   uri={comp.logoUrl}
                   competitionId={comp.id}
+                  sport={comp.sport}
                   size={42}
                   containerStyle={{ marginRight: 14 }}
                 />

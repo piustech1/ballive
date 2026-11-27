@@ -107,6 +107,7 @@ export const AllTeamsScreen: React.FC = () => {
                 uri={team.crestUrl}
                 teamId={team.id}
                 teamName={team.name}
+                sport={team.sport}
                 size={42}
                 containerStyle={styles.crestFlatContainer}
               />

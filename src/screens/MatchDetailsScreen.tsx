@@ -53,16 +53,15 @@ import {
 import { theSportsDbService } from '../services/theSportsDbService';
 import {
   isCombatSport,
-  isMotorsport,
   getSportDisplayName,
 } from '../utils/sportClassifier';
+import { isValidFixture } from '../utils/fixtureValidator';
 
 export type NormalizedSport =
   | 'football'
   | 'basketball'
   | 'nfl'
   | 'hockey'
-  | 'motorsport'
   | 'tennis'
   | 'cricket'
   | 'other';
@@ -71,7 +70,40 @@ export function normalizeSport(rawSport?: string, competitionName?: string): Nor
   const s = (rawSport || '').toLowerCase();
   const c = (competitionName || '').toLowerCase();
 
-  // 1. Explicit Football / Soccer / EFL / Tournaments (Highest Priority)
+  // Check Basketball and Hockey BEFORE generic soccer tokens like 'world cup' or 'champions'
+  if (
+    s === 'basketball' ||
+    c.includes('fiba') ||
+    c.includes('nba') ||
+    c.includes('euroleague') ||
+    c.includes('eurocup') ||
+    c.includes('basketball')
+  ) {
+    return 'basketball';
+  }
+  if (
+    s === 'hockey' ||
+    s === 'ice_hockey' ||
+    c.includes('nhl') ||
+    c.includes('khl') ||
+    c.includes('mhl') ||
+    c.includes('aihl') ||
+    c.includes('allsvenskan') ||
+    c.includes('hockey')
+  ) {
+    return 'hockey';
+  }
+  if (s === 'american_football' || s === 'nfl' || c.includes('nfl') || c.includes('american football')) {
+    return 'nfl';
+  }
+  if (s === 'tennis' || c.includes('tennis') || c.includes('atp') || c.includes('wta') || c.includes('wimbledon') || c.includes('us open')) {
+    return 'tennis';
+  }
+  if (s === 'cricket' || c.includes('cricket') || c.includes('ipl') || c.includes('icc') || c.includes('bbl')) {
+    return 'cricket';
+  }
+
+  // Football / Soccer / Regional Leagues / Tournaments
   const isSoccer =
     s === 'soccer' ||
     s === 'football' ||
@@ -88,6 +120,9 @@ export function normalizeSport(rawSport?: string, competitionName?: string): Nor
     c.includes('bundesliga') ||
     c.includes('ligue 1') ||
     c.includes('ligue 2') ||
+    c.includes('eredivisie') ||
+    c.includes('super lig') ||
+    c.includes('brasileir') ||
     c.includes('coupe') ||
     c.includes('copa') ||
     c.includes('fa cup') ||
@@ -103,12 +138,6 @@ export function normalizeSport(rawSport?: string, competitionName?: string): Nor
   if (isSoccer && !s.includes('american') && !c.includes('nfl')) {
     return 'football';
   }
-  if (s === 'basketball' || c.includes('nba') || c.includes('euroleague') || c.includes('basketball')) return 'basketball';
-  if (s === 'hockey' || c.includes('nhl') || c.includes('khl') || c.includes('hockey')) return 'hockey';
-  if (s === 'american_football' || s === 'nfl' || c.includes('nfl') || c.includes('american football')) return 'nfl';
-  if (s === 'motorsport' || s === 'racing' || s === 'f1' || c.includes('f1') || c.includes('formula') || c.includes('grand prix') || c.includes('motorsport') || c.includes('nascar')) return 'motorsport';
-  if (s === 'tennis' || c.includes('tennis') || c.includes('atp') || c.includes('wta') || c.includes('wimbledon') || c.includes('us open')) return 'tennis';
-  if (s === 'cricket' || c.includes('cricket') || c.includes('ipl') || c.includes('icc') || c.includes('bbl')) return 'cricket';
 
   return 'football';
 }
@@ -125,7 +154,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   const [moreMatches, setMoreMatches] = useState<DiscoverMatchup[]>(() => {
     const cachedLive = streamingApiService.getCachedLiveMatches();
     if (cachedLive && cachedLive.length > 0) {
-      const converted = cachedLive.map(m => streamingApiService.convertLiveMatchToMatchup(m));
+      const converted = cachedLive.filter(isValidFixture).map(m => streamingApiService.convertLiveMatchToMatchup(m));
       const filtered = converted.filter(m => !isSameFixture(m, matchup));
       return deduplicateMatchups(sortMatchesWithLiveFirst(filtered)).slice(0, 4);
     }
@@ -197,13 +226,13 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
   const homeCrest =
     activeMatchup.homeTeam.crestUrl ||
     (activeMatchup as any).homeBadge ||
-    getTeamCrest(activeMatchup.homeTeam.name) ||
+    getTeamCrest(activeMatchup.homeTeam.name, activeMatchup.sport) ||
     DEFAULT_CREST;
 
   const awayCrest =
     activeMatchup.awayTeam.crestUrl ||
     (activeMatchup as any).awayBadge ||
-    getTeamCrest(activeMatchup.awayTeam.name) ||
+    getTeamCrest(activeMatchup.awayTeam.name, activeMatchup.sport) ||
     DEFAULT_CREST;
 
   // Resolve authentic, sharp, unblurred sport-specific background
@@ -305,15 +334,10 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
     activeMatchup.competition,
     `${activeMatchup.homeTeam.name} ${activeMatchup.awayTeam.name}`
   );
-  const isMotor = isMotorsport(
-    activeMatchup.sport,
-    activeMatchup.competition,
-    `${activeMatchup.homeTeam.name} ${activeMatchup.awayTeam.name}`
-  );
   const cleanAway = activeMatchup.awayTeam.name.trim().toLowerCase();
   const isPlaceholderAway =
     !cleanAway ||
-    ['opponent', 'tbd', 'tba', 'unknown', 'none', 'f1', 'formula 1', 'grand prix', 'red corner', 'blue corner'].includes(cleanAway);
+    ['opponent', 'tbd', 'tba', 'unknown', 'none', 'red corner', 'blue corner'].includes(cleanAway);
 
   // Load genuine win probability for upcoming matches
   const [winProb, setWinProb] = useState<WinProbabilityResult | null>(null);
@@ -360,8 +384,8 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       .getLiveMatches()
       .then(liveMatches => {
         if (!isMounted) return;
-        const converted = (liveMatches || []).map(m => streamingApiService.convertLiveMatchToMatchup(m));
-        const pool = converted.length > 0 ? converted : UPCOMING_HIGHLIGHTS;
+        const converted = (liveMatches || []).filter(isValidFixture).map(m => streamingApiService.convertLiveMatchToMatchup(m));
+        const pool = (converted.length > 0 ? converted : UPCOMING_HIGHLIGHTS).filter(isValidFixture);
 
         // Strictly exclude active fixture by canonical identity and ID
         const filtered = pool.filter(m => !isSameFixture(m, activeMatchup));
@@ -394,7 +418,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
       })
       .catch(() => {
         if (isMounted) {
-          const fallbackFiltered = UPCOMING_HIGHLIGHTS.filter(m => !isSameFixture(m, activeMatchup));
+          const fallbackFiltered = UPCOMING_HIGHLIGHTS.filter(m => isValidFixture(m) && !isSameFixture(m, activeMatchup));
           setMoreMatches(deduplicateMatchups(sortMatchesWithLiveFirst(fallbackFiltered)).slice(0, 4));
         }
       });
@@ -560,40 +584,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
           <>
             {/* ── 3. REFINED MATCHUP CARD WITH INTEGRATED METADATA STRIP ── */}
             <View style={styles.matchupCard}>
-              {isMotor ? (
-                /* Motorsport Event Card: Grand Prix, Venue, and Session info — NO fake scores */
-                <View style={styles.racingDetailsRow}>
-                  <View style={styles.racingDetailsCol}>
-                    <Text style={styles.racingEventTitle} numberOfLines={2}>
-                      {activeMatchup.homeTeam.name || activeMatchup.competition}
-                    </Text>
-                    <Text style={styles.racingVenueSubtitle} numberOfLines={1}>
-                      {!isPlaceholderAway && activeMatchup.awayTeam.name
-                        ? activeMatchup.awayTeam.name
-                        : (activeMatchup.venue || 'Official Session')}
-                    </Text>
-                  </View>
-                  <View style={styles.racingStatusCol}>
-                    {isLive ? (
-                      <View style={styles.livePill}>
-                        <View style={styles.liveDot} />
-                        <Text style={styles.livePillText}>RACE LIVE</Text>
-                      </View>
-                    ) : isFinished ? (
-                      <View style={styles.ftPill}>
-                        <Text style={styles.ftPillText}>COMPLETED</Text>
-                      </View>
-                    ) : (
-                      <View style={styles.timePill}>
-                        <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
-                        <Text style={styles.kickoffTimeText} numberOfLines={1}>
-                          {formattedKickoff}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </View>
-              ) : isCombat && isPlaceholderAway ? (
+              {isCombat && isPlaceholderAway ? (
                 /* Combat Single Event Banner */
                 <View style={styles.racingDetailsRow}>
                   <View style={styles.racingDetailsCol}>
@@ -633,6 +624,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                       uri={homeCrest}
                       teamId={activeMatchup.homeTeam.id}
                       teamName={activeMatchup.homeTeam.name}
+                      sport={activeMatchup.sport}
                       size={48}
                       containerStyle={styles.crestFlatContainer}
                     />
@@ -680,6 +672,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                       uri={awayCrest}
                       teamId={activeMatchup.awayTeam.id}
                       teamName={activeMatchup.awayTeam.name}
+                      sport={activeMatchup.sport}
                       size={48}
                       containerStyle={styles.crestFlatContainer}
                     />
@@ -702,6 +695,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                       uri={homeCrest}
                       teamId={activeMatchup.homeTeam.id}
                       teamName={activeMatchup.homeTeam.name}
+                      sport={activeMatchup.sport}
                       size={48}
                       containerStyle={styles.crestFlatContainer}
                     />
@@ -746,6 +740,7 @@ export const MatchDetailsScreen: React.FC<MatchDetailsScreenProps> = ({ matchup 
                       uri={awayCrest}
                       teamId={activeMatchup.awayTeam.id}
                       teamName={activeMatchup.awayTeam.name}
+                      sport={activeMatchup.sport}
                       size={48}
                       containerStyle={styles.crestFlatContainer}
                     />

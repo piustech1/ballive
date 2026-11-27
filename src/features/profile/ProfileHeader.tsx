@@ -1,12 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const ProfileHeader: React.FC = () => {
-  const insets = useSafeAreaInsets();
-
   return (
-    <View style={[styles.container, { paddingTop: Math.max(insets.top, 10) + 2 }]}>
+    <View style={styles.container}>
       <View style={styles.contentRow}>
         <Text style={styles.title}>Profile</Text>
       </View>
@@ -27,7 +24,7 @@ const styles = StyleSheet.create({
     height: 36,
   },
   title: {
-    fontSize: 23,
+    fontSize: 24,
     fontWeight: '800',
     color: '#ECE9FA',
     letterSpacing: -0.4,

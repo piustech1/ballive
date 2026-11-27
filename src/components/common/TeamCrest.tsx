@@ -17,6 +17,7 @@ export interface TeamCrestProps {
   uri?: string | null;
   teamId?: string;
   teamName?: string;
+  sport?: string;
   size?: number;
   width?: number;
   height?: number;
@@ -90,6 +91,7 @@ export const TeamCrest: React.FC<TeamCrestProps> = React.memo(({
   uri,
   teamId,
   teamName,
+  sport,
   size = 28,
   width,
   height,
@@ -99,14 +101,14 @@ export const TeamCrest: React.FC<TeamCrestProps> = React.memo(({
   resizeMode = 'contain',
 }) => {
   const candidates = useMemo(
-    () => teamEmblemService.buildCandidates(teamId, teamName, uri),
-    [teamId, teamName, uri]
+    () => teamEmblemService.buildCandidates(teamId, teamName, uri, sport),
+    [teamId, teamName, uri, sport]
   );
   const entityKey = useMemo(
     () => teamEmblemService.getEntityKey(teamId, teamName),
     [teamId, teamName]
   );
-  const identitySignature = `${entityKey || ''}|${candidates.join('|')}`;
+  const identitySignature = `${entityKey || ''}|${sport || ''}|${candidates.join('|')}`;
 
   const immediateUri = useMemo(
     () => imageCacheService.getImmediateCachedUri('team', candidates, entityKey),
@@ -139,7 +141,7 @@ export const TeamCrest: React.FC<TeamCrestProps> = React.memo(({
     }
 
     teamEmblemService
-      .getOrFetchEmblem(teamId, teamName, uri, priority)
+      .getOrFetchEmblem(teamId, teamName, uri, priority, sport)
       .then(result => {
         if (!isMounted) return;
         if (result && result !== DEFAULT_CREST) {
@@ -164,7 +166,7 @@ export const TeamCrest: React.FC<TeamCrestProps> = React.memo(({
     return () => {
       isMounted = false;
     };
-  }, [identitySignature, immediateUri, priority, teamId, teamName, uri, candidates, entityKey]);
+  }, [identitySignature, immediateUri, priority, teamId, teamName, uri, sport, candidates, entityKey]);
 
   const handleImageError = () => {
     if (resolvedUri) {

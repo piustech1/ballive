@@ -132,6 +132,7 @@ export const FilterBottomSheet: React.FC<FilterBottomSheetProps> = ({
                         {opt.compId && (
                           <CompetitionLogo
                             competitionId={opt.compId}
+                            sport="soccer"
                             size={18}
                             containerStyle={{ marginRight: 6 }}
                           />

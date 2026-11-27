@@ -22,8 +22,8 @@ import {
   getCanonicalSport,
   getSportDisplayName,
   isCombatSport,
-  isMotorsport,
 } from '../../utils/sportClassifier';
+import { isValidFixture } from '../../utils/fixtureValidator';
 
 // Team name dictionary for Large Card (readable display names)
 const TEAM_DISPLAY_NAMES: Record<string, string> = {
@@ -204,14 +204,14 @@ export const SportsScheduleTimeline: React.FC<SportsScheduleTimelineProps> = ({
     let isMounted = true;
 
     if (propMatches && propMatches.length > 0) {
-      setInternalMatches(sortUpcomingChronologically(propMatches));
+      setInternalMatches(sortUpcomingChronologically(propMatches.filter(isValidFixture)));
       return;
     }
 
     const cachedUpcoming = streamingApiService.getCachedUpcomingMatches();
     if (cachedUpcoming && cachedUpcoming.length > 0) {
       const converted = cachedUpcoming
-        .filter(m => m.status === 'UPCOMING')
+        .filter(m => m.status === 'UPCOMING' && isValidFixture(m))
         .map(m => streamingApiService.convertLiveMatchToMatchup(m));
       if (converted.length > 0) {
         setInternalMatches(sortUpcomingChronologically(converted));
@@ -225,7 +225,7 @@ export const SportsScheduleTimeline: React.FC<SportsScheduleTimelineProps> = ({
         if (!isMounted) return;
         if (upcoming && upcoming.length > 0) {
           const converted = upcoming
-            .filter(m => m.status === 'UPCOMING')
+            .filter(m => m.status === 'UPCOMING' && isValidFixture(m))
             .map(m => streamingApiService.convertLiveMatchToMatchup(m));
           if (converted.length > 0) {
             setInternalMatches(sortUpcomingChronologically(converted));
@@ -246,7 +246,7 @@ export const SportsScheduleTimeline: React.FC<SportsScheduleTimelineProps> = ({
   }, [propMatches]);
 
   const displayMatches = useMemo(() => {
-    const list = internalMatches.length > 0 ? internalMatches : FALLBACK_TIMELINE_MATCHES;
+    const list = (internalMatches.length > 0 ? internalMatches : FALLBACK_TIMELINE_MATCHES).filter(isValidFixture);
     return sortUpcomingChronologically(list).slice(0, 4);
   }, [internalMatches]);
 
@@ -332,23 +332,22 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
   const homeCrest =
     match.homeTeam.crestUrl ||
     (match as any).homeBadge ||
-    getTeamCrest(match.homeTeam.name) ||
+    getTeamCrest(match.homeTeam.name, match.sport) ||
     DEFAULT_CREST;
 
   const awayCrest =
     match.awayTeam.crestUrl ||
     (match as any).awayBadge ||
-    getTeamCrest(match.awayTeam.name) ||
+    getTeamCrest(match.awayTeam.name, match.sport) ||
     DEFAULT_CREST;
 
   const kickoffTime = formatKickoffTime(match.kickoffTime);
 
-  const isMotor = isMotorsport(match.sport, match.competition);
   const isCombat = isCombatSport(match.sport, match.competition);
   const cleanAway = match.awayTeam.name.trim().toLowerCase();
   const isPlaceholderAway =
     !cleanAway ||
-    ['opponent', 'tbd', 'tba', 'unknown', 'none', 'f1', 'formula 1', 'grand prix', 'red corner', 'blue corner'].includes(cleanAway);
+    ['opponent', 'tbd', 'tba', 'unknown', 'none', 'red corner', 'blue corner'].includes(cleanAway);
 
   // Match artwork or sport background
   const bgImage = resolveSportBackground(
@@ -394,16 +393,7 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
       </Text>
 
       {/* Teams Vertical Stack */}
-      {isMotor ? (
-        <View style={styles.topTeamsStack}>
-          <Text style={[styles.topTeamName, { fontSize: 13, fontWeight: '800' }]} numberOfLines={1}>
-            {match.homeTeam.name || match.competition}
-          </Text>
-          <Text style={[styles.topTeamName, { fontSize: 11, color: '#A5B4FC', marginTop: 2 }]} numberOfLines={1}>
-            {!isPlaceholderAway && match.awayTeam.name ? match.awayTeam.name : 'Grand Prix Session'}
-          </Text>
-        </View>
-      ) : isCombat && isPlaceholderAway ? (
+      {isCombat && isPlaceholderAway ? (
         <View style={styles.topTeamsStack}>
           <Text style={[styles.topTeamName, { fontSize: 13, fontWeight: '800' }]} numberOfLines={1}>
             {match.homeTeam.name}
@@ -420,6 +410,7 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
               uri={homeCrest}
               teamId={match.homeTeam.id}
               teamName={homeName}
+              sport={match.sport}
               size={18}
               containerStyle={{ marginRight: 8 }}
             />
@@ -435,6 +426,7 @@ const TopLargeCard: React.FC<TopLargeCardProps> = ({ match, onPress }) => {
               uri={awayCrest}
               teamId={match.awayTeam.id}
               teamName={awayName}
+              sport={match.sport}
               size={18}
               containerStyle={{ marginRight: 8 }}
             />
@@ -506,23 +498,22 @@ const SmallMatchCard: React.FC<SmallMatchCardProps> = ({
   const homeAbbr = getTeamAbbr(match.homeTeam.name);
   const awayAbbr = getTeamAbbr(match.awayTeam.name);
 
-  const isMotor = isMotorsport(match.sport, match.competition);
   const isCombat = isCombatSport(match.sport, match.competition);
   const cleanAway = match.awayTeam.name.trim().toLowerCase();
   const isPlaceholderAway =
     !cleanAway ||
-    ['opponent', 'tbd', 'tba', 'unknown', 'none', 'f1', 'formula 1', 'grand prix', 'red corner', 'blue corner'].includes(cleanAway);
+    ['opponent', 'tbd', 'tba', 'unknown', 'none', 'red corner', 'blue corner'].includes(cleanAway);
 
   const homeCrest =
     match.homeTeam.crestUrl ||
     (match as any).homeBadge ||
-    getTeamCrest(match.homeTeam.name) ||
+    getTeamCrest(match.homeTeam.name, match.sport) ||
     DEFAULT_CREST;
 
   const awayCrest =
     match.awayTeam.crestUrl ||
     (match as any).awayBadge ||
-    getTeamCrest(match.awayTeam.name) ||
+    getTeamCrest(match.awayTeam.name, match.sport) ||
     DEFAULT_CREST;
 
   const kickoffTime = formatKickoffTime(match.kickoffTime);
@@ -543,13 +534,7 @@ const SmallMatchCard: React.FC<SmallMatchCardProps> = ({
         </Text>
 
         {/* Teams Vertical Stack with Abbreviated Names */}
-        {isMotor ? (
-          <View style={styles.smallTeamsStack}>
-            <Text style={[styles.smallTeamText, { fontSize: 11.5, fontWeight: '800' }]} numberOfLines={2}>
-              {match.homeTeam.name || 'Formula 1'}
-            </Text>
-          </View>
-        ) : isCombat && isPlaceholderAway ? (
+        {isCombat && isPlaceholderAway ? (
           <View style={styles.smallTeamsStack}>
             <Text style={[styles.smallTeamText, { fontSize: 11.5, fontWeight: '800' }]} numberOfLines={2}>
               {match.homeTeam.name}
@@ -563,6 +548,7 @@ const SmallMatchCard: React.FC<SmallMatchCardProps> = ({
                 uri={homeCrest}
                 teamId={match.homeTeam.id}
                 teamName={match.homeTeam.name || homeAbbr}
+                sport={match.sport}
                 size={15}
                 containerStyle={{ marginRight: 6 }}
               />
@@ -577,6 +563,7 @@ const SmallMatchCard: React.FC<SmallMatchCardProps> = ({
                 uri={awayCrest}
                 teamId={match.awayTeam.id}
                 teamName={match.awayTeam.name || awayAbbr}
+                sport={match.sport}
                 size={15}
                 containerStyle={{ marginRight: 6 }}
               />

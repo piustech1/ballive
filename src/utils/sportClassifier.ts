@@ -16,7 +16,6 @@ export type CanonicalSport =
   | 'american_football'
   | 'basketball'
   | 'hockey'
-  | 'motorsport'
   | 'tennis'
   | 'cricket'
   | 'other';
@@ -49,43 +48,7 @@ export function getCanonicalSport(
     return 'american_football';
   }
 
-  // 2. Motorsports & Racing (F1, MotoGP, NASCAR, IndyCar, Ferrari Challenge, Supercars, WEC)
-  if (
-    s === 'motorsport' ||
-    s === 'motorsports' ||
-    s === 'racing' ||
-    s === 'formula1' ||
-    s === 'f1' ||
-    c.includes('formula 1') ||
-    c.includes('formula one') ||
-    c.includes('f1') ||
-    c.includes('grand prix') ||
-    c.includes('motogp') ||
-    c.includes('moto2') ||
-    c.includes('moto3') ||
-    c.includes('nascar') ||
-    c.includes('indycar') ||
-    c.includes('ferrari challenge') ||
-    c.includes('supercars') ||
-    c.includes('le mans') ||
-    c.includes('wec') ||
-    c.includes('dtm') ||
-    c.includes('porsche cup') ||
-    c.includes('rally') ||
-    c.includes('wrc') ||
-    combined.includes('formula 1') ||
-    combined.includes('motogp') ||
-    combined.includes('grand prix') ||
-    combined.includes('ferrari challenge') ||
-    combined.includes('indycar') ||
-    combined.includes('nascar') ||
-    combined.includes('supercars') ||
-    combined.includes('wec')
-  ) {
-    return 'motorsport';
-  }
-
-  // 4. Basketball (NBA, EuroLeague, EuroCup, WNBA, FIBA, NBL, NCAA Basketball)
+  // 2. Basketball (checked strictly BEFORE generic World Cup soccer rule so FIBA World Cup stays basketball!)
   if (
     s === 'basketball' ||
     s === 'nba' ||
@@ -96,12 +59,13 @@ export function getCanonicalSport(
     c.includes('eurocup') ||
     c.includes('wnba') ||
     c.includes('fiba') ||
-    c === 'nbl'
+    c === 'nbl' ||
+    c.includes('new zealand nbl')
   ) {
     return 'basketball';
   }
 
-  // 5. Hockey (NHL, KHL, DEL, MHL, ICEHL, HockeyAllsvenskan)
+  // 3. Hockey (NHL, KHL, DEL, MHL, ICEHL, AIHL, HockeyAllsvenskan)
   if (
     s === 'hockey' ||
     s === 'ice_hockey' ||
@@ -110,8 +74,10 @@ export function getCanonicalSport(
     c.includes('hockey') ||
     c.includes('stanley cup') ||
     c.includes('icehl') ||
+    c.includes('aihl') ||
     c.includes('allsvenskan') ||
     c.includes('russia mhl') ||
+    c.includes('russian mhl') ||
     c === 'del' ||
     c.includes('germany del') ||
     c.includes('khl')
@@ -119,7 +85,7 @@ export function getCanonicalSport(
     return 'hockey';
   }
 
-  // 6. Cricket (ICC, IPL, BBL, WBBL)
+  // 4. Cricket (ICC, IPL, BBL, WBBL)
   if (
     s === 'cricket' ||
     c.includes('cricket') ||
@@ -131,7 +97,7 @@ export function getCanonicalSport(
     return 'cricket';
   }
 
-  // 7. Tennis (ATP, WTA, Grand Slam)
+  // 5. Tennis (ATP, WTA, Grand Slam)
   if (
     s === 'tennis' ||
     c.includes('tennis') ||
@@ -145,11 +111,12 @@ export function getCanonicalSport(
     return 'tennis';
   }
 
-  // 8. Association Football (Soccer)
+  // 6. Association Football (Soccer)
   if (
     s === 'soccer' ||
     s === 'football' ||
     c.includes('premier league') ||
+    c.includes('premier liga') ||
     c.includes('la liga') ||
     c.includes('laliga') ||
     c.includes('serie a') ||
@@ -158,15 +125,19 @@ export function getCanonicalSport(
     c.includes('champions league') ||
     c.includes('europa league') ||
     c.includes('conference league') ||
-    c.includes('world cup') ||
+    c.includes('fifa world cup') ||
+    (c.includes('world cup') && !c.includes('fiba') && !c.includes('basketball') && !c.includes('cricket') && !c.includes('rugby')) ||
     c.includes('liga mx') ||
     c.includes('liga profesional') ||
     c.includes('j1') ||
     c.includes('j.league') ||
     c.includes('saudi pro') ||
+    c.includes('saudi first') ||
     c.includes('copa') ||
     c.includes('mls') ||
     c.includes('eredivisie') ||
+    c.includes('super lig') ||
+    c.includes('süper lig') ||
     c.includes('fc') ||
     c.includes('fa cup')
   ) {
@@ -178,9 +149,6 @@ export function getCanonicalSport(
 
 /**
  * Returns the authoritative user-facing display name for a sport.
- * Strictly guarantees:
- * - Association Football -> "Football"
- * - American Football -> "American Football"
  */
 export function getSportDisplayName(sport?: string | null, competition?: string | null): string {
   const canonical = getCanonicalSport(sport, competition);
@@ -193,8 +161,6 @@ export function getSportDisplayName(sport?: string | null, competition?: string 
       return 'Basketball';
     case 'hockey':
       return 'Ice Hockey';
-    case 'motorsport':
-      return 'Formula 1';
     case 'tennis':
       return 'Tennis';
     case 'cricket':
@@ -204,33 +170,14 @@ export function getSportDisplayName(sport?: string | null, competition?: string 
   }
 }
 
-/**
- * Returns true if the event is a combat sport (Boxing, MMA, WWE).
- * Combat sports have been completely eliminated from BALLIVE.
- */
 export function isCombatSport(_sport?: string | null, _competition?: string | null, _eventName?: string | null): boolean {
   return false;
 }
 
-/**
- * Returns true if the event is a motorsport / racing event (Formula 1, MotoGP, NASCAR).
- * These sports do NOT use football-style team score or "VS" layouts.
- */
-export function isMotorsport(sport?: string | null, competition?: string | null, eventName?: string | null): boolean {
-  return getCanonicalSport(sport, competition, eventName) === 'motorsport';
+export function isNonScoreSport(_sport?: string | null, _competition?: string | null, _eventName?: string | null): boolean {
+  return false;
 }
 
-/**
- * Returns true if the event is a non-score event (Motorsports).
- */
-export function isNonScoreSport(sport?: string | null, competition?: string | null, eventName?: string | null): boolean {
-  return getCanonicalSport(sport, competition, eventName) === 'motorsport';
-}
-
-/**
- * Returns true if the event is a standard team-versus-team sport with numeric scores.
- * (Football, American Football, Basketball, Hockey).
- */
 export function isTeamScoreSport(sport?: string | null, competition?: string | null, eventName?: string | null): boolean {
   const canonical = getCanonicalSport(sport, competition, eventName);
   return (
@@ -242,42 +189,15 @@ export function isTeamScoreSport(sport?: string | null, competition?: string | n
 }
 
 /**
- * Shortens and formats long motorsport / event titles by removing sponsor boilerplate
- * and excessive qualifying clauses while keeping the primary series and session clear.
+ * Shortens and formats long competition or event titles by removing sponsor boilerplate.
  */
-export function cleanEventTitle(title: string, sport?: string): string {
+export function cleanEventTitle(title: string, _sport?: string): string {
   if (!title) return '';
-  let cleaned = title.trim();
-
-  // If motorsport or long title:
-  if (sport === 'motorsport' || isMotorsport(sport, title)) {
-    // Specific popular series simplifications
-    if (/ferrari\s+challenge/i.test(cleaned)) {
-      if (/europe/i.test(cleaned)) return 'Ferrari Challenge: Europe';
-      if (/north\s+america/i.test(cleaned)) return 'Ferrari Challenge: NA';
-      if (/uk/i.test(cleaned)) return 'Ferrari Challenge: UK';
-      return 'Ferrari Challenge';
-    }
-    if (/formula\s*1|f1\b/i.test(cleaned)) {
-      const gpMatch = cleaned.match(/(?:formula\s*1\s+)?([a-zA-Z\s]+(?:\s+grand\s+prix|\s+gp))/i);
-      if (gpMatch && gpMatch[1]) {
-        return gpMatch[1].trim();
-      }
-    }
-    if (/motogp/i.test(cleaned)) {
-      const motoMatch = cleaned.match(/(?:motogp\s+)?([a-zA-Z\s]+(?:\s+grand\s+prix|\s+gp))/i);
-      if (motoMatch && motoMatch[1]) {
-        return `MotoGP: ${motoMatch[1].trim()}`;
-      }
-    }
-    // Remove commercial sponsors and verbose suffixes like "Pirelli Trophy at the World Finals"
-    cleaned = cleaned
-      .replace(/\s+(pirelli\s+trophy|coppa\s+shell|world\s+finals|trofeo\s+pirelli)\b.*/gi, '')
-      .replace(/\s+at\s+the\s+.*$/gi, '')
-      .replace(/\s+presented\s+by\s+.*$/gi, '')
-      .replace(/\s+sponsored\s+by\s+.*$/gi, '')
-      .trim();
-  }
+  const cleaned = title
+    .trim()
+    .replace(/\s+presented\s+by\s+.*$/gi, '')
+    .replace(/\s+sponsored\s+by\s+.*$/gi, '')
+    .trim();
 
   return cleaned || title;
 }

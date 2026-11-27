@@ -54,6 +54,7 @@ export const PopularLeagues: React.FC<PopularLeaguesProps> = ({
               <CompetitionLogo
                 uri={league.logoUrl}
                 competitionId={league.id}
+                sport={league.sport}
                 size={40}
                 containerStyle={styles.logoMargin}
               />

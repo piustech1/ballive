@@ -8,6 +8,8 @@ import { resolveSportBackground } from '../utils/sportBackgroundResolver';
 import { competitionResolverService } from './competitionResolverService';
 import { streamingApiService } from './streamingApiService';
 import { popularTeamsService } from './popularTeamsService';
+import { teamEmblemService } from './teamEmblemService';
+import { isValidFixture } from '../utils/fixtureValidator';
 
 export interface TeamFixtureItem {
   id: string;
@@ -76,17 +78,13 @@ function getSportDisplay(sport?: string): string {
   if (s === 'basketball') return 'Basketball';
   if (s === 'hockey') return 'Ice Hockey';
   if (s === 'american_football' || s === 'football') return 'American Football';
-  if (s === 'tennis') return 'Tennis';
-  if (s === 'cricket') return 'Cricket';
-  if (s === 'motorsport' || s === 'racing') return 'Motorsport';
   return 'Football';
 }
 
 function normalizeEspnSportToAppSport(espnSport?: string): any {
   const s = (espnSport || '').toLowerCase();
   if (s === 'football') return 'american_football';
-  if (s === 'racing') return 'motorsport';
-  if (s === 'basketball' || s === 'hockey' || s === 'tennis' || s === 'cricket') return s;
+  if (s === 'basketball' || s === 'hockey') return s;
   return 'soccer';
 }
 
@@ -235,7 +233,19 @@ class TeamDetailsService {
       team.shortName && team.shortName.trim().length >= 2 && team.shortName.trim().length <= 6
         ? team.shortName.trim().toUpperCase()
         : undefined;
-    let resolvedCrest = team.crestUrl && team.crestUrl !== DEFAULT_CREST ? team.crestUrl : getTeamCrest(team.name);
+    const cleanLogo = (raw?: string | null) => {
+      if (!raw || typeof raw !== 'string') return null;
+      const lower = raw.toLowerCase();
+      if (lower.includes('default-team-logo') || lower.includes('/teamlogos/cricket/') || lower.includes('/teamlogos/tennis/')) {
+        return null;
+      }
+      return raw;
+    };
+
+    let resolvedCrest =
+      cleanLogo(team.crestUrl) && team.crestUrl !== DEFAULT_CREST
+        ? team.crestUrl!
+        : getTeamCrest(team.name);
     let compName = team.competitionName || identity?.competitionName;
     let compId = team.competitionId;
 
@@ -243,6 +253,7 @@ class TeamDetailsService {
     const sportLabel = getSportDisplay(appSport);
 
     const pushFixture = (item: TeamFixtureItem) => {
+      if (!isValidFixture(item.matchup)) return;
       const dateSlice = (item.matchup.rawDate || item.dateLabel || '').slice(0, 10);
       const dedupKey = `${cleanTeamStr(item.matchup.homeTeam.name)}_${cleanTeamStr(item.matchup.awayTeam.name)}_${dateSlice}`;
       if (seenMatchIds.has(item.id) || seenMatchIds.has(dedupKey)) return;
@@ -285,8 +296,9 @@ class TeamDetailsService {
         if (tInfo.record?.items?.[0]?.summary) {
           recordSummary = tInfo.record.items[0].summary;
         }
-        if (tInfo.logos?.[0]?.href && (resolvedCrest === DEFAULT_CREST || !team.crestUrl)) {
-          resolvedCrest = tInfo.logos[0].href;
+        const apiLogo = cleanLogo(tInfo.logos?.[0]?.href);
+        if (apiLogo && (resolvedCrest === DEFAULT_CREST || !team.crestUrl)) {
+          resolvedCrest = apiLogo;
         }
       }
 
@@ -316,9 +328,9 @@ class TeamDetailsService {
         const opponentName = opponentComp?.team?.displayName || opponentComp?.team?.shortDisplayName || 'Opponent';
 
         const homeLogo =
-          home?.team?.logos?.[0]?.href || home?.team?.logo || getTeamCrest(homeName);
+          cleanLogo(home?.team?.logos?.[0]?.href || home?.team?.logo) || getTeamCrest(homeName);
         const awayLogo =
-          away?.team?.logos?.[0]?.href || away?.team?.logo || getTeamCrest(awayName);
+          cleanLogo(away?.team?.logos?.[0]?.href || away?.team?.logo) || getTeamCrest(awayName);
         const opponentCrest = isHomeSide ? awayLogo : homeLogo;
 
         const st = comp?.status?.type || ev.status?.type || {};
@@ -357,7 +369,7 @@ class TeamDetailsService {
         const finalCompName = resolvedComp.isIdentified ? resolvedComp.name : eventCompRaw;
         const finalCompLogo = resolvedComp.isIdentified
           ? resolvedComp.logoUrl
-          : resolveCompetitionLogo(ev.league?.slug || eventCompRaw);
+          : resolveCompetitionLogo(ev.league?.slug || eventCompRaw, appSport);
 
         if (!compName) {
           compName = finalCompName;
@@ -439,12 +451,21 @@ class TeamDetailsService {
       });
     }
 
+    // If team crest is still default (e.g. smaller/regional league club), resolve dynamically
+    if (resolvedCrest === DEFAULT_CREST && team.name) {
+      const dynamicBadge = await teamEmblemService.lookupDynamicCrest(team.name, appSport, team.id);
+      if (dynamicBadge) {
+        resolvedCrest = dynamicBadge;
+      }
+    }
+
     // 2. Merge matching Live / Upcoming fixtures from active catalog (covers non-ESPN leagues too!)
     try {
       const livePool = streamingApiService.getCachedLiveMatches();
       const catalog = livePool.length > 0 ? livePool : await streamingApiService.getLiveMatches().catch(() => []);
 
       catalog.forEach(m => {
+        if (!isValidFixture(m)) return;
         const homeMatch = isSameTeam(m.homeTeam, team.name);
         const awayMatch = isSameTeam(m.awayTeam, team.name);
         if (!homeMatch && !awayMatch) return;
@@ -527,7 +548,7 @@ class TeamDetailsService {
     const finalCompLogo = compResolution.isIdentified
       ? compResolution.logoUrl
       : finalCompName
-      ? resolveCompetitionLogo(finalCompName)
+      ? resolveCompetitionLogo(finalCompName, appSport)
       : undefined;
 
     if (!resolvedCountry && compResolution.isIdentified && compResolution.country !== 'Global' && compResolution.country !== 'International') {

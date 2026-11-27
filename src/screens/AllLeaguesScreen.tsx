@@ -74,6 +74,7 @@ export const AllLeaguesScreen: React.FC = () => {
             <CompetitionLogo
               uri={league.logoUrl}
               competitionId={league.id}
+              sport={league.sport}
               size={44}
               containerStyle={{ marginRight: 14 }}
             />

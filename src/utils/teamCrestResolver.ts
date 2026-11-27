@@ -686,13 +686,84 @@ const CREST_MAP: Record<string, string> = {
   'dr-congo': `${CDN_COUNTRIES}/cod.png`,
   'qatar': `${CDN_COUNTRIES}/qat.png`,
   'saudi-arabia': `${CDN_COUNTRIES}/ksa.png`,
+  'indonesia': `${CDN_COUNTRIES}/idn.png`,
+  'thailand': `${CDN_COUNTRIES}/tha.png`,
+  'uganda': `${CDN_COUNTRIES}/uga.png`,
+
+  // ── UGANDAN PREMIER LEAGUE & AFRICAN / GLOBAL CLUBS ──
+  'vipers': 'https://r2.thesportsdb.com/images/media/team/badge/4yw8a61674458369.png',
+  'vipers-sc': 'https://r2.thesportsdb.com/images/media/team/badge/4yw8a61674458369.png',
+  'kcca': 'https://r2.thesportsdb.com/images/media/team/badge/5gr0b21787593963.png',
+  'kcca-fc': 'https://r2.thesportsdb.com/images/media/team/badge/5gr0b21787593963.png',
+  'kampala-capital-city-authority': 'https://r2.thesportsdb.com/images/media/team/badge/5gr0b21787593963.png',
+  'sc-villa': 'https://r2.thesportsdb.com/images/media/team/badge/75vbkt1674458196.png',
+  'express': 'https://r2.thesportsdb.com/images/media/team/badge/y9h9v01674457975.png',
+  'express-fc': 'https://r2.thesportsdb.com/images/media/team/badge/y9h9v01674457975.png',
+  'ura': 'https://r2.thesportsdb.com/images/media/team/badge/3sshac1674458314.png',
+  'ura-fc': 'https://r2.thesportsdb.com/images/media/team/badge/3sshac1674458314.png',
+  'ura-sc': 'https://r2.thesportsdb.com/images/media/team/badge/3sshac1674458314.png',
+  'nec-fc': 'https://r2.thesportsdb.com/images/media/team/badge/kn45lw1732239756.png',
+  'bul': 'https://r2.thesportsdb.com/images/media/team/badge/j647791674457883.png',
+  'bul-fc': 'https://r2.thesportsdb.com/images/media/team/badge/j647791674457883.png',
+  'bul-jinja': 'https://r2.thesportsdb.com/images/media/team/badge/j647791674457883.png',
+  'kitara': 'https://r2.thesportsdb.com/images/media/team/badge/iky32j1732239409.png',
+  'kitara-fc': 'https://r2.thesportsdb.com/images/media/team/badge/iky32j1732239409.png',
+  'maroons': 'https://r2.thesportsdb.com/images/media/team/badge/cxv9ab1674458078.png',
+  'maroons-fc': 'https://r2.thesportsdb.com/images/media/team/badge/cxv9ab1674458078.png',
+  'lugazi': 'https://r2.thesportsdb.com/images/media/team/badge/t1cp2f1732240509.png',
+  'lugazi-fc': 'https://r2.thesportsdb.com/images/media/team/badge/t1cp2f1732240509.png',
+  'blacks-power': 'https://r2.thesportsdb.com/images/media/team/badge/z9yans1674457735.png',
+  'entebbe-uppc': 'https://r2.thesportsdb.com/images/media/team/badge/sx92du1787593904.png',
+  'kataka': 'https://r2.thesportsdb.com/images/media/team/badge/gzy3fw1787594069.png',
+  'kigezi-homeboyz': 'https://r2.thesportsdb.com/images/media/team/badge/r7xa0v1787594150.png',
+  'orlando-pirates': 'https://a.espncdn.com/i/teamlogos/soccer/500/7085.png',
+  'pachuca': 'https://a.espncdn.com/i/teamlogos/soccer/500/234.png',
+  'cf-pachuca': 'https://a.espncdn.com/i/teamlogos/soccer/500/234.png',
+  'heart-of-midlothian': 'https://a.espncdn.com/i/teamlogos/soccer/500/262.png',
+  'hearts-of-midlothian': 'https://a.espncdn.com/i/teamlogos/soccer/500/262.png',
+  'hearts': 'https://a.espncdn.com/i/teamlogos/soccer/500/262.png',
 };
+
+function isCrestCompatibleWithSport(url: string, key: string, normalized: string, sportHint?: string | null): boolean {
+  const sp = (sportHint || '').toLowerCase().trim();
+  const isNbaUrl = url.includes('/teamlogos/nba/');
+  const isNhlUrl = url.includes('/teamlogos/nhl/');
+  const isNflUrl = url.includes('/teamlogos/nfl/');
+  const isNcaaUrl = url.includes('/teamlogos/ncaa/');
+  const isUsLeagueUrl = isNbaUrl || isNhlUrl || isNflUrl || isNcaaUrl;
+
+  const isSoccerHint = sp === 'soccer' || sp === 'football' || sp === 'association football';
+  if (isSoccerHint && isUsLeagueUrl) {
+    return false;
+  }
+
+  // Strictly block single-word ambiguous US/college short keys on substring matches (e.g., 'soltilo-bright-stars' -> 'stars')
+  const isSingleTokenKey = !key.includes('-');
+  if (isUsLeagueUrl && isSingleTokenKey && normalized !== key) {
+    if (isNbaUrl && sp !== 'basketball') return false;
+    if (isNhlUrl && sp !== 'hockey' && sp !== 'ice_hockey') return false;
+    if (isNflUrl && sp !== 'american_football' && sp !== 'nfl') return false;
+    if (isNcaaUrl) return false;
+  }
+
+  // Exact single-token collision guard when sportHint explicitly contradicts the league
+  if (isUsLeagueUrl && normalized === key && sp) {
+    if (isNbaUrl && sp !== 'basketball') return false;
+    if (isNhlUrl && sp !== 'hockey' && sp !== 'ice_hockey') return false;
+    if (isNflUrl && sp !== 'american_football' && sp !== 'nfl') return false;
+    if (isNcaaUrl && sp !== 'basketball' && sp !== 'american_football' && !sp.includes('ncaa') && !sp.includes('college')) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 /**
  * Resolves a team identifier or natural club name to an authentic CDN badge URL.
  * Falls back to an authentic neutral sports shield emblem when unmatched.
  */
-export function getTeamCrest(teamIdentifierOrName?: string | null): string {
+export function getTeamCrest(teamIdentifierOrName?: string | null, sportHint?: string | null): string {
   if (!teamIdentifierOrName || typeof teamIdentifierOrName !== 'string') {
     return DEFAULT_CREST;
   }
@@ -702,25 +773,29 @@ export function getTeamCrest(teamIdentifierOrName?: string | null): string {
     return DEFAULT_CREST;
   }
 
-  // Direct exact match
-  if (CREST_MAP[raw]) {
-    return CREST_MAP[raw];
-  }
-
-  // Normalized match: lowercase, replace spaces & non-alphanumeric with hyphen
   const normalized = raw
     .toLowerCase()
     .replace(/['.]+/g, '')
     .trim()
     .replace(/[^a-z0-9]+/g, '-');
 
-  if (CREST_MAP[normalized]) {
+  // Direct exact match
+  if (CREST_MAP[raw] && isCrestCompatibleWithSport(CREST_MAP[raw], raw, normalized, sportHint)) {
+    return CREST_MAP[raw];
+  }
+
+  if (CREST_MAP[normalized] && isCrestCompatibleWithSport(CREST_MAP[normalized], normalized, normalized, sportHint)) {
     return CREST_MAP[normalized];
   }
 
   // Search by normalized token boundaries (longest key first)
   const sortedKeys = Object.keys(CREST_MAP).sort((a, b) => b.length - a.length);
   for (const key of sortedKeys) {
+    const candidate = CREST_MAP[key];
+    if (!isCrestCompatibleWithSport(candidate, key, normalized, sportHint)) {
+      continue;
+    }
+
     if (key.length >= 4) {
       // Must match exact token or delimited word to prevent spurious substring match
       const isTokenMatch =
@@ -730,7 +805,7 @@ export function getTeamCrest(teamIdentifierOrName?: string | null): string {
         normalized.includes(`-${key}-`);
 
       if (isTokenMatch) {
-        return CREST_MAP[key];
+        return candidate;
       }
     } else if (key.length >= 2) {
       // Short tokens (e.g. 'om', 'pau', 'psg', 'usa') must match exact normalized or word boundary, not interior
@@ -740,7 +815,7 @@ export function getTeamCrest(teamIdentifierOrName?: string | null): string {
         normalized.endsWith(`-${key}`);
 
       if (isExactOrBoundary) {
-        return CREST_MAP[key];
+        return candidate;
       }
     }
   }

@@ -71,12 +71,6 @@ export const SPORT_ARTWORK_POOLS: Record<string, string[]> = {
     'https://images.unsplash.com/photo-1566577739112-5180d4bf9390?auto=format&fit=crop&w=800&q=80',
     'https://images.unsplash.com/photo-1587280501635-68a0e82cd5ff?auto=format&fit=crop&w=800&q=80',
   ],
-  motorsport: [
-    'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
-  ],
-  f1: [
-    'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&w=800&q=80',
-  ],
   tennis: [
     'https://images.unsplash.com/photo-1595435934249-5df7ed86e1c0?auto=format&fit=crop&w=800&q=80',
   ],
@@ -131,29 +125,52 @@ export function normalizeSportKey(
   const c = (competition || '').toLowerCase().trim();
   const teams = `${homeTeam || ''} ${awayTeam || ''}`.toLowerCase().trim();
 
-  // 1. Explicit Soccer / Association Football Check (Highest Priority)
+  // 1. Explicit Basketball Check (Must precede World Cup soccer check so FIBA World Cup stays basketball!)
+  if (
+    s === 'basketball' || s === 'nba' ||
+    c.includes('nba') || c.includes('basketball') || c.includes('euroleague') || c.includes('eurocup') || c.includes('wnba') || c.includes('fiba') ||
+    BASKETBALL_TEAMS.some(t => teams.includes(t))
+  ) {
+    return 'basketball';
+  }
+
+  // 2. Hockey
+  if (
+    s === 'hockey' || s === 'nhl' ||
+    c.includes('nhl') || c.includes('hockey') || c.includes('khl') || c.includes('mhl') || c.includes('aihl') || c.includes('icehl') || c.includes('allsvenskan') || c === 'del' || c.includes('germany del') ||
+    HOCKEY_TEAMS.some(t => teams.includes(t))
+  ) {
+    return 'hockey';
+  }
+
+  // 3. American Football / NFL
+  if (
+    s === 'american_football' || s === 'nfl' || s === 'football_usa' ||
+    c.includes('nfl') || c.includes('american football') || c.includes('super bowl') ||
+    NFL_TEAMS.some(t => teams.includes(t))
+  ) {
+    return 'american_football';
+  }
+
+  // 4. Explicit Soccer / Association Football Check
   const isExplicitSoccer =
     s === 'soccer' ||
     s === 'football' ||
     s === 'association football' ||
     c.includes('soccer') ||
     c.includes('premier league') ||
+    c.includes('premier liga') ||
     c.includes('efl') ||
-    c.includes('championship') ||
-    c.includes('league one') ||
-    c.includes('league two') ||
     c.includes('la liga') ||
     c.includes('laliga') ||
     c.includes('serie a') ||
     c.includes('bundesliga') ||
     c.includes('ligue 1') ||
-    c.includes('ligue 2') ||
-    c.includes('coupe de france') ||
-    c.includes('copa del rey') ||
-    c.includes('dfb-pokal') ||
-    c.includes('coppa italia') ||
-    c.includes('fa cup') ||
-    c.includes('carabao') ||
+    c.includes('super lig') ||
+    c.includes('süper lig') ||
+    c.includes('eredivisie') ||
+    c.includes('brasileir') ||
+    c.includes('copa paraguay') ||
     c.includes('uefa') ||
     c.includes('champions league') ||
     c.includes('afc champions') ||
@@ -165,8 +182,9 @@ export function normalizeSportKey(
     c.includes('j1 league') ||
     c.includes('j.league') ||
     c.includes('saudi pro') ||
+    c.includes('saudi first') ||
     c.includes('fifa') ||
-    c.includes('world cup') ||
+    (c.includes('world cup') && !c.includes('fiba') && !c.includes('basketball') && !c.includes('cricket')) ||
     c.includes('afcon') ||
     c.includes('conmebol') ||
     c.includes('concacaf') ||
@@ -175,41 +193,6 @@ export function normalizeSportKey(
 
   if (isExplicitSoccer && !s.includes('american') && !c.includes('nfl') && !c.includes('super bowl')) {
     return 'soccer';
-  }
-
-  // Basketball
-  if (
-    s === 'basketball' || s === 'nba' ||
-    c.includes('nba') || c.includes('basketball') || c.includes('euroleague') || c.includes('eurocup') || c.includes('wnba') ||
-    BASKETBALL_TEAMS.some(t => teams.includes(t))
-  ) {
-    return 'basketball';
-  }
-
-  // Hockey
-  if (
-    s === 'hockey' || s === 'nhl' ||
-    c.includes('nhl') || c.includes('hockey') || c.includes('khl') || c.includes('mhl') || c.includes('icehl') || c.includes('allsvenskan') || c === 'del' || c.includes('germany del') ||
-    HOCKEY_TEAMS.some(t => teams.includes(t))
-  ) {
-    return 'hockey';
-  }
-
-  // American Football / NFL
-  if (
-    s === 'american_football' || s === 'nfl' || s === 'football_usa' ||
-    c.includes('nfl') || c.includes('american football') || c.includes('super bowl') ||
-    NFL_TEAMS.some(t => teams.includes(t))
-  ) {
-    return 'american_football';
-  }
-
-  // Motorsport / F1
-  if (
-    s === 'motorsport' || s === 'f1' || s === 'racing' ||
-    c.includes('f1') || c.includes('formula') || c.includes('grand prix') || c.includes('motorsport') || c.includes('nascar') || c.includes('motogp')
-  ) {
-    return 'motorsport';
   }
 
   // Tennis
@@ -257,6 +240,7 @@ export function isGenuineEventArtwork(rawUrl?: string | null): boolean {
   // 2. Strictly BAN synthetic fixture generators and placeholders
   if (
     s.includes('dag.s-u.in/img/match') ||
+    s.includes('sports.s-u.in/img/match') ||
     s.includes('generator') ||
     s.includes('placeholder') ||
     s.includes('default_match')
@@ -309,9 +293,8 @@ export function isGenuineEventArtwork(rawUrl?: string | null): boolean {
     return true;
   }
 
-  // 7. ACCEPT authentic DAG stream promos that wrap real broadcaster graphics
-  if (s.includes('dag.s-u.in')) {
-    // If it's a DAG proxy pointing to verified promo art
+  // 7. ACCEPT authentic DAG / Sports stream promos that wrap real broadcaster graphics
+  if (s.includes('dag.s-u.in') || s.includes('sports.s-u.in')) {
     if (s.includes('url=')) {
       const target = decodeURIComponent(s.split('url=')[1]?.split('&')[0] || '').toLowerCase();
       if (
@@ -331,7 +314,6 @@ export function isGenuineEventArtwork(rawUrl?: string | null): boolean {
         return false;
       }
     }
-    // Verified event promos from DAG catalogs (e.g. Nations League promo cards, Boxing fight cards)
     if (
       s.includes('/stream_icon') ||
       s.includes('/event_poster') ||
@@ -363,7 +345,7 @@ export const isVerifiedEventImage = isGenuineEventArtwork;
 
 /**
  * Cleans server-provided image URLs.
- * If URL is from DAG proxy (`dag.s-u.in/img?url=...`):
+ * If URL is from DAG proxy (`dag.s-u.in/img?url=...` or `sports.s-u.in/img?url=...`):
  * Strips all baked-in green text (`&text=...`), badges (`&b1=...`), and colors (`&color=...`)
  * returning the clean underlying image.
  */
@@ -374,17 +356,14 @@ export function cleanServerArtworkUrl(rawUrl?: string | null): string | null {
     return null;
   }
 
-  // Check for banned image patterns
   for (const pattern of BANNED_IMAGE_PATTERNS) {
     if (trimmed.includes(pattern)) return null;
   }
 
-  // If from DAG image proxy, extract the clean target URL
-  if (trimmed.includes('dag.s-u.in/img')) {
+  if (trimmed.includes('dag.s-u.in/img') || trimmed.includes('sports.s-u.in/img')) {
     const urlMatch = trimmed.match(/[?&]url=([^&]+)/);
     if (urlMatch && urlMatch[1]) {
       const decodedTarget = decodeURIComponent(urlMatch[1]);
-      // Check if target has banned patterns
       for (const pattern of BANNED_IMAGE_PATTERNS) {
         if (decodedTarget.includes(pattern)) return null;
       }
@@ -400,7 +379,6 @@ export function cleanServerArtworkUrl(rawUrl?: string | null): string | null {
     }
   }
 
-  // Clean any standard URL by stripping text/color query params if present
   try {
     const u = new URL(trimmed);
     u.searchParams.delete('text');
@@ -417,17 +395,43 @@ export function cleanServerArtworkUrl(rawUrl?: string | null): string | null {
 export function normalizeCompetitionKey(competition?: string): string | null {
   if (!competition) return null;
   const c = competition.toLowerCase().trim();
+  if (
+    c.includes('fiba') ||
+    c.includes('basketball world cup') ||
+    c.includes('world cup basketball')
+  ) {
+    return 'fiba_world_cup';
+  }
+  if (c.includes('new zealand basketball') || c.includes('new zealand nbl')) return 'nz_basketball';
   if (c.includes('afc champion') || c.includes('acl elite')) return 'afc_champions';
-  if (!c.includes('afc') && !c.includes('arab') && !c.includes('asian') && !c.includes('handball') && !c.includes('volley') && (c.includes('champions league') || c === 'ucl')) return 'ucl';
+  if (!c.includes('afc') && !c.includes('arab') && !c.includes('asian') && !c.includes('handball') && !c.includes('volley') && !c.includes('champions super') && (c.includes('champions league') || c === 'ucl')) return 'ucl';
   if (c.includes('conference')) return 'uecl';
   if (c.includes('europa') || c === 'uel') return 'uel';
   if (c.includes('uefa nation') || (c.includes('nations league') && (c.includes('uefa') || c.includes('group a') || c.includes('group b') || c.includes('group c') || c.includes('group d')))) return 'uefa_nations';
   if (c.includes('concacaf')) return 'concacaf';
   if (c.includes('afcon') || c.includes('africa cup') || c.includes('caf')) return 'afcon';
-  if (c.includes('ukrain') || c === 'upl') return 'ukrainian_premier';
+  if (c.includes('saudi first') || c.includes('yelo')) return 'saudi_first_division';
+  if (c.includes('saudi pro') || c.includes('roshn')) return 'saudi_pro';
+  if (c.includes('ugand') || c === 'upl' || c === 'uga.1') return 'ugandan_premier';
+  if (c.includes('ukrain')) return 'ukrainian_premier';
   if (c.includes('egyptian')) return 'egyptian_premier';
   if (c.includes('kenyan') || c.includes('fkf')) return 'kenyan_premier';
-  if (c.includes('premier') || c === 'epl' || c === 'pl') return 'pl';
+  if (c.includes('premier liga') || c.includes('russian premier')) return 'premier_liga';
+  if (c.includes('süper lig') || c.includes('super lig') || c.includes('turkish premier')) return 'super_lig';
+  if (c.includes('eredivisie') || c.includes('netherlands')) return 'eredivisie';
+  if (c.includes('brasileir') || c.includes('bra.1')) return 'brasileirao';
+  if (c.includes('copa paraguay')) return 'copa_paraguay';
+  if (c.includes('champions super league')) return 'champions_super_league';
+  if (c.includes('chinese super league') || c === 'csl' || c === 'chn.1') return 'csl';
+  if (
+    c === 'pl' ||
+    c === 'epl' ||
+    c === 'eng.1' ||
+    c === 'premier league' ||
+    c === 'english premier league'
+  ) {
+    return 'pl';
+  }
   if (c.includes('liga f') || c.includes('primera división femenina') || c.includes('primera femenina')) return 'liga_f';
   if (c.includes("women's super league") || c.includes('womens super league') || c.includes('wsl') || c.includes('fa wsl')) return 'wsl';
   if (c.includes('nwsl') || c.includes("national women's soccer league")) return 'nwsl';
@@ -440,22 +444,22 @@ export function normalizeCompetitionKey(competition?: string): string | null {
   if (c.includes('dfb-pokal') || c.includes('dfb pokal') || c.includes('german cup')) return 'dfb_pokal';
   if (c.includes('coppa italia') || c.includes('italian cup')) return 'coppa_italia';
   if (c.includes('friendly') || c.includes('friendlies') || c.includes('amichevole') || c.includes('amistoso')) return 'intl_friendly';
-  if (c.includes('laliga') || c.includes('la liga') || (c.includes('primera') && !c.includes('argentin'))) return 'laliga';
-  if (c.includes('serie a')) return 'seriea';
+  if (c.includes('laliga') || c.includes('la liga') || (c.includes('primera') && !c.includes('argentin') && !c.includes('paraguay'))) return 'laliga';
+  if (c.includes('serie a') && !c.includes('brasileir')) return 'seriea';
   if (c.includes('bundesliga') || c.includes('bundes')) return 'bundesliga';
   if (c.includes('ligue 1') || c.includes('ligue1') || c.includes('première ligue')) return 'ligue1';
   if (c.includes('women')) return 'nwsl';
   if (c.includes('mls') || c.includes('major league soccer')) return 'mls';
-  if (c.includes('world cup') || c.includes('qualifying') || c.includes('fifa')) return 'world_cup';
+  if (c.includes('fifa world cup') || c.includes('world cup qualifying') || c === 'world cup') return 'world_cup';
   if (c.includes('euroleague')) return 'euroleague';
   if (c.includes('nba') || c.includes('basketball')) return 'nba';
-  if (c.includes('russia mhl') || c.includes('mhl')) return 'russia_mhl';
+  if (c.includes('australian ice hockey') || c === 'aihl') return 'aihl';
+  if (c.includes('russia mhl') || c.includes('russian mhl') || c === 'mhl') return 'russia_mhl';
   if (c === 'del' || c.includes('germany del')) return 'del';
   if (c.includes('ice hockey league') || c.includes('icehl')) return 'icehl';
   if (c.includes('allsvenskan')) return 'hockey_allsvenskan';
   if (c.includes('nhl') || c.includes('hockey')) return 'nhl';
   if (c.includes('nfl') || c.includes('american football')) return 'nfl';
-  if (c.includes('f1') || c.includes('formula')) return 'f1';
   return null;
 }
 

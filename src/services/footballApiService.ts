@@ -26,7 +26,7 @@ export interface MatchIntelResponse {
   source?: string;
   home: string;
   away: string;
-  sport?: 'soccer' | 'basketball' | 'hockey' | 'mma' | 'american_football' | 'tennis' | 'motorsport' | 'other';
+  sport?: 'soccer' | 'basketball' | 'hockey' | 'mma' | 'american_football' | 'tennis' | 'other';
   liveScore?: { home: number; away: number };
   playTime?: string;
   statusDetail?: string;

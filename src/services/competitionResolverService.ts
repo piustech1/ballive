@@ -24,7 +24,7 @@ export interface CanonicalCompetition {
   region: string;
   logoUrl: string;
   accentColor: string;
-  sport: 'soccer' | 'basketball' | 'hockey' | 'american_football' | 'racing' | 'tennis' | 'cricket' | 'other';
+  sport: 'soccer' | 'basketball' | 'hockey' | 'american_football' | 'tennis' | 'cricket' | 'other';
   providerAliases: string[];
   clubSignatures: string[];
 }
@@ -76,6 +76,30 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
       'fifa u-17',
       'fifa u17',
       'fifa under-17 world cup',
+    ],
+    clubSignatures: [],
+  },
+
+  // ── 1B. FIBA BASKETBALL WORLD CUP & QUALIFIERS (Strictly checked before FIFA World Cup) ──
+  fiba_world_cup: {
+    id: 'fiba_world_cup',
+    name: 'FIBA Basketball World Cup',
+    shortName: 'FIBA World Cup',
+    country: 'International',
+    region: 'Global',
+    logoUrl: LEAGUE_EMBLEMS['fiba'],
+    accentColor: '#EA580C',
+    sport: 'basketball',
+    providerAliases: [
+      'fiba',
+      'fiba world cup',
+      'fiba basketball world cup',
+      'basketball world cup',
+      'fiba basketball',
+      'fiba wc',
+      'fiba americup',
+      'fiba eurobasket',
+      'world cup basketball',
     ],
     clubSignatures: [],
   },
@@ -162,7 +186,7 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
     ],
   },
 
-  // ── 4. EGYPTIAN PREMIER LEAGUE (Checked before English Premier League) ──
+  // ── 4. EGYPTIAN PREMIER LEAGUE ──
   egyptian_premier: {
     id: 'egyptian_premier',
     name: 'Egyptian Premier League',
@@ -204,7 +228,7 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
     ],
   },
 
-  // ── 5. KENYAN PREMIER LEAGUE (Checked before English Premier League) ──
+  // ── 5. KENYAN PREMIER LEAGUE ──
   kenyan_premier: {
     id: 'kenyan_premier',
     name: 'Kenyan Premier League',
@@ -243,7 +267,103 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
     ],
   },
 
-  // ── 6. ARGENTINA LIGA PROFESIONAL (Checked before LaLiga Primera Division) ──
+  // ── 5B. UGANDAN PREMIER LEAGUE ──
+  ugandan_premier: {
+    id: 'ugandan_premier',
+    name: 'Ugandan Premier League',
+    shortName: 'Ugandan Premier',
+    country: 'Uganda',
+    region: 'East Africa',
+    logoUrl: '',
+    accentColor: '#FACC15',
+    sport: 'soccer',
+    providerAliases: [
+      'uga.1',
+      'ugandan premier league',
+      'uganda premier league',
+      'ugandan premier',
+      'star times uganda premier league',
+      'startimes uganda premier league',
+    ],
+    clubSignatures: [
+      'kcca fc',
+      'kcca',
+      'vipers sc',
+      'sc villa',
+      'express fc',
+      'bul fc',
+      'ura fc',
+      'kitara fc',
+      'maroons fc',
+      'nec fc',
+      'mbarara city',
+      'updf fc',
+      'lugazi fc',
+      'entebbe uppc',
+    ],
+  },
+
+  // ── 5C. SOUTH AFRICAN PREMIER SOCCER LEAGUE ──
+  south_african_psl: {
+    id: 'south_african_psl',
+    name: 'South African Premiership',
+    shortName: 'PSL South Africa',
+    country: 'South Africa',
+    region: 'Southern Africa',
+    logoUrl: LEAGUE_EMBLEMS['south-african-psl'],
+    accentColor: '#16A34A',
+    sport: 'soccer',
+    providerAliases: [
+      'rsa.1',
+      'south africa dstv premiership',
+      'dstv premiership',
+      'betway premiership',
+      'south african premier division',
+      'south african premiership',
+      'psl south africa',
+    ],
+    clubSignatures: [
+      'orlando pirates',
+      'kaizer chiefs',
+      'mamelodi sundowns',
+      'stellenbosch',
+      'ts galaxy',
+      'supersport united',
+      'sekhukhune united',
+      'amazulu',
+    ],
+  },
+
+  // ── 5D. RUSSIAN PREMIER LIGA ──
+  premier_liga: {
+    id: 'premier_liga',
+    name: 'Premier Liga',
+    shortName: 'Premier Liga',
+    country: 'Russia',
+    region: 'Europe',
+    logoUrl: LEAGUE_EMBLEMS['premier-liga'],
+    accentColor: '#2563EB',
+    sport: 'soccer',
+    providerAliases: [
+      'rus.1',
+      'russian premier league',
+      'russian premier liga',
+      'russia premier league',
+      'premier liga',
+    ],
+    clubSignatures: [
+      'zenit',
+      'cska moscow',
+      'spartak moscow',
+      'lokomotiv moscow',
+      'dynamo moscow',
+      'krasnodar',
+      'rubin kazan',
+      'rostov',
+    ],
+  },
+
+  // ── 6. ARGENTINA LIGA PROFESIONAL ──
   argentina_primera: {
     id: 'argentina_primera',
     name: 'Argentina Liga Profesional',
@@ -284,6 +404,33 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
       'belgrano',
       'godoy cruz',
       'platense',
+    ],
+  },
+
+  // ── 6B. COPA PARAGUAY & PARAGUAY PRIMERA ──
+  copa_paraguay: {
+    id: 'copa_paraguay',
+    name: 'Copa Paraguay',
+    shortName: 'Copa Paraguay',
+    country: 'Paraguay',
+    region: 'South America',
+    logoUrl: LEAGUE_EMBLEMS['copa-paraguay'],
+    accentColor: '#DC2626',
+    sport: 'soccer',
+    providerAliases: [
+      'par.1',
+      'copa paraguay',
+      'paraguayan primera division',
+      'primera division de paraguay',
+      'paraguay copa',
+    ],
+    clubSignatures: [
+      'cerro porteno',
+      'olimpia asuncion',
+      'club libertad',
+      'guarani paraguay',
+      'nacional asuncion',
+      'sportivo luqueno',
     ],
   },
 
@@ -398,8 +545,6 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
       'saudi first division league',
     ],
     clubSignatures: [
-      'al hazem',
-      'al-hazem',
       'al batin',
       'al-batin',
       'ohod',
@@ -412,10 +557,8 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
       'al ain saudi',
       'al jandal',
       'al safa',
-      'al najma',
       'al zulfi',
       'jeddah club',
-      'neom sc',
       'al arabi saudi',
     ],
   },
@@ -505,10 +648,24 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
       'al orobah',
       'al kholood',
       'al qadsiah',
+      'al hazem',
+      'neom sc',
     ],
   },
 
-  // ── 12. CHINESE SUPER LEAGUE & INDIAN SUPER LEAGUE ──
+  // ── 12. CHINESE SUPER LEAGUE, INDIAN SUPER LEAGUE & CHAMPIONS SUPER LEAGUE ──
+  champions_super_league: {
+    id: 'champions_super_league',
+    name: 'Champions Super League',
+    shortName: 'Super League',
+    country: 'International',
+    region: 'Global',
+    logoUrl: '',
+    accentColor: '#7952FC',
+    sport: 'soccer',
+    providerAliases: ['champions super league'],
+    clubSignatures: [],
+  },
   csl: {
     id: 'csl',
     name: 'Chinese Super League',
@@ -672,7 +829,7 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
     logoUrl: LEAGUE_EMBLEMS['ligue-1'],
     accentColor: '#091C3E',
     sport: 'soccer',
-    providerAliases: ['fra.1', 'ligue 1', 'french ligue 1', 'ligue 1 mcdonalds'],
+    providerAliases: ['fra.1', 'ligue 1', 'french ligue 1', 'france ligue 1', 'ligue 1 mcdonalds', 'ligue 1 france'],
     clubSignatures: ['paris saint-germain', 'olympique marseille', 'as monaco', 'olympique lyonnais', 'lille osc', 'rc lens', 'ogc nice'],
   },
   mls: {
@@ -708,19 +865,19 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
     logoUrl: LEAGUE_EMBLEMS['brasileirao'],
     accentColor: '#15803D',
     sport: 'soccer',
-    providerAliases: ['bra.1', 'brasileirao', 'brazil serie a', 'brazil brasileirao'],
+    providerAliases: ['bra.1', 'brasileirao', 'brasileirao serie a', 'brazil serie a', 'brazil brasileirao'],
     clubSignatures: ['flamengo', 'palmeiras', 'atletico mineiro', 'corinthians', 'sao paulo', 'botafogo'],
   },
   eredivisie: {
     id: 'eredivisie',
-    name: 'Eredivisie',
+    name: 'Netherlands Eredivisie',
     shortName: 'Eredivisie',
     country: 'Netherlands',
     region: 'Europe',
     logoUrl: LEAGUE_EMBLEMS['eredivisie'],
     accentColor: '#1D4ED8',
     sport: 'soccer',
-    providerAliases: ['ned.1', 'eredivisie', 'dutch eredivisie'],
+    providerAliases: ['ned.1', 'eredivisie', 'dutch eredivisie', 'netherlands eredivisie'],
     clubSignatures: ['ajax amsterdam', 'psv eindhoven', 'feyenoord', 'az alkmaar', 'fc twente'],
   },
   primeira_liga: {
@@ -744,8 +901,8 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
     logoUrl: LEAGUE_EMBLEMS['super-lig'],
     accentColor: '#E11D48',
     sport: 'soccer',
-    providerAliases: ['tur.1', 'super lig', 'turkish super lig', 'trendyol super lig'],
-    clubSignatures: ['galatasaray', 'fenerbahce', 'besiktas', 'trabzonspor'],
+    providerAliases: ['tur.1', 'super lig', 'turkish super lig', 'turkish premier league', 'trendyol super lig'],
+    clubSignatures: ['galatasaray', 'fenerbahce', 'besiktas', 'trabzonspor', 'alanyaspor', 'konyaspor', 'rizespor', 'kasimpasa'],
   },
   libertadores: {
     id: 'libertadores',
@@ -762,7 +919,7 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
   world_cup: {
     id: 'world_cup',
     name: 'FIFA World Cup',
-    shortName: 'World Cup',
+    shortName: 'FIFA World Cup',
     country: 'International',
     region: 'Global',
     logoUrl: LEAGUE_EMBLEMS['world-cup'],
@@ -785,6 +942,18 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
     providerAliases: ['euroleague', 'euro league', 'euroleague basketball', 'euroleague women', 'eurocup women', 'eurocup'],
     clubSignatures: ['partizan', 'zalgiris', 'olympiakos', 'panathinaikos', 'fenerbahce beko', 'anadolu efes', 'baskonia', 'virtus bologna', 'crvena zvezda', 'hapoel tel aviv', 'monaco basket'],
   },
+  nz_basketball: {
+    id: 'nz_basketball',
+    name: 'New Zealand NBL',
+    shortName: 'NZ NBL',
+    country: 'New Zealand',
+    region: 'Oceania',
+    logoUrl: '',
+    accentColor: '#111827',
+    sport: 'basketball',
+    providerAliases: ['new zealand nbl', 'nz nbl', 'new zealand basketball', 'new zealand basketball tournament', 'tauihi', 'sals nbl'],
+    clubSignatures: [],
+  },
   nba: {
     id: 'nba',
     name: 'NBA Basketball',
@@ -801,15 +970,27 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
   // ── 15. ICE HOCKEY LEAGUES (Specific before NHL) ──
   russia_mhl: {
     id: 'russia_mhl',
-    name: 'Russia MHL',
+    name: 'Russian MHL',
     shortName: 'MHL',
     country: 'Russia',
     region: 'Europe',
     logoUrl: LEAGUE_EMBLEMS['russia-mhl'],
     accentColor: '#1D4ED8',
     sport: 'hockey',
-    providerAliases: ['russia mhl', 'mhl', 'molodezhnaya hokkeinaya liga'],
+    providerAliases: ['russia mhl', 'russian mhl', 'mhl', 'molodezhnaya hokkeinaya liga'],
     clubSignatures: ['amurskie tigry', 'almaz cherepovets', 'ska-1946', 'krasnaya armiya', 'spartak u20'],
+  },
+  aihl: {
+    id: 'aihl',
+    name: 'Australian Ice Hockey League',
+    shortName: 'AIHL',
+    country: 'Australia',
+    region: 'Oceania',
+    logoUrl: '',
+    accentColor: '#0284C7',
+    sport: 'hockey',
+    providerAliases: ['aihl', 'australian ice hockey league', 'australia ice hockey league'],
+    clubSignatures: ['melbourne ice', 'melbourne mustangs', 'sydney bears', 'sydney ice dogs', 'perth thunder'],
   },
   del: {
     id: 'del',
@@ -869,10 +1050,10 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
     accentColor: '#111111',
     sport: 'hockey',
     providerAliases: ['nhl', 'nhl hockey', 'national hockey league'],
-    clubSignatures: ['toronto maple leafs', 'edmonton oilers', 'boston bruins', 'new york rangers', 'florida panthers', 'colorado avalanche'],
+    clubSignatures: ['toronto maple leafs', 'edmonton oilers', 'boston bruins', 'new york rangers', 'florida panthers', 'colorado avalanche', 'dallas stars'],
   },
 
-  // ── 16. AMERICAN FOOTBALL, MOTORSPORT, TENNIS & CRICKET ──
+  // ── 16. AMERICAN FOOTBALL, TENNIS & CRICKET ──
   nfl: {
     id: 'nfl',
     name: 'NFL Football',
@@ -884,18 +1065,6 @@ export const CANONICAL_COMPETITIONS: Record<string, CanonicalCompetition> = {
     sport: 'american_football',
     providerAliases: ['nfl', 'nfl football', 'national football league'],
     clubSignatures: ['kansas city chiefs', 'san francisco 49ers', 'philadelphia eagles', 'dallas cowboys'],
-  },
-  f1: {
-    id: 'f1',
-    name: 'Formula 1 World Championship',
-    shortName: 'F1',
-    country: 'Global',
-    region: 'International',
-    logoUrl: LEAGUE_EMBLEMS['f1'],
-    accentColor: '#E10600',
-    sport: 'racing',
-    providerAliases: ['f1', 'formula 1', 'formula-1', 'formula 1 world championship', 'grand prix'],
-    clubSignatures: ['red bull racing', 'ferrari', 'mercedes', 'mclaren', 'aston martin'],
   },
   tennis: {
     id: 'tennis',
@@ -948,6 +1117,8 @@ function extractLeagueFromDescription(desc: string | null | undefined): string |
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -991,6 +1162,16 @@ function isNonFootballChampionsCup(candLower: string, teamsLower: string): boole
   );
 }
 
+const NON_ENGLISH_PREMIER_TERMS = [
+  'ukrain', 'egypt', 'kenya', 'fkf', 'ugand', 'turk', 'israel', 'azerbaijan',
+  'indian', 'russian', 'russia', 'belarus', 'scottish', 'scotland', 'welsh',
+  'wales', 'canadian', 'canada', 'kazakh', 'irish', 'northern irish',
+  'cambodia', 'singapore', 'bahrain', 'kuwait', 'oman', 'ghana', 'nigeria',
+  'tanzania', 'ethiopia', 'bosnia', 'malta', 'faroe', 'armen', 'georgia',
+  'thailand', 'bangladesh', 'hong kong', 'south africa', 'premiership',
+  'ukr 1', 'egy 1', 'ken 1', 'uga 1', 'rus 1', 'tur 1', 'rsa 1', 'sco 1',
+];
+
 export class CompetitionResolverService {
   private resolutionCache = new Map<string, ResolvedCompetition>();
 
@@ -1007,7 +1188,7 @@ export class CompetitionResolverService {
   }
 
   private buildCacheKey(input: CompetitionResolutionInput): string {
-    return `${input.rawId || ''}|${input.rawName || ''}|${input.competition || ''}|${input.homeTeam || ''}|${input.awayTeam || ''}|${input.sport || ''}|${input.description ? input.description.slice(0, 30) : ''}`;
+    return `${input.rawId || ''}|${input.rawName || ''}|${input.competition || ''}|${input.homeTeam || ''}|${input.awayTeam || ''}|${input.sport || ''}|${(input.genres || []).join(',')}|${input.description ? input.description.slice(0, 30) : ''}`;
   }
 
   private executeResolution(input: CompetitionResolutionInput): ResolvedCompetition {
@@ -1024,6 +1205,16 @@ export class CompetitionResolverService {
     ].filter(Boolean) as string[];
 
     const combinedTeams = `${normalizeText(input.homeTeam || '')} ${normalizeText(input.awayTeam || '')}`.trim();
+    const genreLower = (input.genres || []).join(' ').toLowerCase();
+    const inputSportLower = (input.sport || '').toLowerCase();
+    const isBasketballContext =
+      inputSportLower === 'basketball' ||
+      genreLower.includes('basketball') ||
+      candidates.some(c => /fiba|basketball|euroleague|nba/i.test(c));
+    const isHockeyContext =
+      inputSportLower === 'hockey' ||
+      inputSportLower === 'ice_hockey' ||
+      genreLower.includes('hockey');
 
     // ── STAGE 1: DIRECT CANONICAL / ALIAS MATCHING ──
     for (const candidate of candidates) {
@@ -1035,13 +1226,44 @@ export class CompetitionResolverService {
         continue;
       }
 
-      // Check every canonical competition (already ordered most-specific first!)
+      // Check every canonical competition (ordered most-specific first)
       for (const comp of Object.values(CANONICAL_COMPETITIONS)) {
         // Guard DEL against non-hockey matches (e.g. Copa del Rey)
         if (comp.id === 'del') {
           if (normCand.includes('copa del') || normCand.includes('sol')) continue;
-          const spLower = (input.sport || '').toLowerCase();
-          if (spLower === 'soccer' || spLower === 'football') continue;
+          if (inputSportLower === 'soccer' || inputSportLower === 'football') continue;
+        }
+
+        // Strict FIBA Basketball World Cup separation vs FIFA World Cup
+        if (comp.id === 'fiba_world_cup') {
+          const isFiba =
+            normCand === 'fiba' ||
+            normCand.includes('fiba') ||
+            normCand.includes('basketball world cup') ||
+            (isBasketballContext && (normCand.includes('world cup') || normCand.includes('qualif')));
+          if (isFiba) {
+            return this.buildResolved(comp);
+          }
+          continue;
+        }
+
+        // Strict FIFA World Cup separation (must NEVER swallow FIBA / basketball / U-17 / women / ski / generic world cups)
+        if (comp.id === 'world_cup') {
+          if (
+            isBasketballContext ||
+            isHockeyContext ||
+            normCand.includes('17') ||
+            normCand.includes('u20') ||
+            normCand.includes('fiba') ||
+            normCand.includes('basket') ||
+            normCand.includes('rugby') ||
+            normCand.includes('cricket') ||
+            normCand.includes('ski') ||
+            normCand.includes('big air') ||
+            normCand.includes('women')
+          ) {
+            continue;
+          }
         }
 
         // Strict separation: Saudi First Division vs Saudi Pro vs King Cup
@@ -1083,33 +1305,38 @@ export class CompetitionResolverService {
           }
           continue;
         }
-        if (comp.id === 'world_cup' && (normCand.includes('17') || normCand.includes('women') || normCand.includes('u20'))) {
-          continue;
+
+        // Strict separation: Regional / Foreign Premier Leagues MUST NEVER hit English Premier League
+        if (comp.id === 'premier_league') {
+          const hasForeignMarker = NON_ENGLISH_PREMIER_TERMS.some(term => normCand.includes(term));
+          if (hasForeignMarker) continue;
         }
 
-        // Strict separation: Non-English Premier Leagues & Russian/Belarus Premier must NEVER hit English Premier League
-        if (comp.id === 'premier_league') {
-          const isRegionalPremier =
-            normCand.includes('ukrain') ||
-            normCand.includes('egypt') ||
-            normCand.includes('kenya') ||
-            normCand.includes('fkf') ||
-            normCand.includes('indian') ||
-            normCand.includes('russian') ||
-            normCand.includes('belarus') ||
-            normCand.includes('scottish') ||
-            normCand.includes('welsh') ||
-            normCand.includes('canadian') ||
-            normCand.includes('kazakh');
-          if (isRegionalPremier) continue;
+        // Strict separation: Russian Premier Liga vs Spanish Primera / Premier League
+        if (comp.id === 'premier_liga') {
+          const isRusLiga =
+            normCand === 'premier liga' ||
+            normCand === 'rus 1' ||
+            normCand.includes('russian premier') ||
+            normCand.includes('russia premier');
+          if (isRusLiga) {
+            return this.buildResolved(comp);
+          }
+          continue;
         }
 
         // Strict separation: Argentina Primera vs LaLiga Primera
-        if (comp.id === 'la_liga' && normCand.includes('argentin')) {
+        if (comp.id === 'la_liga' && (normCand.includes('argentin') || normCand.includes('paraguay'))) {
           continue;
         }
 
-        // Strict separation: UEFA Champions League vs AFC/Arab/Handball/Volleyball Champions League
+        // Strict separation: Champions Super League vs UEFA Champions League / CSL
+        if (comp.id === 'champions_super_league') {
+          if (normCand.includes('champions super league')) {
+            return this.buildResolved(comp);
+          }
+          continue;
+        }
         if (comp.id === 'champions_league') {
           const isNonUefa =
             normCand.includes('afc') ||
@@ -1121,6 +1348,7 @@ export class CompetitionResolverService {
             normCand.includes('elite') ||
             normCand.includes('two') ||
             normCand.includes('asia') ||
+            normCand.includes('champions super league') ||
             isNonFootballChampionsCup(normCand, combinedTeams);
           if (isNonUefa) {
             continue;
@@ -1128,10 +1356,10 @@ export class CompetitionResolverService {
         }
 
         // Guard NBA / NHL against specific non-NBA / non-NHL leagues
-        if (comp.id === 'nba' && (normCand.includes('euroleague') || normCand.includes('euro cup') || normCand.includes('eurocup') || normCand.includes('wnba'))) {
+        if (comp.id === 'nba' && (normCand.includes('euroleague') || normCand.includes('euro cup') || normCand.includes('eurocup') || normCand.includes('wnba') || normCand.includes('fiba') || normCand.includes('new zealand') || normCand.includes('nz nbl'))) {
           continue;
         }
-        if (comp.id === 'nhl' && (normCand.includes('mhl') || normCand.includes('icehl') || normCand.includes('ice hockey league') || normCand.includes('allsvenskan') || normCand.includes('khl') || matchesAliasToken(normCand, 'del'))) {
+        if (comp.id === 'nhl' && (normCand.includes('mhl') || normCand.includes('aihl') || normCand.includes('australian ice') || normCand.includes('icehl') || normCand.includes('ice hockey league') || normCand.includes('allsvenskan') || normCand.includes('khl') || matchesAliasToken(normCand, 'del'))) {
           continue;
         }
 
@@ -1149,7 +1377,7 @@ export class CompetitionResolverService {
 
     // ── STAGE 2: CLUB SIGNATURE ANALYSIS ──
     if (combinedTeams.length > 2) {
-      const sportFilter = (input.sport || '').toLowerCase();
+      const sportFilter = inputSportLower;
       for (const comp of Object.values(CANONICAL_COMPETITIONS)) {
         if (!comp.clubSignatures || comp.clubSignatures.length === 0) continue;
         if (sportFilter && sportFilter !== 'other' && sportFilter !== 'soccer' && comp.sport !== sportFilter) {
@@ -1177,8 +1405,7 @@ export class CompetitionResolverService {
     }
 
     // ── STAGE 3: PROVIDER LEAGUE TEXT PRESERVATION ──
-    // Preserve authentic unmapped competition names (e.g., "Czechia, 1. Liga", "Slovakia SHL", "Poland - Puchar Polski")
-    // without inventing wrong leagues or inheriting mis-matched logos from another league.
+    // Preserve authentic unmapped competition names cleanly with NO FIFA WC26 logo substitution
     const preservedName = posterLg || descLeague || (
       input.competition &&
       !['football', 'soccer', 'sports', 'global football', 'live sports', 'other', 'basketball', 'hockey'].includes(input.competition.trim().toLowerCase())
@@ -1191,9 +1418,9 @@ export class CompetitionResolverService {
       const inferredSport =
         input.sport && input.sport !== 'other'
           ? input.sport
-          : normPreserved.includes('euroleague') || normPreserved.includes('eurocup') || normPreserved.includes('basket')
+          : isBasketballContext || normPreserved.includes('euroleague') || normPreserved.includes('eurocup') || normPreserved.includes('basket')
           ? 'basketball'
-          : normPreserved.includes('hockey') || normPreserved.includes('liga') && input.genres?.includes('HOCKEY') || normPreserved.includes('shl') || normPreserved.includes('khl')
+          : isHockeyContext || normPreserved.includes('hockey') || (normPreserved.includes('liga') && input.genres?.includes('HOCKEY')) || normPreserved.includes('shl') || normPreserved.includes('khl')
           ? 'hockey'
           : 'soccer';
 
@@ -1203,7 +1430,7 @@ export class CompetitionResolverService {
         shortName: cleanPreserved,
         country: input.country || 'International',
         region: 'Global',
-        logoUrl: LEAGUE_EMBLEMS[inferredSport] || LEAGUE_EMBLEMS['football'],
+        logoUrl: '',
         accentColor: '#7952FC',
         sport: inferredSport,
         isIdentified: true,
@@ -1218,7 +1445,7 @@ export class CompetitionResolverService {
       shortName: sportName === 'soccer' || sportName === 'football' ? 'Football' : sportName === 'hockey' ? 'Hockey' : sportName.toUpperCase(),
       country: 'Global',
       region: 'Global',
-      logoUrl: LEAGUE_EMBLEMS[sportName] || LEAGUE_EMBLEMS['football'],
+      logoUrl: '',
       accentColor: '#7952FC',
       sport: sportName,
       isIdentified: false,
@@ -1232,7 +1459,7 @@ export class CompetitionResolverService {
       shortName: comp.shortName,
       country: comp.country,
       region: comp.region,
-      logoUrl: comp.logoUrl || LEAGUE_EMBLEMS['football'],
+      logoUrl: comp.logoUrl || '',
       accentColor: comp.accentColor,
       sport: comp.sport,
       isIdentified: true,
@@ -1263,18 +1490,31 @@ export class CompetitionResolverService {
       'serie-a': 'serie_a',
       ligue1: 'ligue_1',
       'ligue-1': 'ligue_1',
+      'french-ligue-1': 'ligue_1',
       saudi_first: 'saudi_first_division',
       'saudi-first': 'saudi_first_division',
       'saudi-pro-league': 'saudi_pro',
       wc: 'world_cup',
       'world-cup': 'world_cup',
+      'fifa-world-cup': 'world_cup',
+      fiba: 'fiba_world_cup',
+      'fiba-world-cup': 'fiba_world_cup',
+      'fiba-basketball-world-cup': 'fiba_world_cup',
       j1: 'j1_league',
       'afc-champions-league': 'afc_champions_league',
       'argentina-primera': 'argentina_primera',
       'liga-mx': 'liga_mx',
       'ukrainian-premier': 'ukrainian_premier',
+      'ugandan-premier': 'ugandan_premier',
+      'turkish-super-lig': 'super_lig',
+      'turkish-premier-league': 'super_lig',
       'russia-mhl': 'russia_mhl',
+      'russian-mhl': 'russia_mhl',
       'hockey-allsvenskan': 'hockey_allsvenskan',
+      'copa-paraguay': 'copa_paraguay',
+      'premier-liga': 'premier_liga',
+      'australian-ice-hockey-league': 'aihl',
+      'champions-super-league': 'champions_super_league',
     };
     if (aliasMap[raw] && CANONICAL_COMPETITIONS[aliasMap[raw]]) {
       return CANONICAL_COMPETITIONS[aliasMap[raw]];

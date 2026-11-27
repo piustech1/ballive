@@ -109,6 +109,8 @@ export function normalizeImageUrl(rawUrl?: string | null): string | null {
   if (
     lower === DEFAULT_CREST.toLowerCase() ||
     lower.includes('default-team-logo') ||
+    lower.includes('/teamlogos/cricket/') ||
+    lower.includes('/teamlogos/tennis/') ||
     lower.includes('ui-avatars.com') ||
     /\.svg(?:\?|$)/i.test(lower)
   ) {
@@ -209,7 +211,8 @@ class ImageCacheService {
                   entry &&
                   entry.fileName &&
                   diskSet.has(entry.fileName) &&
-                  entry.byteSize >= 150
+                  entry.byteSize >= 150 &&
+                  normalizeImageUrl(entry.sourceUrl) !== null
                 ) {
                   this.manifestEntries.set(urlKey, entry);
                   this.memoryByUrlKey.set(urlKey, `${CACHE_DIR}${entry.fileName}`);
@@ -217,6 +220,9 @@ class ImageCacheService {
                     dirty = true;
                   }
                 } else {
+                  if (entry?.fileName && diskSet.has(entry.fileName)) {
+                    FileSystem.deleteAsync(`${CACHE_DIR}${entry.fileName}`, { idempotent: true }).catch(() => {});
+                  }
                   dirty = true;
                 }
               });

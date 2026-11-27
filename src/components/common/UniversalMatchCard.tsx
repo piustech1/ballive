@@ -25,7 +25,6 @@ import { theSportsDbService } from '../../services/theSportsDbService';
 import { savedMatchesService } from '../../services/savedMatchesService';
 import {
   isCombatSport,
-  isMotorsport,
   cleanEventTitle,
 } from '../../utils/sportClassifier';
 
@@ -65,12 +64,12 @@ function normalizeMatchItem(item: UniversalMatchItem) {
     : (item as any).awayTeamId;
 
   const homeCrest = isDiscover
-    ? (item.homeTeam as any).crestUrl || (item as any).homeBadge || getTeamCrest(homeTeamName)
-    : (item as any).homeBadge || getTeamCrest(homeTeamName);
+    ? (item.homeTeam as any).crestUrl || (item as any).homeBadge || getTeamCrest(homeTeamName, item.sport)
+    : (item as any).homeBadge || getTeamCrest(homeTeamName, item.sport);
 
   const awayCrest = isDiscover
-    ? (item.awayTeam as any).crestUrl || (item as any).awayBadge || getTeamCrest(awayTeamName)
-    : (item as any).awayBadge || getTeamCrest(awayTeamName);
+    ? (item.awayTeam as any).crestUrl || (item as any).awayBadge || getTeamCrest(awayTeamName, item.sport)
+    : (item as any).awayBadge || getTeamCrest(awayTeamName, item.sport);
 
   const rawHomeScore = isDiscover
     ? (item.homeTeam as any).score
@@ -126,7 +125,6 @@ function normalizeMatchItem(item: UniversalMatchItem) {
     ? (rawKickoff.includes('EAT') ? rawKickoff : formatKickoffEAT(rawKickoff))
     : rawKickoff;
 
-  const isMotor = isMotorsport(sport, competition);
   const isCombat = isCombatSport(sport, competition);
   const cleanAway = awayTeamName.trim().toLowerCase();
   const isPlaceholderOpponent =
@@ -137,9 +135,6 @@ function normalizeMatchItem(item: UniversalMatchItem) {
       'tba',
       'unknown',
       'none',
-      'f1',
-      'formula 1',
-      'grand prix',
       'red corner',
       'blue corner',
     ].includes(cleanAway);
@@ -166,7 +161,6 @@ function normalizeMatchItem(item: UniversalMatchItem) {
     kickoffTime,
     backdropUrl,
     sport,
-    isMotor,
     isCombat,
     isPlaceholderOpponent,
   };
@@ -247,6 +241,7 @@ const UniversalMatchCardComponent: React.FC<UniversalMatchCardProps> = ({
         <CompetitionLogo
           competitionId={m.competition}
           uri={m.competitionLogo}
+          sport={m.sport}
           size={17}
           containerStyle={{ marginRight: 5 }}
         />

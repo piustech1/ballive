@@ -68,6 +68,17 @@ export const HomeScreen: React.FC = () => {
   // Filter live matches based on search query, category, and bottom sheet filter
   const filteredMatches = useMemo(() => {
     const filtered = liveMatches.filter(match => {
+      if (!match || !match.homeTeam || !match.awayTeam) return false;
+      const hClean = match.homeTeam.trim().toLowerCase();
+      const aClean = match.awayTeam.trim().toLowerCase();
+      if (!hClean || !aClean || hClean === aClean) return false;
+
+      const canonical = getCanonicalSport(match.sport, match.competition);
+      const compLower = (match.competition || '').toLowerCase();
+      if (/\b(f1|formula\s*1|motogp|nascar|indycar|motorsport)\b/i.test(`${match.sport || ''} ${compLower} ${match.title || ''}`)) {
+        return false;
+      }
+
       // Search query filtering
       const matchesSearch =
         !searchQuery.trim() ||
@@ -80,7 +91,6 @@ export const HomeScreen: React.FC = () => {
       let matchesCategory = true;
       const cat = selectedCategoryId || (competitionFilter !== 'all' ? competitionFilter : null);
       if (cat) {
-        const canonical = getCanonicalSport(match.sport, match.competition);
         if (cat === 'football') {
           matchesCategory = canonical === 'soccer';
         } else if (cat === 'nba' || cat === 'basketball') {
@@ -89,38 +99,41 @@ export const HomeScreen: React.FC = () => {
           matchesCategory = canonical === 'hockey';
         } else if (cat === 'nfl' || cat === 'american_football') {
           matchesCategory = canonical === 'american_football';
-        } else if (cat === 'motorsport' || cat === 'f1') {
-          matchesCategory = canonical === 'motorsport';
-        } else if (cat === 'tennis') {
-          matchesCategory = canonical === 'tennis';
         } else if (cat === 'pl') {
-          matchesCategory = match.competition.toLowerCase().includes('premier') || match.competition.toLowerCase().includes('epl');
+          matchesCategory =
+            (compLower === 'premier league' ||
+              compLower === 'english premier league' ||
+              compLower === 'epl' ||
+              compLower === 'eng.1') &&
+            !/ugand|egypt|keny|ukrain|turk|russ|scot|israel|azerbaij|saudi|south africa|ghana|nigeri|rwanda|tanzan|ethiop|malawi|zamb|zimbab|singap|malays|hong kong|thailand|taiwan|canada|armen|kazakh|belarus|bosni|bulgar|crimea|malta|northern ireland|wales/i.test(
+              compLower
+            );
         } else if (cat === 'ucl') {
-          matchesCategory = match.competition.toLowerCase().includes('champions') || match.competition.toLowerCase().includes('ucl');
+          matchesCategory = compLower.includes('uefa champions') || compLower === 'champions league' || compLower === 'ucl';
         } else if (cat === 'laliga') {
-          matchesCategory = match.competition.toLowerCase().includes('laliga');
+          matchesCategory = compLower.includes('laliga') || compLower.includes('la liga');
         } else if (cat === 'seriea') {
-          matchesCategory = match.competition.toLowerCase().includes('serie a');
+          matchesCategory = compLower.includes('serie a') && !compLower.includes('brasileir');
         } else if (cat === 'bundesliga') {
-          matchesCategory = match.competition.toLowerCase().includes('bundesliga');
+          matchesCategory = compLower.includes('bundesliga');
         } else if (cat === 'j1' || cat === 'j1_league') {
-          matchesCategory = match.competition.toLowerCase().includes('j1') || match.competition.toLowerCase().includes('j.league');
+          matchesCategory = compLower.includes('j1') || compLower.includes('j.league');
         } else if (cat === 'saudi_pro') {
-          const compLower = match.competition.toLowerCase();
-          matchesCategory = compLower.includes('saudi pro') || compLower.includes('roshn') || (compLower.includes('saudi') && !compLower.includes('first') && !compLower.includes('yelo'));
+          matchesCategory = (compLower.includes('saudi pro') || compLower.includes('roshn')) && !compLower.includes('first') && !compLower.includes('yelo');
         } else if (cat === 'saudi_first' || cat === 'saudi_first_division') {
-          const compLower = match.competition.toLowerCase();
           matchesCategory = compLower.includes('first division') || compLower.includes('yelo') || compLower.includes('saudi 1st');
         } else if (cat === 'fifa_u17') {
-          matchesCategory = match.competition.toLowerCase().includes('u-17') || match.competition.toLowerCase().includes('u17') || match.competition.toLowerCase().includes('under-17');
+          matchesCategory = compLower.includes('u-17') || compLower.includes('u17') || compLower.includes('under-17');
         } else if (cat === 'csl') {
-          matchesCategory = match.competition.toLowerCase().includes('chinese super') || match.competition.toLowerCase().includes('csl');
+          matchesCategory = compLower.includes('chinese super') || compLower.includes('csl');
         } else if (cat === 'egyptian_premier') {
-          matchesCategory = match.competition.toLowerCase().includes('egyptian') || match.competition.toLowerCase().includes('egypt premier');
+          matchesCategory = compLower.includes('egyptian') || compLower.includes('egypt premier');
+        } else if (cat === 'ugandan_premier') {
+          matchesCategory = compLower.includes('ugand') || compLower === 'uga.1';
         } else if (cat === 'isl') {
-          matchesCategory = match.competition.toLowerCase().includes('indian super') || match.competition.toLowerCase().includes('isl');
+          matchesCategory = compLower.includes('indian super') || compLower.includes('isl');
         } else if (cat === 'kenyan_premier') {
-          matchesCategory = match.competition.toLowerCase().includes('kenyan premier') || match.competition.toLowerCase().includes('fkf') || match.competition.toLowerCase().includes('kenya premier');
+          matchesCategory = compLower.includes('kenyan premier') || compLower.includes('fkf') || compLower.includes('kenya premier');
         }
       }
 

@@ -4,6 +4,7 @@ import { POPULAR_TEAMS, PopularTeam } from '../constants/discoverData';
 import { SportType } from '../constants/mockData';
 import { streamingApiService } from './streamingApiService';
 import { normalizeTeamId } from './profileStorage';
+import { isExcludedMotorsport, isPlaceholderParticipant } from '../utils/fixtureValidator';
 import { getTeamCrest, DEFAULT_CREST } from '../utils/teamCrestResolver';
 import { teamEmblemService } from './teamEmblemService';
 
@@ -103,7 +104,7 @@ const STANDING_SOURCES: StandingSource[] = [
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const DISK_CACHE_TTL_MS = 45 * 60 * 1000;
-const TEAMS_CACHE_FILE = `${FileSystem.cacheDirectory || FileSystem.documentDirectory || ''}ballive_popular_teams_v1.json`;
+const TEAMS_CACHE_FILE = `${FileSystem.cacheDirectory || FileSystem.documentDirectory || ''}ballive_popular_teams_v2.json`;
 
 function extractStandingsEntries(data: any): any[] {
   const entries: any[] = [];
@@ -183,7 +184,9 @@ class PopularTeamsService {
             typeof parsed.timestamp === 'number' &&
             Date.now() - parsed.timestamp < DISK_CACHE_TTL_MS
           ) {
-            this.cachedTeams = parsed.teams;
+            this.cachedTeams = parsed.teams.filter(
+              (t: PopularTeam) => t && t.name && !isPlaceholderParticipant(t.name) && !isExcludedMotorsport(t.sport, t.competitionName, t.name)
+            );
             this.cacheTimestamp = parsed.timestamp;
             this.notifyListeners();
           }
@@ -243,18 +246,24 @@ class PopularTeamsService {
 
               const normId = normalizeTeamId(`team-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);
               const seedMatch = baselineByKey.get(name.toLowerCase().trim()) || baselineByKey.get(normId);
+              const rawTeamLogo = team?.logos?.[0]?.href;
+              const cleanTeamLogo =
+                rawTeamLogo && !String(rawTeamLogo).toLowerCase().includes('default-team-logo')
+                  ? rawTeamLogo
+                  : null;
+              const isUsPro = src.espnLeague === 'nba' || src.espnLeague === 'nhl' || src.espnLeague === 'nfl';
               const apiLogo =
-                team?.logos?.[0]?.href ||
-                (src.espnSport !== 'soccer' && team?.abbreviation
+                cleanTeamLogo ||
+                (isUsPro && team?.abbreviation
                   ? `https://a.espncdn.com/i/teamlogos/${src.espnLeague}/500/scoreboard/${team.abbreviation.toLowerCase()}.png`
-                  : getTeamCrest(name));
+                  : getTeamCrest(name, src.sport));
 
               bucket.push({
                 id: seedMatch?.id || normId,
                 name,
                 shortName: seedMatch?.shortName || makeShortName(name, team?.abbreviation),
                 country: seedMatch?.country || src.country,
-                crestUrl: apiLogo && apiLogo !== DEFAULT_CREST ? apiLogo : seedMatch?.crestUrl || getTeamCrest(name),
+                crestUrl: apiLogo && apiLogo !== DEFAULT_CREST ? apiLogo : seedMatch?.crestUrl || getTeamCrest(name, src.sport),
                 stadium: seedMatch?.stadium,
                 competitionId: src.competitionId,
                 competitionName: src.competitionName,
@@ -298,14 +307,14 @@ class PopularTeamsService {
         // 2. Supplement with active teams from live / upcoming fixtures tonight
         const activeMatches = streamingApiService.getCachedLiveMatches();
         activeMatches
-          .filter(m => m.sport !== 'motorsport' && m.sport !== 'tennis')
+          .filter(m => !isExcludedMotorsport(m.sport, m.competition, m.title) && m.sport !== 'tennis')
           .slice(0, 14)
           .forEach(m => {
             [
               { name: m.homeTeam, badge: m.homeBadge },
               { name: m.awayTeam, badge: m.awayBadge },
             ].forEach(side => {
-              if (!side.name || ['tbd', 'tba', 'opponent'].includes(side.name.toLowerCase())) return;
+              if (!side.name || isPlaceholderParticipant(side.name)) return;
               const slug = `team-${side.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
               const normId = normalizeTeamId(slug);
               const seedMatch = baselineByKey.get(side.name.toLowerCase().trim()) || baselineByKey.get(normId);

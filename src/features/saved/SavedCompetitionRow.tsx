@@ -44,6 +44,7 @@ export const SavedCompetitionRow: React.FC<SavedCompetitionRowProps> = ({
       <CompetitionLogo
         uri={league.logoUrl}
         competitionId={league.id}
+        sport={league.sport}
         size={42}
         containerStyle={{ marginRight: 14 }}
       />

@@ -17,6 +17,7 @@ interface ProfileSectionRowProps {
   badgeColor?: string;
   isFirst?: boolean;
   isLast?: boolean;
+  standalone?: boolean;
   onPress: () => void;
 }
 
@@ -29,41 +30,39 @@ export const ProfileSectionRow: React.FC<ProfileSectionRowProps> = ({
   badgeColor,
   isFirst,
   isLast,
+  standalone = true,
   onPress,
 }) => {
   return (
     <TouchableOpacity
       style={[
         styles.rowContainer,
-        isFirst && styles.rowFirst,
-        isLast && styles.rowLast,
-        !isLast && styles.rowBorder,
+        standalone ? styles.rowStandalone : null,
+        !standalone && isFirst ? styles.rowFirst : null,
+        !standalone && isLast ? styles.rowLast : null,
+        !standalone && !isLast ? styles.rowBorder : null,
       ]}
-      activeOpacity={0.75}
+      activeOpacity={0.78}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${label}${subtitle ? `, ${subtitle}` : ''}`}
     >
-      {/* Icon */}
       <View style={styles.iconContainer}>
-        <IconComponent size={20} color={iconColor} strokeWidth={2} />
+        <IconComponent size={19} color={iconColor} strokeWidth={2} />
       </View>
 
-      {/* Label & Subtitle */}
       <View style={styles.textContainer}>
         <Text style={styles.label}>{label}</Text>
         {subtitle ? <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text> : null}
       </View>
 
-      {/* Optional Badge Value */}
       {badgeValue !== undefined && (
         <View style={[styles.badge, badgeColor ? { backgroundColor: badgeColor } : null]}>
           <Text style={styles.badgeText}>{badgeValue}</Text>
         </View>
       )}
 
-      {/* Right Chevron */}
-      <ChevronRight size={18} color={Colors.textMuted} strokeWidth={2.2} style={styles.chevron} />
+      <ChevronRight size={17} color={Colors.textMuted} strokeWidth={2.2} style={styles.chevron} />
     </TouchableOpacity>
   );
 };
@@ -73,16 +72,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surfaceCard,
-    paddingVertical: 10.5,
+    paddingVertical: 12,
     paddingHorizontal: 14,
   },
+  rowStandalone: {
+    borderRadius: 16,
+  },
   rowFirst: {
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
   },
   rowLast: {
-    borderBottomLeftRadius: 18,
-    borderBottomRightRadius: 18,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
   },
   rowBorder: {
     borderBottomWidth: 1,
@@ -91,8 +93,8 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 36,
     height: 36,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 11,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -127,3 +129,5 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 });
+
+export default ProfileSectionRow;

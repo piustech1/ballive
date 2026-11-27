@@ -31,6 +31,7 @@ export const FeaturedCompetitionCard: React.FC<FeaturedCompetitionCardProps> = (
       <CompetitionLogo
         uri={competition.crestUrl}
         competitionId={competition.id}
+        sport={competition.sport}
         size={44}
         containerStyle={styles.logoMargin}
       />

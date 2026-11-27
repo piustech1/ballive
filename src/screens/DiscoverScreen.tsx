@@ -33,11 +33,13 @@ import { sportsApiService, GlobalSearchResult } from '../services/sportsApiServi
 import { popularTeamsService } from '../services/popularTeamsService';
 import { normalizeLeagueId, normalizeTeamId } from '../services/profileStorage';
 import { sortMatchesWithLiveFirst, sortUpcomingChronologically } from '../utils/matchStatus';
+import { isValidFixture } from '../utils/fixtureValidator';
 import { DiscoverSkeleton, ScheduleSectionSkeleton } from '../components/common/SkeletonLoader';
 
 function toLiveAndUpcomingMatchups(matches: LiveMatch[]) {
-  const all = matches.map(m => streamingApiService.convertLiveMatchToMatchup(m));
-  const upcomingOnly = matches
+  const validMatches = matches.filter(isValidFixture);
+  const all = validMatches.map(m => streamingApiService.convertLiveMatchToMatchup(m));
+  const upcomingOnly = validMatches
     .filter(m => m.status === 'UPCOMING')
     .map(m => streamingApiService.convertLiveMatchToMatchup(m));
   return {
@@ -57,7 +59,7 @@ export const DiscoverScreen: React.FC = () => {
   const [liveHighlights, setLiveHighlights] = useState<DiscoverMatchup[]>(() => {
     const cached = streamingApiService.getCachedLiveMatches();
     return cached && cached.length > 0
-      ? sortMatchesWithLiveFirst(cached.map(m => streamingApiService.convertLiveMatchToMatchup(m)))
+      ? sortMatchesWithLiveFirst(cached.filter(isValidFixture).map(m => streamingApiService.convertLiveMatchToMatchup(m)))
       : [];
   });
   const [upcomingScheduleMatches, setUpcomingScheduleMatches] = useState<DiscoverMatchup[]>(() => {
@@ -65,7 +67,7 @@ export const DiscoverScreen: React.FC = () => {
     return cached && cached.length > 0
       ? sortUpcomingChronologically(
           cached
-            .filter(m => m.status === 'UPCOMING')
+            .filter(m => m.status === 'UPCOMING' && isValidFixture(m))
             .map(m => streamingApiService.convertLiveMatchToMatchup(m))
         )
       : [];
@@ -97,7 +99,9 @@ export const DiscoverScreen: React.FC = () => {
         setIsLoadingStreams(false);
       } else if (upcoming && upcoming.length > 0) {
         const upSorted = sortUpcomingChronologically(
-          upcoming.filter(m => m.status === 'UPCOMING').map(m => streamingApiService.convertLiveMatchToMatchup(m))
+          upcoming
+            .filter(m => m.status === 'UPCOMING' && isValidFixture(m))
+            .map(m => streamingApiService.convertLiveMatchToMatchup(m))
         );
         if (upSorted.length > 0) {
           setUpcomingScheduleMatches(upSorted);
@@ -239,7 +243,7 @@ export const DiscoverScreen: React.FC = () => {
   }, [dynamicPopularTeams, query, globalSearchResults]);
 
   const filteredMatchups = useMemo(() => {
-    const list = liveHighlights.length > 0 ? liveHighlights : UPCOMING_HIGHLIGHTS;
+    const list = (liveHighlights.length > 0 ? liveHighlights : UPCOMING_HIGHLIGHTS).filter(isValidFixture);
     if (!query) return sortMatchesWithLiveFirst(list);
     const filtered = list.filter(
       m =>

@@ -66,7 +66,8 @@ import { LiveStreamPlayer } from '../components/player/LiveStreamPlayer';
 import { streamingApiService } from '../services/streamingApiService';
 import { sportsApiService } from '../services/sportsApiService';
 import { UniversalMatchCard } from '../components/common/UniversalMatchCard';
-import { isMotorsport, cleanEventTitle } from '../utils/sportClassifier';
+import { cleanEventTitle } from '../utils/sportClassifier';
+import { isValidFixture } from '../utils/fixtureValidator';
 
 interface LiveStreamDetailsScreenProps {
   match: DiscoverMatchup;
@@ -92,17 +93,6 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
   const [activeStreams, setActiveStreams] = useState<any[] | undefined>(activeMatch.streams);
   const [winProb, setWinProb] = useState<WinProbabilityResult | null>(null);
   const [isLoadingProb, setIsLoadingProb] = useState(false);
-
-  const isRacing = useMemo(
-    () =>
-      isMotorsport(
-        activeMatch.sport,
-        activeMatch.competition,
-        `${activeMatch.homeTeam?.name || ''} ${activeMatch.awayTeam?.name || ''}`
-      ),
-    [activeMatch.sport, activeMatch.competition, activeMatch.homeTeam?.name, activeMatch.awayTeam?.name]
-  );
-
 
   const normalizedStatus = useMemo(
     () =>
@@ -149,7 +139,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     const cached = streamingApiService.getCachedLiveMatches();
     if (cached && cached.length > 0) {
       return cached
-        .filter(m => m.id !== match.id && (m.status === 'LIVE' || m.minute > 0))
+        .filter(m => m.id !== match.id && isValidFixture(m) && (m.status === 'LIVE' || m.minute > 0))
         .map(resolveLiveMatchToMatchup)
         .slice(0, 4);
     }
@@ -159,7 +149,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
     const cached = streamingApiService.getCachedUpcomingMatches();
     if (cached && cached.length > 0) {
       return cached
-        .filter(m => m.id !== match.id)
+        .filter(m => m.id !== match.id && isValidFixture(m))
         .map(resolveLiveMatchToMatchup)
         .slice(0, 4);
     }
@@ -272,7 +262,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
       .then(matches => {
         if (isMounted && matches && matches.length > 0) {
           const others = matches
-            .filter(m => m.id !== activeMatch.id && (m.status === 'LIVE' || m.minute > 0))
+            .filter(m => m.id !== activeMatch.id && isValidFixture(m) && (m.status === 'LIVE' || m.minute > 0))
             .map(resolveLiveMatchToMatchup);
           if (others.length > 0) {
             setLiveRelatedStreams(others.slice(0, 4));
@@ -287,7 +277,7 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
       .then(upcoming => {
         if (isMounted && upcoming && upcoming.length > 0) {
           const others = upcoming
-            .filter(m => m.id !== activeMatch.id)
+            .filter(m => m.id !== activeMatch.id && isValidFixture(m))
             .map(resolveLiveMatchToMatchup);
           if (others.length > 0) {
             setUpcomingRelatedMatches(others.slice(0, 4));
@@ -502,113 +492,80 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
           showsVerticalScrollIndicator={false}
         >
           {/* ── 2. MATCH SCORE CENTRE / EVENT IDENTITY BANNER ── */}
-          {isRacing ? (
-            <View style={styles.racingIdentityCard}>
-              <View style={styles.racingIdentityRow}>
-                <View style={styles.racingIdentityCol}>
-                  <View style={styles.racingCategoryPill}>
-                    <Text style={styles.racingCategoryText}>MOTORSPORT</Text>
+          <View style={styles.matchIdentityCard}>
+            <View style={styles.teamsRow}>
+              {/* Home Team */}
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.matchTeamSide}
+                onPress={() =>
+                  handleOpenTeam(
+                    activeMatch.homeTeam,
+                    activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id, activeMatch.sport)
+                  )
+                }
+              >
+                <TeamCrest
+                  uri={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id, activeMatch.sport)}
+                  teamId={activeMatch.homeTeam.id}
+                  teamName={activeMatch.homeTeam.name}
+                  sport={activeMatch.sport}
+                  size={48}
+                  containerStyle={styles.crestFlatContainer}
+                />
+                <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
+                  {activeMatch.homeTeam.name}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Score / Match State Center */}
+              <View style={styles.matchScoreCenter}>
+                {isLive ? (
+                  <View style={[styles.statusBadgePill, styles.statusBadgeLive]}>
+                    <View style={styles.liveClockDot} />
+                    <Text style={styles.statusBadgeText}>LIVE</Text>
                   </View>
-                  <Text style={styles.racingEventTitle} numberOfLines={2}>
-                    {cleanEventTitle(activeMatch.competition || activeMatch.homeTeam.name, 'motorsport')}
-                  </Text>
-                  <Text style={styles.racingVenueSubtitle} numberOfLines={1}>
-                    {activeMatch.homeTeam.name && activeMatch.awayTeam.name && !['tbd', 'tba', 'opponent'].includes(activeMatch.awayTeam.name.toLowerCase())
-                      ? `${activeMatch.homeTeam.name} • ${activeMatch.awayTeam.name}`
-                      : (activeMatch.homeTeam.name || 'Official Session')}
-                  </Text>
-                </View>
-                <View style={styles.racingStatusCol}>
-                  {isLive ? (
-                    <View style={styles.racingLiveBadge}>
-                      <View style={styles.liveClockDot} />
-                      <Text style={styles.racingLiveBadgeText}>RACE LIVE</Text>
+                ) : activeMatch.status === 'FT' ? (
+                  <View style={[styles.statusBadgePill, styles.statusBadgeFT]}>
+                    <Text style={styles.statusBadgeText}>FULL TIME</Text>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.vsBadge}>
+                      <Text style={styles.vsText}>VS</Text>
                     </View>
-                  ) : (
-                    <View style={styles.racingUpcomingBadge}>
-                      <Clock size={11} color="#A58BFC" style={{ marginRight: 4 }} />
-                      <Text style={styles.racingUpcomingBadgeText}>
-                        {activeMatch.kickoffTime || 'Today'}
-                      </Text>
-                    </View>
-                  )}
-                </View>
+                    <Text style={styles.matchStatusSub}>
+                      {activeMatch.kickoffTime || 'Today'}
+                    </Text>
+                  </>
+                )}
               </View>
-            </View>
-          ) : (
-            <View style={styles.matchIdentityCard}>
-              <View style={styles.teamsRow}>
-                {/* Home Team */}
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  style={styles.matchTeamSide}
-                  onPress={() =>
-                    handleOpenTeam(
-                      activeMatch.homeTeam,
-                      activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)
-                    )
-                  }
-                >
-                  <TeamCrest
-                    uri={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)}
-                    teamId={activeMatch.homeTeam.id}
-                    teamName={activeMatch.homeTeam.name}
-                    size={48}
-                    containerStyle={styles.crestFlatContainer}
-                  />
-                  <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
-                    {activeMatch.homeTeam.name}
-                  </Text>
-                </TouchableOpacity>
 
-                {/* Score / Match State Center */}
-                <View style={styles.matchScoreCenter}>
-                  {isLive ? (
-                    <View style={[styles.statusBadgePill, styles.statusBadgeLive]}>
-                      <View style={styles.liveClockDot} />
-                      <Text style={styles.statusBadgeText}>LIVE</Text>
-                    </View>
-                  ) : activeMatch.status === 'FT' ? (
-                    <View style={[styles.statusBadgePill, styles.statusBadgeFT]}>
-                      <Text style={styles.statusBadgeText}>FULL TIME</Text>
-                    </View>
-                  ) : (
-                    <>
-                      <View style={styles.vsBadge}>
-                        <Text style={styles.vsText}>VS</Text>
-                      </View>
-                      <Text style={styles.matchStatusSub}>
-                        {activeMatch.kickoffTime || 'Today'}
-                      </Text>
-                    </>
-                  )}
-                </View>
-
-                {/* Away Team */}
-                <TouchableOpacity
-                  activeOpacity={0.75}
-                  style={styles.matchTeamSide}
-                  onPress={() =>
-                    handleOpenTeam(
-                      activeMatch.awayTeam,
-                      activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)
-                    )
-                  }
-                >
-                  <TeamCrest
-                    uri={activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)}
-                    teamId={activeMatch.awayTeam.id}
-                    teamName={activeMatch.awayTeam.name}
-                    size={48}
-                    containerStyle={styles.crestFlatContainer}
-                  />
-                  <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
-                    {activeMatch.awayTeam.name}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              {/* Away Team */}
+              <TouchableOpacity
+                activeOpacity={0.75}
+                style={styles.matchTeamSide}
+                onPress={() =>
+                  handleOpenTeam(
+                    activeMatch.awayTeam,
+                    activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id, activeMatch.sport)
+                  )
+                }
+              >
+                <TeamCrest
+                  uri={activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id, activeMatch.sport)}
+                  teamId={activeMatch.awayTeam.id}
+                  teamName={activeMatch.awayTeam.name}
+                  sport={activeMatch.sport}
+                  size={48}
+                  containerStyle={styles.crestFlatContainer}
+                />
+                <Text style={styles.teamNameText} numberOfLines={1} ellipsizeMode="tail">
+                  {activeMatch.awayTeam.name}
+                </Text>
+              </TouchableOpacity>
             </View>
-          )}
+          </View>
 
           {/* ── 3. LIVE WIN PROBABILITY EXPLAINER ── */}
           <WinProbabilityBar
@@ -616,21 +573,21 @@ export const LiveStreamDetailsScreen: React.FC<LiveStreamDetailsScreenProps> = (
             awayTeamId={activeMatch.awayTeam.id}
             homeTeamName={activeMatch.homeTeam.name}
             awayTeamName={activeMatch.awayTeam.name}
-            homeCrest={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)}
-            awayCrest={activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)}
+            homeCrest={activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id, activeMatch.sport)}
+            awayCrest={activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id, activeMatch.sport)}
             sport={activeMatch.sport}
             probabilityData={winProb}
             isLoading={isLoadingProb}
             onHomePress={() =>
               handleOpenTeam(
                 activeMatch.homeTeam,
-                activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id)
+                activeMatch.homeTeam.crestUrl || (activeMatch as any).homeBadge || getTeamCrest(activeMatch.homeTeam.name || activeMatch.homeTeam.id, activeMatch.sport)
               )
             }
             onAwayPress={() =>
               handleOpenTeam(
                 activeMatch.awayTeam,
-                activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id)
+                activeMatch.awayTeam.crestUrl || (activeMatch as any).awayBadge || getTeamCrest(activeMatch.awayTeam.name || activeMatch.awayTeam.id, activeMatch.sport)
               )
             }
           />

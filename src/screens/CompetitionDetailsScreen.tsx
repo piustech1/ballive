@@ -18,7 +18,6 @@ import {
   Globe,
   Activity,
   Dribbble,
-  Flame,
 } from 'lucide-react-native';
 import { ExtendedHeroHeader, HeroStickyTopBar } from '../components/common/ExtendedHeroHeader';
 import { SegmentedControl } from '../components/common/SegmentedControl';
@@ -41,6 +40,7 @@ import { streamingApiService } from '../services/streamingApiService';
 import { competitionResolverService } from '../services/competitionResolverService';
 import { teamEmblemService } from '../services/teamEmblemService';
 import { getLocalCompetitionHero, resolveCompetitionHeroSource } from '../utils/teamHeroResolver';
+import { isValidFixture } from '../utils/fixtureValidator';
 
 interface CompetitionDetailsScreenProps {
   competition: DiscoverCompetition | PopularLeague;
@@ -48,10 +48,11 @@ interface CompetitionDetailsScreenProps {
 
 type CompTab = 'overview' | 'matches';
 
-function normalizeCompForMatchCheck(nameOrId: string): string {
+function normalizeCompForMatchCheck(nameOrId: string, sport?: string): string {
   const res = competitionResolverService.resolveCompetition({
     rawId: nameOrId,
     competition: nameOrId,
+    sport,
   });
   return res.isIdentified ? res.id : normalizeLeagueId(nameOrId);
 }
@@ -63,7 +64,6 @@ function getSportLabel(sport?: string): string {
   if (s === 'american_football') return 'American Football';
   if (s === 'tennis') return 'Tennis';
   if (s === 'cricket') return 'Cricket';
-  if (s === 'motorsport') return 'Motorsport';
   return 'Football';
 }
 
@@ -82,12 +82,9 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
     if ('sport' in competition && competition.sport) return competition.sport;
     const lower = competition.name.toLowerCase();
     const idLower = competition.id.toLowerCase();
-    if (idLower.includes('nba') || lower.includes('nba') || lower.includes('euroleague') || lower.includes('basketball')) return 'basketball';
-    if (idLower.includes('nhl') || lower.includes('nhl') || lower.includes('hockey') || lower.includes('allsvenskan') || idLower === 'del' || idLower === 'icehl') return 'hockey';
+    if (idLower.includes('nba') || idLower.includes('fiba') || idLower.includes('nz_basketball') || lower.includes('nba') || lower.includes('fiba') || lower.includes('euroleague') || lower.includes('basketball')) return 'basketball';
+    if (idLower.includes('nhl') || idLower.includes('aihl') || idLower.includes('russia_mhl') || lower.includes('nhl') || lower.includes('hockey') || lower.includes('allsvenskan') || idLower === 'del' || idLower === 'icehl' || lower.includes('mhl') || lower.includes('aihl')) return 'hockey';
     if (idLower.includes('nfl') || lower.includes('nfl')) return 'american_football';
-    if (idLower.includes('f1') || idLower.includes('motorsport') || lower.includes('formula')) return 'motorsport';
-    if (idLower.includes('tennis') || lower.includes('tennis') || lower.includes('atp') || lower.includes('wta')) return 'tennis';
-    if (idLower.includes('cricket') || lower.includes('cricket')) return 'cricket';
     return 'soccer';
   }, [competition]);
 
@@ -103,6 +100,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
       return;
     }
 
+    setHeroSource(null);
     resolveCompetitionHeroSource({
       competitionId: competition.id,
       competitionName: competition.name,
@@ -139,8 +137,8 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
   const isFollowed = isLeagueFollowed(competition);
 
   const targetCanonId = useMemo(
-    () => normalizeCompForMatchCheck(competition.id || competition.name),
-    [competition.id, competition.name]
+    () => normalizeCompForMatchCheck(competition.id || competition.name, compSport),
+    [competition.id, competition.name, compSport]
   );
 
   useEffect(() => {
@@ -149,12 +147,13 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
 
     const loadAllMatches = async () => {
       try {
-        const leagueKey = resolveLeagueKey(competition.id) || competition.id;
+        const leagueKey = resolveLeagueKey(competition.id) || resolveLeagueKey(competition.name) || competition.id;
         const [apiRows, liveCatalog] = await Promise.all([
           sportsApiService
             .getCompetitionFixtures(leagueKey, {
               name: competition.name,
               sport: compSport,
+              espnLeague: 'espnLeague' in competition ? (competition as any).espnLeague : undefined,
             })
             .catch(() => [] as DiscoverMatchup[]),
           Promise.resolve(streamingApiService.getCachedLiveMatches()).then(cached =>
@@ -166,6 +165,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
         const seen = new Set<string>();
 
         const addUnique = (m: DiscoverMatchup) => {
+          if (!isValidFixture(m)) return;
           const datePart = (m.rawDate || m.kickoffDate || '').slice(0, 10);
           const k1 = `${m.homeTeam.name.toLowerCase().trim()}_${m.awayTeam.name.toLowerCase().trim()}_${datePart}`;
           const k2 = `${m.awayTeam.name.toLowerCase().trim()}_${m.homeTeam.name.toLowerCase().trim()}_${datePart}`;
@@ -177,15 +177,18 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
         };
 
         (liveCatalog || []).forEach(lm => {
-          const matchCompCanon = normalizeCompForMatchCheck(lm.competition || lm.id);
-          const nameLower = (lm.competition || '').toLowerCase();
-          const compLower = competition.name.toLowerCase();
+          if (!isValidFixture(lm)) return;
+          const matchCompCanon = normalizeCompForMatchCheck(lm.competition || lm.id, lm.sport);
+          const normMatchLeague = normalizeLeagueId(lm.competition || '');
+          const normTargetLeague = normalizeLeagueId(competition.id);
+          const nameLower = (lm.competition || '').toLowerCase().trim();
+          const compLower = competition.name.toLowerCase().trim();
           const isMatch =
             matchCompCanon === targetCanonId ||
-            normalizeLeagueId(lm.competition) === normalizeLeagueId(competition.id) ||
+            (normMatchLeague && normTargetLeague && normMatchLeague === normTargetLeague) ||
             (targetCanonId === 'football' && lm.sport === 'soccer') ||
-            (targetCanonId === 'all') ||
-            (nameLower && compLower && (nameLower === compLower || nameLower.includes(compLower) || compLower.includes(nameLower)));
+            targetCanonId === 'all' ||
+            (Boolean(nameLower) && Boolean(compLower) && nameLower === compLower);
 
           if (isMatch) {
             addUnique(streamingApiService.convertLiveMatchToMatchup(lm));
@@ -315,6 +318,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
               uri={m.homeTeam.crestUrl}
               teamId={m.homeTeam.id}
               teamName={m.homeTeam.name}
+              sport={compSport}
               size={44}
               containerStyle={{ marginBottom: 8 }}
             />
@@ -371,6 +375,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
               uri={m.awayTeam.crestUrl}
               teamId={m.awayTeam.id}
               teamName={m.awayTeam.name}
+              sport={compSport}
               size={44}
               containerStyle={{ marginBottom: 8 }}
             />
@@ -409,6 +414,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
               uri={m.homeTeam.crestUrl}
               teamId={m.homeTeam.id}
               teamName={m.homeTeam.name}
+              sport={compSport}
               size={30}
               containerStyle={{ marginRight: 8 }}
             />
@@ -469,6 +475,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
               uri={m.awayTeam.crestUrl}
               teamId={m.awayTeam.id}
               teamName={m.awayTeam.name}
+              sport={compSport}
               size={30}
               containerStyle={{ marginLeft: 8 }}
             />
@@ -513,6 +520,7 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
             <CompetitionLogo
               uri={competition.logoUrl}
               competitionId={competition.id}
+              sport={compSport}
               size={76}
               flat={true}
             />
@@ -570,8 +578,6 @@ export const CompetitionDetailsScreen: React.FC<CompetitionDetailsScreenProps> =
                 const SportIconComp =
                   compSport === 'basketball'
                     ? Dribbble
-                    : compSport === 'motorsport'
-                    ? Flame
                     : compSport === 'soccer'
                     ? Trophy
                     : Activity;

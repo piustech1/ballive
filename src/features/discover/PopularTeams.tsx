@@ -35,6 +35,7 @@ const PopularTeamCard = React.memo(({
       uri={team.crestUrl}
       teamId={team.id}
       teamName={team.name}
+      sport={team.sport}
       size={52}
       priority={3}
       containerStyle={styles.crestFlatContainer}

@@ -2,7 +2,7 @@ import * as FileSystem from 'expo-file-system';
 import { API_CONFIG, getBroadcastChannelId, isUnsupportedStreamingCompetition } from '../config/api';
 import { LiveMatch } from '../constants/mockData';
 import { DiscoverMatchup } from '../constants/discoverData';
-import { getTeamCrest } from '../utils/teamCrestResolver';
+import { getTeamCrest, DEFAULT_CREST } from '../utils/teamCrestResolver';
 import { LEAGUE_EMBLEMS, CLUB_CRESTS } from '../constants/crests';
 import { sportsApiService } from './sportsApiService';
 import { resolveSportBackground, isVerifiedEventImage, SPORT_ARTWORK } from '../utils/sportBackgroundResolver';
@@ -16,6 +16,7 @@ import {
   sortMatchesWithLiveFirst,
   isWithinTodayOrTomorrow,
 } from '../utils/matchStatus';
+import { isValidFixture, isExcludedMotorsport } from '../utils/fixtureValidator';
 import { theSportsDbService } from './theSportsDbService';
 import { matchArtworkEnricher } from './matchArtworkEnricher';
 import { savedMatchesService } from './savedMatchesService';
@@ -40,10 +41,13 @@ function cleanMatchName(name: string): string {
 }
 
 /**
- * Strictly identifies unwanted sports categories (Cricket, Tennis, College Football, College Sports)
+ * Strictly identifies unwanted sports categories (Motorsport / F1, Cricket, Tennis, College Sports)
  * so they are completely eliminated from data ingestion and UI display.
  */
 export function isBannedSport(sport?: string, competition?: string, title?: string, genre?: string): boolean {
+  if (isExcludedMotorsport(sport, competition || genre, title)) {
+    return true;
+  }
   const combined = `${sport || ''} ${competition || ''} ${title || ''} ${genre || ''}`.toLowerCase();
   return (
     combined.includes('ufc') ||
@@ -114,7 +118,7 @@ function extractPosterParam(url: string | undefined, param: string): string | nu
 
 export const SPORT_BACKDROPS: Record<string, string> = SPORT_ARTWORK;
 
-const UPCOMING_DISK_CACHE_FILE = `${FileSystem.cacheDirectory || FileSystem.documentDirectory || ''}ballive_upcoming_cache_v1.json`;
+const UPCOMING_DISK_CACHE_FILE = `${FileSystem.cacheDirectory || FileSystem.documentDirectory || ''}ballive_upcoming_cache_v2.json`;
 const UPCOMING_DISK_TTL_MS = 5 * 60 * 1000; // 5 minutes for upcoming schedules only
 
 type LiveMatchesListener = (live: LiveMatch[], upcoming: LiveMatch[]) => void;
@@ -181,6 +185,8 @@ class StreamingApiService {
               m &&
               m.status === 'UPCOMING' &&
               !m.isLive &&
+              isValidFixture(m) &&
+              !isBannedSport(m.sport, m.competition, m.title) &&
               (!m.kickoffTimestamp || m.kickoffTimestamp === Number.MAX_SAFE_INTEGER || m.kickoffTimestamp > now - 5 * 60 * 1000)
           );
           if (freshUpcoming.length > 0 && this.cachedUpcomingMatches.length === 0) {
@@ -233,14 +239,13 @@ class StreamingApiService {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), API_CONFIG.REQUEST_TIMEOUT_MS);
 
-    // Multi-sport catalogs from DAG Upstream (Tennis completely eliminated)
+    // Multi-sport catalogs from DAG Upstream (Tennis & Motorsport completely eliminated)
     const dagCatalogs = [
       { file: 'moviebay_sports_live.json', defaultSport: 'soccer' as const, isLiveSource: true },
       { file: 'moviebay_sports_football.json', defaultSport: 'soccer' as const, isLiveSource: false },
       { file: 'moviebay_sports_basketball.json', defaultSport: 'basketball' as const, isLiveSource: false },
       { file: 'moviebay_sports_hockey.json', defaultSport: 'hockey' as const, isLiveSource: false },
       { file: 'moviebay_sports_american_football.json', defaultSport: 'american_football' as const, isLiveSource: false },
-      { file: 'moviebay_sports_motorsport.json', defaultSport: 'motorsport' as const, isLiveSource: false },
       { file: 'moviebay_sports_upcoming.json', defaultSport: 'soccer' as const, isLiveSource: false },
     ];
 
@@ -406,21 +411,25 @@ class StreamingApiService {
                 return;
               }
 
-              // Exclude fake fixtures ("vs Opponent" or standalone TV channel titles)
-              if (!away || away.toLowerCase() === 'opponent' || away.toLowerCase().includes('live 24/7') || (home && home.toLowerCase().includes('tv') && !m.team2)) {
+              // Exclude fake/corrupt/self-vs-self fixtures ("vs Opponent", "Horses vs Horses", TV channels)
+              if (
+                !away ||
+                away.toLowerCase() === 'opponent' ||
+                away.toLowerCase().includes('live 24/7') ||
+                (home && home.toLowerCase().includes('tv') && !m.team2) ||
+                !isValidFixture({ homeTeam: home, awayTeam: away, competition: m.genres?.[0] || genre, title: cleanTitle, sport: catConfig.defaultSport })
+              ) {
                 return;
               }
 
               // Resolve competition FIRST so genuine OTHER-genre sports like Japan J League are rescued accurately
               const preliminarSport =
-                genre.includes('BASKETBALL') || cleanTitle.toLowerCase().includes('nba') || rawLgHint.includes('euroleague')
+                genre.includes('BASKETBALL') || cleanTitle.toLowerCase().includes('nba') || rawLgHint.includes('euroleague') || rawLgHint.includes('fiba')
                   ? 'basketball'
-                  : genre.includes('HOCKEY') || cleanTitle.toLowerCase().includes('nhl') || rawLgHint.includes('allsvenskan') || rawLgHint.includes('ice hockey') || rawLgHint.includes('mhl')
+                  : genre.includes('HOCKEY') || cleanTitle.toLowerCase().includes('nhl') || rawLgHint.includes('allsvenskan') || rawLgHint.includes('ice hockey') || rawLgHint.includes('mhl') || rawLgHint.includes('aihl')
                   ? 'hockey'
                   : genre.includes('AMERICAN FOOTBALL') || cleanTitle.toLowerCase().includes('nfl')
                   ? 'american_football'
-                  : genre.includes('MOTORSPORT') || cleanTitle.toLowerCase().includes('f1') || cleanTitle.toLowerCase().includes('formula')
-                  ? 'motorsport'
                   : catConfig.defaultSport;
 
               const resolvedComp = competitionResolverService.resolveCompetition({
@@ -442,6 +451,14 @@ class StreamingApiService {
                 return;
               }
 
+              // Re-validate after competition resolution (drops any resolved motorsport / excluded series)
+              if (
+                isExcludedMotorsport(resolvedComp.sport, resolvedComp.name, cleanTitle) ||
+                !isValidFixture({ homeTeam: home, awayTeam: away, competition: resolvedComp.name, title: cleanTitle, sport: resolvedComp.sport })
+              ) {
+                return;
+              }
+
               seenMatchIds.add(m.id);
 
               // Final authoritative sport selection
@@ -449,24 +466,40 @@ class StreamingApiService {
                 ? resolvedComp.sport
                 : preliminarSport) as LiveMatch['sport'];
               const titleLower = cleanTitle.toLowerCase();
-              if (genre.includes('BASKETBALL') || titleLower.includes('nba')) {
+              if (genre.includes('BASKETBALL') || titleLower.includes('nba') || rawLgHint.includes('fiba')) {
                 sport = 'basketball';
               } else if (genre.includes('HOCKEY') || titleLower.includes('nhl')) {
                 sport = 'hockey';
               } else if (genre.includes('AMERICAN FOOTBALL') || titleLower.includes('nfl')) {
                 sport = 'american_football';
-              } else if (genre.includes('MOTORSPORT') || titleLower.includes('f1') || titleLower.includes('formula')) {
-                sport = 'motorsport';
               }
 
-              // High-resolution authentic team crests directly from DAG event meta, poster query or resolver
-              const rawLogo1 = (typeof m.team1?.logo === 'string' && m.team1.logo.trim().length > 10 && !m.team1.logo.includes('null')) ? m.team1.logo.trim() : null;
-              const rawLogo2 = (typeof m.team2?.logo === 'string' && m.team2.logo.trim().length > 10 && !m.team2.logo.includes('null')) ? m.team2.logo.trim() : null;
+              // High-resolution authentic team crests (prefer verified CREST_MAP, strip cricket/tennis/default/swapped URLs)
+              const isCleanBadgeUrl = (u?: string | null) =>
+                Boolean(
+                  typeof u === 'string' &&
+                    u.trim().length > 10 &&
+                    !u.includes('null') &&
+                    !u.includes('default-team-logo') &&
+                    !u.includes('/teamlogos/cricket/') &&
+                    !u.includes('/teamlogos/tennis/')
+                );
+
+              const localCrest1 = getTeamCrest(home, sport);
+              const localCrest2 = getTeamCrest(away, sport);
+              const rawLogo1 = isCleanBadgeUrl(m.team1?.logo) ? m.team1.logo.trim() : null;
+              const rawLogo2 = isCleanBadgeUrl(m.team2?.logo) ? m.team2.logo.trim() : null;
               const posterLogo1 = extractPosterParam(m.poster, 'b1');
               const posterLogo2 = extractPosterParam(m.poster, 'b2');
 
-              const b1 = rawLogo1 || posterLogo1 || getTeamCrest(home);
-              const b2 = rawLogo2 || posterLogo2 || getTeamCrest(away);
+              const b1 =
+                localCrest1 !== DEFAULT_CREST
+                  ? localCrest1
+                  : rawLogo1 || (isCleanBadgeUrl(posterLogo1) ? posterLogo1! : DEFAULT_CREST);
+              const b2 =
+                localCrest2 !== DEFAULT_CREST
+                  ? localCrest2
+                  : rawLogo2 || (isCleanBadgeUrl(posterLogo2) ? posterLogo2! : DEFAULT_CREST);
 
               // Deduplicate against existing authentic matches (e.g. ESPN scoreboards)
               const cleanHome = cleanName(home);
@@ -696,6 +729,7 @@ class StreamingApiService {
             const away = m.awayTeam?.name || 'Away Team';
             const compName = m.competition?.name || 'Premier League';
             if (isUnsupportedStreamingCompetition(compName, `${home} vs ${away}`)) return;
+            if (!isValidFixture({ homeTeam: home, awayTeam: away, competition: compName, sport: 'soccer' })) return;
 
             const matchId = `fb-live-${m.id}`;
             if (seenMatchIds.has(matchId)) return;
@@ -719,8 +753,8 @@ class StreamingApiService {
               minute,
               imageUrl: bgImage,
               hasLiveStream: true,
-              homeBadge: m.homeTeam?.crest || getTeamCrest(home),
-              awayBadge: m.awayTeam?.crest || getTeamCrest(away),
+              homeBadge: m.homeTeam?.crest || getTeamCrest(home, 'soccer'),
+              awayBadge: m.awayTeam?.crest || getTeamCrest(away, 'soccer'),
               streamUrl: liveStreamUrl,
               streams: [{ id: `srv-${bChannel}`, name: 'Server 1 (Live HD Broadcast)', url: liveStreamUrl }],
               sport: 'soccer',
@@ -940,7 +974,10 @@ class StreamingApiService {
       }
 
       // 3. Resolve verified 24/7 sports broadcast feeds for this competition/sport
-      if (isUnsupportedStreamingCompetition(competitionOrSport)) {
+      if (
+        isUnsupportedStreamingCompetition(competitionOrSport, `${homeTeam || ''} ${awayTeam || ''}`) ||
+        (homeTeam && awayTeam && !isValidFixture({ homeTeam, awayTeam, competition: competitionOrSport }))
+      ) {
         return [];
       }
 
@@ -956,7 +993,6 @@ class StreamingApiService {
         [API_CONFIG.PRIORITY_CHANNELS.NBA]: 'NBA TV HD',
         [API_CONFIG.PRIORITY_CHANNELS.NBA_BACKUP]: 'NBA TV Backup',
         [API_CONFIG.PRIORITY_CHANNELS.NHL]: 'NHL Network',
-        [API_CONFIG.PRIORITY_CHANNELS.F1]: 'Sky Sports F1 HD',
         [API_CONFIG.PRIORITY_CHANNELS.TENNIS]: 'Sky Sport Tennis',
       };
 
@@ -1077,10 +1113,27 @@ class StreamingApiService {
    * Converts a LiveMatch into a full DiscoverMatchup object for navigation.
    */
   convertLiveMatchToMatchup(live: LiveMatch): DiscoverMatchup {
-    const validHomeBadge = (live.homeBadge && typeof live.homeBadge === 'string' && live.homeBadge.trim().length > 10 && !live.homeBadge.includes('null')) ? live.homeBadge.trim() : null;
-    const validAwayBadge = (live.awayBadge && typeof live.awayBadge === 'string' && live.awayBadge.trim().length > 10 && !live.awayBadge.includes('null')) ? live.awayBadge.trim() : null;
-    const homeCrest = validHomeBadge || getTeamCrest(live.homeTeam);
-    const awayCrest = validAwayBadge || getTeamCrest(live.awayTeam);
+    const cleanBadge = (raw?: string | null) => {
+      if (!raw || typeof raw !== 'string') return null;
+      const trimmed = raw.trim();
+      const lower = trimmed.toLowerCase();
+      if (
+        trimmed.length <= 10 ||
+        lower.includes('null') ||
+        lower.includes('default-team-logo') ||
+        lower.includes('/teamlogos/cricket/') ||
+        lower.includes('/teamlogos/tennis/')
+      ) {
+        return null;
+      }
+      return trimmed;
+    };
+    const localHomeCrest = getTeamCrest(live.homeTeam, live.sport);
+    const localAwayCrest = getTeamCrest(live.awayTeam, live.sport);
+    const validHomeBadge = cleanBadge(live.homeBadge);
+    const validAwayBadge = cleanBadge(live.awayBadge);
+    const homeCrest = localHomeCrest !== DEFAULT_CREST ? localHomeCrest : (validHomeBadge || DEFAULT_CREST);
+    const awayCrest = localAwayCrest !== DEFAULT_CREST ? localAwayCrest : (validAwayBadge || DEFAULT_CREST);
 
     let effectiveCompetition = live.competition;
     let compLogo = live.competitionLogo;
@@ -1105,7 +1158,7 @@ class StreamingApiService {
     }
 
     if (!compLogo) {
-      compLogo = resolveCompetitionLogo(effectiveCompetition);
+      compLogo = resolveCompetitionLogo(effectiveCompetition, live.sport);
     }
     const compLower = (effectiveCompetition || '').toLowerCase();
 
@@ -1138,7 +1191,8 @@ class StreamingApiService {
       ? live.kickoffTimestamp
       : parseKickoffTimestamp(live.rawDate || live.kickoffTime || live.time);
 
-    const isUnsupported = isUnsupportedStreamingCompetition(live.competition, live.title);
+    const validFixture = isValidFixture(live);
+    const isUnsupported = !validFixture || isUnsupportedStreamingCompetition(live.competition, live.title);
     const compChannel = isUnsupported ? '' : getBroadcastChannelId(live.competition, live.sport);
     const resolvedStreamUrl = isUnsupported ? undefined : (live.streamUrl || (isLive ? `${API_CONFIG.DAG_SPORTS_BASE}/stream/tv/${compChannel}.json` : undefined));
     const resolvedStreams = isUnsupported
@@ -1186,9 +1240,9 @@ class StreamingApiService {
         score: awayScore,
       },
       venue: live.venue || (compLower.includes('nba') ? 'NBA Arena' : compLower.includes('nhl') ? 'NHL Ice Arena' : 'Stadium Broadcast'),
-      hasLiveBroadcast: isLive || hasLiveStream,
-      streamUrl: isLive ? resolvedStreamUrl : undefined,
-      streams: isLive ? resolvedStreams : undefined,
+      hasLiveBroadcast: !isUnsupported && isLive && hasLiveStream,
+      streamUrl: isLive && !isUnsupported ? resolvedStreamUrl : undefined,
+      streams: isLive && !isUnsupported ? resolvedStreams : undefined,
       poster,
     };
   }
