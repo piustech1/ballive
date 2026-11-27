@@ -15,6 +15,7 @@ interface ProfileIdentityCardProps {
   membership: string;
   avatarId: string;
   avatarBg: string;
+  compact?: boolean;
   onEditPress: () => void;
   onAvatarPress?: () => void;
 }
@@ -24,6 +25,7 @@ export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
   membership,
   avatarId,
   avatarBg,
+  compact = false,
   onEditPress,
   onAvatarPress,
 }) => {
@@ -41,7 +43,13 @@ export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
         accessibilityLabel="Change profile avatar"
         style={styles.avatarTouch}
       >
-        <View style={[styles.avatarCircle, { backgroundColor: circleBg }]}>
+        <View
+          style={[
+            styles.avatarCircle,
+            compact && styles.avatarCircleCompact,
+            { backgroundColor: circleBg },
+          ]}
+        >
           {avatarOption.source ? (
             <Image
               source={avatarOption.source}
@@ -49,34 +57,38 @@ export const ProfileIdentityCard: React.FC<ProfileIdentityCardProps> = ({
               resizeMode="cover"
             />
           ) : (
-            <AvatarIcon size={26} color="#FFFFFF" strokeWidth={2.2} />
+            <AvatarIcon size={compact ? 28 : 32} color="#FFFFFF" strokeWidth={2.2} />
           )}
         </View>
-        <View style={styles.cameraBadge}>
-          <Camera size={10} color="#FFFFFF" strokeWidth={2.4} />
+        <View style={[styles.cameraBadge, compact && styles.cameraBadgeCompact]}>
+          <Camera size={compact ? 11 : 12} color="#FFFFFF" strokeWidth={2.4} />
         </View>
       </TouchableOpacity>
 
       {/* ── RIGHT: DISPLAY NAME, ROLE & EDIT ACTION ── */}
       <View style={styles.infoColumn}>
-        <Text style={styles.displayName} numberOfLines={1}>
+        <Text style={[styles.displayName, compact && styles.displayNameCompact]} numberOfLines={1}>
           {displayName}
         </Text>
 
         <View style={styles.membershipRow}>
-          <CheckCircle2 size={12} color={Colors.verifiedBlue} strokeWidth={2.4} />
-          <Text style={styles.membershipText}>{membership}</Text>
+          <CheckCircle2 size={compact ? 13 : 14} color={Colors.verifiedBlue} strokeWidth={2.4} />
+          <Text style={[styles.membershipText, compact && styles.membershipTextCompact]}>
+            {membership}
+          </Text>
         </View>
 
         <TouchableOpacity
-          style={styles.editButton}
+          style={[styles.editButton, compact && styles.editButtonCompact]}
           activeOpacity={0.78}
           onPress={onEditPress}
           accessibilityRole="button"
           accessibilityLabel="Edit profile name and avatar"
         >
-          <Pencil size={11} color="#ECE9FA" strokeWidth={2.2} />
-          <Text style={styles.editButtonText}>Edit Profile</Text>
+          <Pencil size={compact ? 12 : 13} color="#FFFFFF" strokeWidth={2.3} />
+          <Text style={[styles.editButtonText, compact && styles.editButtonTextCompact]}>
+            Edit Profile
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -89,19 +101,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'transparent',
     paddingHorizontal: 20,
-    paddingTop: 2,
-    paddingBottom: 14,
+    paddingTop: 4,
+    paddingBottom: 6,
   },
   avatarTouch: {
     position: 'relative',
   },
   avatarCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 74,
+    height: 74,
+    borderRadius: 37,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  avatarCircleCompact: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
   },
   avatarImage: {
     width: '100%',
@@ -109,51 +126,72 @@ const styles = StyleSheet.create({
   },
   cameraBadge: {
     position: 'absolute',
-    right: -2,
-    bottom: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    right: -1,
+    bottom: -1,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: '#7650F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  cameraBadgeCompact: {
+    width: 21,
+    height: 21,
+    borderRadius: 10.5,
+  },
   infoColumn: {
     flex: 1,
-    marginLeft: 14,
+    marginLeft: 16,
     justifyContent: 'center',
   },
   displayName: {
-    fontSize: 18,
+    fontSize: 22,
+    lineHeight: 27,
     fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
+  },
+  displayNameCompact: {
+    fontSize: 19,
+    lineHeight: 24,
   },
   membershipRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 2,
+    gap: 5,
+    marginTop: 4,
   },
   membershipText: {
-    fontSize: 11.5,
-    color: Colors.textSecondary,
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#D5CFE6',
+    fontWeight: '600',
+  },
+  membershipTextCompact: {
+    fontSize: 12,
   },
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    marginTop: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+    paddingHorizontal: 14,
+    paddingVertical: 7.5,
+    borderRadius: 14,
+    marginTop: 10,
     alignSelf: 'flex-start',
-    gap: 5,
+    gap: 6,
+  },
+  editButtonCompact: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 8,
   },
   editButtonText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#ECE9FA',
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  editButtonTextCompact: {
+    fontSize: 11.5,
   },
 });

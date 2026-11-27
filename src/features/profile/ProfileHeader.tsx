@@ -1,11 +1,15 @@
 import React from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
 
-export const ProfileHeader: React.FC = () => {
+interface ProfileHeaderProps {
+  compact?: boolean;
+}
+
+export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ compact = false }) => {
   return (
     <View style={styles.container}>
-      <View style={styles.contentRow}>
-        <Text style={styles.title}>Profile</Text>
+      <View style={[styles.contentRow, compact && styles.contentRowCompact]}>
+        <Text style={[styles.title, compact && styles.titleCompact]}>Profile</Text>
       </View>
     </View>
   );
@@ -21,14 +25,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    height: 42,
+  },
+  contentRowCompact: {
     height: 36,
   },
   title: {
-    fontSize: 24,
+    fontSize: 30,
+    lineHeight: 35,
     fontWeight: '800',
-    color: '#ECE9FA',
-    letterSpacing: -0.4,
+    color: '#FFFFFF',
+    letterSpacing: -0.6,
     fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium' }),
+  },
+  titleCompact: {
+    fontSize: 26,
+    lineHeight: 31,
   },
 });
 

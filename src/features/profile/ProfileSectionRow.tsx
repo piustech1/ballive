@@ -18,6 +18,7 @@ interface ProfileSectionRowProps {
   isFirst?: boolean;
   isLast?: boolean;
   standalone?: boolean;
+  paddingVertical?: number;
   onPress: () => void;
 }
 
@@ -31,12 +32,14 @@ export const ProfileSectionRow: React.FC<ProfileSectionRowProps> = ({
   isFirst,
   isLast,
   standalone = true,
+  paddingVertical,
   onPress,
 }) => {
   return (
     <TouchableOpacity
       style={[
         styles.rowContainer,
+        paddingVertical !== undefined ? { paddingVertical } : null,
         standalone ? styles.rowStandalone : null,
         !standalone && isFirst ? styles.rowFirst : null,
         !standalone && isLast ? styles.rowLast : null,

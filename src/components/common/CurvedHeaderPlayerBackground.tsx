@@ -22,6 +22,7 @@ export interface CurvedHeaderPlayerBackgroundProps {
   sectionId?: string;
   playerImageUrl?: string | null;
   opacity?: number;
+  scrimVariant?: 'standard' | 'extendedProfile';
   style?: StyleProp<ViewStyle>;
 }
 
@@ -35,6 +36,7 @@ export const CurvedHeaderPlayerBackground: React.FC<CurvedHeaderPlayerBackground
   sectionId,
   playerImageUrl,
   opacity = 0.8,
+  scrimVariant = 'standard',
   style,
 }) => {
   const [imageFailed, setImageFailed] = useState(false);
@@ -112,6 +114,7 @@ export const CurvedHeaderPlayerBackground: React.FC<CurvedHeaderPlayerBackground
   }
 
   const headerBgColor = Colors.headerPurple || '#1E1730';
+  const isExtendedProfile = scrimVariant === 'extendedProfile';
 
   // Handle custom URL fallback
   const isCustomUrl = Boolean(playerImageUrl && playerImageUrl.trim().length > 10);
@@ -149,42 +152,76 @@ export const CurvedHeaderPlayerBackground: React.FC<CurvedHeaderPlayerBackground
         onError={() => setImageFailed(true)}
       />
 
-      {/* Horizontal Linear Gradient: Left-to-right fade protecting title & search, opening to full athlete view */}
-      <LinearGradient
-        colors={[
-          headerBgColor,
-          'rgba(30, 23, 48, 0.75)',
-          'rgba(30, 23, 48, 0.20)',
-          'transparent',
-        ]}
-        locations={[0, 0.28, 0.58, 0.88]}
-        start={{ x: 0, y: 0.5 }}
-        end={{ x: 1, y: 0.5 }}
-        style={StyleSheet.absoluteFillObject}
-      />
+      {isExtendedProfile ? (
+        <>
+          {/* Left-to-right readability scrim for enlarged profile identity without obscuring right athlete */}
+          <LinearGradient
+            colors={[
+              'rgba(18, 14, 30, 0.94)',
+              'rgba(21, 16, 36, 0.72)',
+              'rgba(21, 16, 36, 0.24)',
+              'rgba(18, 14, 30, 0.08)',
+            ]}
+            locations={[0, 0.34, 0.65, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFillObject}
+          />
 
-      {/* Vertical Linear Gradient: Soft bottom blend without dimming athlete faces */}
-      <LinearGradient
-        colors={[
-          'transparent',
-          'rgba(30, 23, 48, 0.05)',
-          'rgba(30, 23, 48, 0.65)',
-          headerBgColor,
-        ]}
-        locations={[0, 0.65, 0.88, 1.0]}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
+          {/* Subtle top & bottom atmospheric feather so athlete photo extends seamlessly down to the curved clip */}
+          <LinearGradient
+            colors={[
+              'rgba(18, 14, 30, 0.42)',
+              'transparent',
+              'rgba(18, 14, 30, 0.08)',
+              'rgba(18, 14, 30, 0.42)',
+            ]}
+            locations={[0, 0.22, 0.7, 1.0]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </>
+      ) : (
+        <>
+          {/* Horizontal Linear Gradient: Left-to-right fade protecting title & search, opening to full athlete view */}
+          <LinearGradient
+            colors={[
+              headerBgColor,
+              'rgba(30, 23, 48, 0.75)',
+              'rgba(30, 23, 48, 0.20)',
+              'transparent',
+            ]}
+            locations={[0, 0.28, 0.58, 0.88]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFillObject}
+          />
 
-      {/* Diagonal Corner Vignette: Softens the bottom-right corner into the curved contour */}
-      <LinearGradient
-        colors={['transparent', 'rgba(30, 23, 48, 0.35)', headerBgColor]}
-        locations={[0, 0.82, 1.0]}
-        start={{ x: 0.4, y: 0.4 }}
-        end={{ x: 1, y: 1 }}
-        style={StyleSheet.absoluteFillObject}
-      />
+          {/* Vertical Linear Gradient: Soft bottom blend without dimming athlete faces */}
+          <LinearGradient
+            colors={[
+              'transparent',
+              'rgba(30, 23, 48, 0.05)',
+              'rgba(30, 23, 48, 0.65)',
+              headerBgColor,
+            ]}
+            locations={[0, 0.65, 0.88, 1.0]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+
+          {/* Diagonal Corner Vignette: Softens the bottom-right corner into the curved contour */}
+          <LinearGradient
+            colors={['transparent', 'rgba(30, 23, 48, 0.35)', headerBgColor]}
+            locations={[0, 0.82, 1.0]}
+            start={{ x: 0.4, y: 0.4 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+        </>
+      )}
     </View>
   );
 };
